@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,8 +89,20 @@ WSGI_APPLICATION = 'gym.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+if os.environ.get('DATABASE_URL') is not None:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+    # Solo en Render, forzamos la conexión segura para PostgreSQL
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
-DATABASES = {
+# Si no, usamos la configuración local (SQL Server o SQLite)
+else:
+    DATABASES = {
     'default': {
         'ENGINE': 'mssql',
         'NAME': 'FitDataDB', # <-- El nombre de la DB que vas a crear
@@ -175,3 +188,15 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
 }
+
+# Configuración para archivos estáticos en Render
+# ====================================================================
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Necesario para el despliegue
+if not DEBUG:
+    # Collectfast es útil, pero por ahora solo necesitamos WhiteNoise
+    pass
