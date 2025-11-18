@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 
     # Apps de terceros que instalamos
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'django_vite',
 
@@ -163,3 +164,14 @@ DJANGO_VITE_DEV_SERVER_PORT = 5173
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración de Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',  # <--- ¡ESTA ES LA CLAVE!
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+}
