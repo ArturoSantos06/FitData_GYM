@@ -14,20 +14,30 @@ class MembershipTypeSerializer(serializers.ModelSerializer):
 # Serializer de asignación de membresía
 class UserMembershipSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
+    # NUEVO CAMPO: Nombre completo
+    user_full_name = serializers.SerializerMethodField()
+    
     membership_name = serializers.ReadOnlyField(source='membership_type.name')
     
+    # Campo calculado de activo/vencido
     is_active = serializers.SerializerMethodField()
     
     class Meta:
         model = UserMembership
-        fields = ['id', 'user', 'user_name', 'membership_type', 'membership_name', 'start_date', 'end_date', 'is_active']
+        # Agregamos 'user_full_name' a la lista de campos
+        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'start_date', 'end_date', 'is_active']
         read_only_fields = ['end_date', 'start_date']
 
+    # Función para calcular el estado (ya la tenías)
     def get_is_active(self, obj):
         today = timezone.now().date()
         if obj.end_date and obj.end_date < today:
             return False
         return True
+
+    def get_user_full_name(self, obj):
+        # Junta nombre y apellido, y quita espacios si están vacíos
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
 
 # --- SERIALIZER: User (ACTUALIZADO) ---

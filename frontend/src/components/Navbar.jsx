@@ -4,10 +4,9 @@ import { Link, useLocation } from 'react-router-dom';
 function Navbar({ onLogout }) {
   const location = useLocation();
 
-  // Función para resaltar el link activo
   const isActive = (path) => {
     return location.pathname === path 
-      ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md" 
+      ? "bg-slate-700 text-white shadow-md border-b-2 border-cyan-400"
       : "text-gray-200 hover:bg-gray-700 hover:text-white";
   };
 

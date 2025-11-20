@@ -50,8 +50,15 @@ function UserMembershipList() {
           <tbody className="text-gray-200 text-sm font-light">
             {assignments.map((item) => (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
-                <td className="py-3 px-6 font-medium text-gray-50">
-                  {item.user_name}
+                <td className="py-3 px-6 text-left">
+               <div className="flex flex-col">
+                <span className="font-bold text-white text-sm">{item.user_name}</span>
+                {item.user_full_name && (
+               <span className="text-xs text-gray-400 uppercase tracking-wide">
+                {item.user_full_name}
+              </span>
+                )}
+                 </div>
                 </td>
                 <td className="py-3 px-6">
                   {item.membership_name}

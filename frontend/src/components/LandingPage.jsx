@@ -6,9 +6,10 @@ function UserSelectionModal({ onClose }) {
   const navigate = useNavigate();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+      
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative transform transition-all scale-100">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl transition-colors">
           ✕
         </button>
         
@@ -21,10 +22,10 @@ function UserSelectionModal({ onClose }) {
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-purple-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">
-              <h4 className="font-bold text-white group-hover:text-purple-400">Administrador</h4>
+              <h4 className="font-bold text-white group-hover:text-purple-400 transition-colors">Administrador</h4>
               <p className="text-xs text-gray-500">Gestión del sistema</p>
             </div>
-            <span className="text-2xl">🛡️</span>
+            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🛡️</span>
           </button>
 
           <button 
@@ -32,10 +33,10 @@ function UserSelectionModal({ onClose }) {
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-cyan-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">
-              <h4 className="font-bold text-white group-hover:text-cyan-400">Cliente</h4>
+              <h4 className="font-bold text-white group-hover:text-cyan-400 transition-colors">Cliente</h4>
               <p className="text-xs text-gray-500">Mi cuenta</p>
             </div>
-            <span className="text-2xl">💪</span>
+            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">💪</span>
           </button>
         </div>
       </div>
