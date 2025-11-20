@@ -168,6 +168,9 @@ STATICFILES_DIRS = [
     DJANGO_VITE_ASSETS_PATH,
 ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 DJANGO_VITE_DEV_SERVER_HOST = "localhost"
 DJANGO_VITE_DEV_SERVER_PORT = 5173
 # --- Fin de la configuración de Vite ---

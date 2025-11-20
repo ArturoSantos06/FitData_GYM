@@ -86,7 +86,7 @@ function HeroSection({ onOpenModal }) {
         </div>
 
         <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-2 drop-shadow-lg">
-          FitData <span className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-600">GYM</span>
+          FitData <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">GYM</span>
         </h1>
         
         <div className="w-24 h-1 bg-cyan-400 my-6 rounded-full shadow-[0_0_15px_#22d3ee]"></div>

@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import timedelta
-from django.utils import timezone # Necesario para obtener la fecha actual
+from django.utils import timezone 
+import uuid
 
 # Modelo existente para el tipo de membresía (el que creaste la semana pasada)
 class MembershipType(models.Model):
@@ -52,3 +53,31 @@ class UserMembership(models.Model):
     class Meta:
         verbose_name = "Membresía Asignada"
         verbose_name_plural = "Membresías Asignadas"
+
+class Producto(models.Model):
+    nombre = models.CharField(max_length=200)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    stock = models.IntegerField(default=0)
+    imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.nombre} (${self.precio})"
+
+class Venta(models.Model):
+    cliente = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    metodo_pago = models.CharField(max_length=50, default='EFECTIVO')
+    detalle_productos = models.TextField(default="[]")
+
+    # --- NUEVO CAMPO: FOLIO ---
+    folio = models.CharField(max_length=10, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        # Si no tiene folio, generamos uno único (Ej: V-A1B2)
+        if not self.folio:
+            self.folio = "V-" + str(uuid.uuid4())[:6].upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Folio: {self.folio} - ${self.total}"

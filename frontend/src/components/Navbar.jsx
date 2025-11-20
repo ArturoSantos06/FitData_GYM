@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 function Navbar({ onLogout }) {
   const location = useLocation();
 
-  // Función para resaltar el link activo con un gradiente
+  // Función para resaltar el link activo
   const isActive = (path) => {
     return location.pathname === path 
       ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md" 
@@ -15,27 +15,27 @@ function Navbar({ onLogout }) {
     <nav className="bg-gray-900 text-white shadow-lg border-b border-gray-700">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo / Home */}
-          <Link to="/" className="flex items-center space-x-3 text-xl font-bold tracking-wider text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-blue-400 to-teal-400">
-            {/* Asegúrate de que tu logo esté en 'frontend/public' */}
+          <Link to="/admin" className="flex items-center space-x-3 text-xl font-bold tracking-wider text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-blue-400 to-teal-400">
             <img src="/fitdata-logo.png" alt="Logo" className="h-10 w-auto" />
             <span className="hidden sm:inline">FitData GYM</span>
           </Link>
 
-          {/* Enlaces de Navegación */}
           <div className="flex space-x-2 md:space-x-4">
-            <Link to="/" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/')}`}>
+            <Link to="/admin" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin')}`}>
               Inicio
             </Link>
-            <Link to="/registrar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/registrar')}`}>
+            <Link to="/admin/registrar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/registrar')}`}>
               Registrar Clientes
             </Link>
-            <Link to="/asignar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/asignar')}`}>
+            <Link to="/admin/asignar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/asignar')}`}>
               Asignar Membresías
             </Link>
-            <Link to="/configuracion" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/configuracion')}`}>
+            <Link to="/admin/configuracion" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/configuracion')}`}>
               Configurar Tipos
             </Link>
+            <Link to="/admin/ventas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/ventas')}`}>
+   Punto de Venta
+</Link>
           </div>
 
           {/* Botón Salir */}
