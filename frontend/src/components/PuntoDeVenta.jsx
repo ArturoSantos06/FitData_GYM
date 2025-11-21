@@ -120,109 +120,126 @@ function PuntoDeVenta() {
         } catch (e) { console.error(e); }
     };
 
-    const s = {
-        container: { padding: '20px', background: '#0f172a', minHeight: '100vh', color: 'white' },
-        header: { textAlign: 'center', color: '#38bdf8', fontSize: '2.5rem', marginBottom: '30px', fontWeight: 'bold', textTransform: 'uppercase' },
-        grid: { display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' },
-        prodGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' },
-        ticket: { background: '#1e293b', padding: '20px', borderRadius: '12px', height: 'fit-content', border: '1px solid #334155', position: 'sticky', top: '20px', overflow: 'visible' },
-        total: { fontSize: '2rem', textAlign: 'right', color: '#4ade80', fontWeight: 'bold', margin: '20px 0' },
-        btnPay: { width: '100%', padding: '15px', background: 'linear-gradient(to right, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }
-    };
-
     return (
-        <div style={s.container}>
-            <h1 style={s.header}>Punto de Venta</h1>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <button onClick={() => setMostrarModal(true)} style={{ background: '#22c55e', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>+ NUEVO PRODUCTO</button>
+        // Contenedor Principal con Tailwind
+        <div className="p-4 md:p-8 bg-slate-900 min-h-screen text-white">
+            
+            <h1 className="text-3xl md:text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase tracking-widest">
+                Punto de Venta
+            </h1>
+            
+            <div className="text-center mb-8">
+                <button 
+                    onClick={() => setMostrarModal(true)} 
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-6 rounded-lg font-bold shadow-lg hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-1"
+                >
+                    + NUEVO PRODUCTO
+                </button>
             </div>
 
             <ModalNuevoProducto isOpen={mostrarModal} onClose={() => setMostrarModal(false)} onProductoCreado={cargarDatos} />
             <ModalEditarProducto isOpen={mostrarModalEdit} onClose={() => setMostrarModalEdit(false)} producto={productoAEditar} onProductoActualizado={cargarDatos} />
 
-            <div style={s.grid}>
-                <div>
-                    <div style={s.prodGrid}>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                
+                <div className="lg:col-span-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                         {listaProductos.map(p => (
                             <ProductoCard key={p.id} producto={p} onAgregar={agregarAlCarrito} onEditar={abrirEditar} onEliminar={eliminarProductoDB} />
                         ))}
                     </div>
+                    {listaProductos.length === 0 && (
+                        <p className="text-center text-slate-500 mt-10 text-xl italic">No hay productos disponibles.</p>
+                    )}
                 </div>
 
-                <div style={s.ticket}>
-                    <h3 style={{ borderBottom: '1px solid #475569', paddingBottom: '10px', color: '#a5b4fc', marginTop: 0 }}>Ticket de Venta</h3>
-                    
-                    <div className="relative mb-4" ref={dropdownRef}>
-                        <label style={{ display: 'block', marginTop: '15px', color: '#94a3b8', fontWeight: 'bold', marginBottom: '5px' }}>Cliente:</label>
+                <div className="lg:col-span-1">
+                    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl lg:sticky lg:top-6">
+                        <h3 className="text-xl font-bold text-indigo-400 border-b border-slate-700 pb-4 mb-6">Ticket de Venta</h3>
                         
-                        <input 
-                            type="text"
-                            placeholder="Buscar cliente por nombre..."
-                            value={busquedaCliente}
-                            onChange={(e) => {
-                                setBusquedaCliente(e.target.value);
-                                setMostrarDropdown(true);
-                                if(e.target.value === '') setClienteSeleccionado('');
-                            }}
-                            onFocus={() => setMostrarDropdown(true)}
-                            className="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500"
-                        />
+                        {/* Buscador de Clientes */}
+                        <div className="relative mb-6" ref={dropdownRef}>
+                            <label className="block text-sm font-bold text-slate-400 mb-2">Cliente:</label>
+                            <input 
+                                type="text"
+                                placeholder="Buscar cliente..."
+                                value={busquedaCliente}
+                                onChange={(e) => {
+                                    setBusquedaCliente(e.target.value);
+                                    setMostrarDropdown(true);
+                                    if(e.target.value === '') setClienteSeleccionado('');
+                                }}
+                                onFocus={() => setMostrarDropdown(true)}
+                                className="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500"
+                            />
+                            {mostrarDropdown && (
+                                <ul className="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl">
+                                    <li onClick={() => seleccionarCliente('', '-- Público General --')} className="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 font-bold text-cyan-400">-- Público General --</li>
+                                    {clientesFiltrados.map(c => {
+                                        const nombreCompleto = c.first_name ? `${c.first_name} ${c.last_name}` : c.username;
+                                        return (
+                                            <li key={c.id} onClick={() => seleccionarCliente(c.id, nombreCompleto)} className="p-3 hover:bg-slate-700 cursor-pointer text-white border-b border-slate-700 last:border-0">
+                                                <div className="font-bold">{nombreCompleto}</div>
+                                                <div className="text-xs text-gray-400">Usuario: {c.username}</div>
+                                            </li>
+                                        );
+                                    })}
+                                    {clientesFiltrados.length === 0 && <li className="p-3 text-gray-500 text-center italic">No se encontraron clientes</li>}
+                                </ul>
+                            )}
+                        </div>
 
-                        {mostrarDropdown && (
-                            <ul className="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl">
-                                {/* CORREGIDO: Quitamos text-white para que solo sea cyan */}
-                                <li 
-                                    onClick={() => seleccionarCliente('', '-- Público General --')}
-                                    className="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 font-bold text-cyan-400"
-                                >
-                                    -- Público General --
-                                </li>
+                        {/* Método de Pago */}
+                        <label className="block text-sm font-bold text-slate-400 mb-2">Pago:</label>
+                        <select 
+                            className="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+                            value={metodoPago} 
+                            onChange={e => setMetodoPago(e.target.value)}
+                        >
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA">Tarjeta</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                        </select>
 
-                                {clientesFiltrados.map(c => {
-                                    const nombreCompleto = c.first_name ? `${c.first_name} ${c.last_name}` : c.username;
-                                    return (
-                                        <li 
-                                            key={c.id} 
-                                            onClick={() => seleccionarCliente(c.id, nombreCompleto)}
-                                            className="p-3 hover:bg-slate-700 cursor-pointer text-white border-b border-slate-700 last:border-0"
-                                        >
-                                            <div className="font-bold">{nombreCompleto}</div>
-                                            <div className="text-xs text-gray-400">Usuario: {c.username}</div>
-                                        </li>
-                                    );
-                                })}
-                                {clientesFiltrados.length === 0 && <li className="p-3 text-gray-500 text-center italic">No se encontraron clientes</li>}
-                            </ul>
-                        )}
-                    </div>
-
-                    <label style={{ display: 'block', marginTop: '15px', color: '#94a3b8', fontWeight: 'bold' }}>Pago:</label>
-                    <select style={{ width: '100%', padding: '10px', background: '#0f172a', color: 'white', border: '1px solid #475569', borderRadius: '6px', marginTop: '5px' }} value={metodoPago} onChange={e => setMetodoPago(e.target.value)}>
-                        <option value="EFECTIVO">Efectivo</option>
-                        <option value="TARJETA">Tarjeta</option>
-                        <option value="TRANSFERENCIA">Transferencia</option>
-                    </select>
-
-                    <div style={{ marginTop: '25px', maxHeight: '350px', overflowY: 'auto', paddingRight: '5px' }}>
-                        {carrito.map(i => (
-                            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #334155', alignItems: 'center' }}>
-                                <div>
-                                    <strong style={{color: '#e2e8f0'}}>{i.cantidad}x</strong> 
-                                    <span style={{marginLeft: '10px', color: '#94a3b8'}}>{i.nombre}</span>
+                        {/* Lista del Carrito */}
+                        <div className="border-t border-slate-700 pt-4 max-h-64 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                            {carrito.length === 0 && (
+                                <p className="text-center text-slate-500 py-8 italic">El carrito está vacío</p>
+                            )}
+                            {carrito.map(i => (
+                                <div key={i.id} className="flex justify-between items-center bg-slate-700/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div>
+                                        <span className="font-bold text-white mr-2">{i.cantidad}x</span> 
+                                        <span className="text-slate-300 text-sm">{i.nombre}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-emerald-400">${(i.precio * i.cantidad).toFixed(2)}</span>
+                                        <button onClick={() => eliminarDelCarrito(i.id)} className="text-red-400 hover:text-red-200 font-bold text-lg transition-colors">✕</button>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontWeight: 'bold', color: 'white' }}>${(i.precio * i.cantidad).toFixed(2)}</span>
-                                    <button onClick={() => eliminarDelCarrito(i.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', padding: '0 5px' }}>✕</button>
-                                </div>
+                            ))}
+                        </div>
+
+                        {/* Total y Botón */}
+                        <div className="mt-6 border-t border-slate-700 pt-4">
+                            <div className="flex justify-between items-end mb-4">
+                                <span className="text-slate-400 text-sm uppercase font-bold">Total a Pagar</span>
+                                <span className="text-3xl font-extrabold text-emerald-400">${calcularTotal().toFixed(2)}</span>
                             </div>
-                        ))}
+                            
+                            <button 
+                                onClick={procesarVenta}
+                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all"
+                            >
+                                COBRAR VENTA
+                            </button>
+                        </div>
                     </div>
-
-                    <div style={s.total}>Total: ${calcularTotal().toFixed(2)}</div>
-                    <button style={s.btnPay} onClick={procesarVenta}>COBRAR</button>
                 </div>
             </div>
 
+            {/* Historial */}
             <HistorialVentas reloadTrigger={recargarHistorial} />
         </div>
     );
