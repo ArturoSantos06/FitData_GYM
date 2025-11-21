@@ -128,75 +128,80 @@ function HeroSection({ onOpenModal }) {
 // --- SECCIÓN SOBRE NOSOTROS ---
 function AboutSection() {
   return (
-    <section id="about" className="py-24 bg-gray-900 relative overflow-hidden">
+    <section id="about" className="py-16 md:py-24 bg-gray-900 relative overflow-hidden">
       <div className="container mx-auto px-6 relative z-10">
         
-        {/* Título de la Sección */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white tracking-wide uppercase">
+        {/* Título */}
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-wide uppercase">
             Sobre <span className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-600">Nosotros</span>
           </h2>
           <div className="w-20 h-1 bg-cyan-500 mx-auto mt-4 rounded-full"></div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-12">
+        {/* Contenedor Principal: Columna en móvil, Fila en Desktop */}
+        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
           
-          {/* Columna Izquierda: Imagen */}
+          {/* 1. IMAGEN */}
           <div className="w-full md:w-1/2">
             <div className="relative group">
-              <div className="absolute -inset-1 bg-linear-to-r from-cyan-400 to-blue-600 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+              {/* Borde decorativo */}
+              <div className="absolute -inset-1 bg-linear-to-r from-cyan-400 to-blue-600 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
               
               <img 
                 src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070" 
                 alt="Gym Interior" 
-                className="relative rounded-xl shadow-2xl w-full object-cover h-[400px] grayscale hover:grayscale-0 transition-all duration-500"
+                // Altura adaptable: h-64 en móvil, h-[500px] en PC
+                className="relative rounded-xl shadow-2xl w-full h-64 md:h-[500px] object-cover grayscale hover:grayscale-0 transition-all duration-500"
               />
             </div>
           </div>
 
-          {/* Columna Derecha: Texto e Iconos */}
-          <div className="w-full md:w-1/2 space-y-10">
+          {/* 2. TEXTO E ICONOS */}
+          <div className="w-full md:w-1/2 space-y-8 md:space-y-10">
             
-            {/* Item 1 - Configuración/Tecnología */}
-            <div className="flex gap-6 items-start group">
+            {/* Item 1 */}
+            <div className="flex gap-4 md:gap-6 items-start group">
+              {/* Icono (flex-shrink-0 evita que se aplaste) */}
               <div className="shrink-0">
                 <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 group-hover:border-cyan-400 transition-colors">
-                  <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 </div>
               </div>
-              <div>
+              {/* Texto (flex-1 permite que ocupe el espacio restante y haga salto de línea) */}
+              <div className="flex-1">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">Tecnología de Vanguardia</h3>
-                <p className="text-gray-400 leading-relaxed">
+                <p className="text-gray-400 leading-relaxed text-sm md:text-base">
                   Contamos con equipos inteligentes y un sistema de seguimiento (FitData) para que monitorees tu progreso en tiempo real.
                 </p>
               </div>
             </div>
 
-            {/* Item 2 - Corazón/Salud */}
-            <div className="flex gap-6 items-start group">
+            {/* Item 2 */}
+            <div className="flex gap-4 md:gap-6 items-start group">
               <div className="shrink-0">
                 <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 group-hover:border-purple-400 transition-colors">
-                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 </div>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Pasión por tu Salud</h3>
-                <p className="text-gray-400 leading-relaxed">
+                <p className="text-gray-400 leading-relaxed text-sm md:text-base">
                   Más que músculos, nos enfocamos en tu bienestar integral. Creamos un ambiente seguro y motivador para ti.
                 </p>
               </div>
             </div>
 
-            {/* Item 3 - Avión/Progreso */}
-            <div className="flex gap-6 items-start group">
+            {/* Item 3 */}
+            <div className="flex gap-4 md:gap-6 items-start group">
               <div className="shrink-0">
                 <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 group-hover:border-blue-400 transition-colors">
-                   <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                   <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 </div>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Alcanza tus Metas</h3>
-                <p className="text-gray-400 leading-relaxed">
+                <p className="text-gray-400 leading-relaxed text-sm md:text-base">
                   Nuestros entrenadores expertos diseñan planes personalizados para asegurar que llegues a donde quieres estar.
                 </p>
               </div>
@@ -208,7 +213,6 @@ function AboutSection() {
     </section>
   );
 }
-
 // --- SECCIÓN SERVICES (SERVICIOS) ---
 function ServicesSection() {
   const services = [

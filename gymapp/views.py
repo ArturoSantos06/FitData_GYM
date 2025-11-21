@@ -1,4 +1,4 @@
-import os # <--- 1. IMPORTAMOS OS PARA LEER EL ENTORNO
+import os
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -31,9 +31,6 @@ else:
     BaseViewSet = viewsets.ModelViewSet
     print("🔓 MODO LOCAL: Escritura PERMITIDA")
 
-# ---------------------------------------------------
-# AHORA TODOS HEREDAN DE 'BaseViewSet' (El camaleón)
-# ---------------------------------------------------
 
 class MembershipTypeViewSet(BaseViewSet):
     queryset = MembershipType.objects.all()
@@ -55,8 +52,6 @@ class ProductoViewSet(BaseViewSet):
     serializer_class = ProductoSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-# Ventas siempre es mejor que sea solo lectura el historial, 
-# pero si quieres borrar en local, usa BaseViewSet
 class VentaViewSet(BaseViewSet):
     queryset = Venta.objects.all().order_by('-fecha')
     serializer_class = VentaSerializer
