@@ -21,10 +21,6 @@ python manage.py collectstatic --no-input
 echo "Corriendo migraciones..."
 python manage.py migrate
 
-
-echo "Cargando datos..."
-python manage.py loaddata datos_gym.json
-
 # 6. CREAR SUPERUSUARIO (DESPUÉS, solo si hace falta)
 echo "Verificando superusuario..."
 python create_superuser.py
