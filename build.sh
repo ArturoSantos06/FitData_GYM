@@ -21,13 +21,16 @@ python manage.py collectstatic --no-input
 echo "Corriendo migraciones..."
 python manage.py migrate
 
-# 5. CREAR SUPERUSUARIO (Automático)
-echo "Verificando superusuario..."
-python create_superuser.py
+# --- CAMBIO DE ORDEN AQUÍ ---
 
-# 6. CARGAR DATOS 
+# 5. CARGAR DATOS (PRIMERO cargamos tu respaldo)
 echo "Cargando datos desde el archivo..."
 python manage.py loaddata datos_gym.json
 
+# 6. CREAR SUPERUSUARIO (DESPUÉS, solo si hace falta)
+echo "Verificando superusuario..."
+python create_superuser.py
+
+# 7. CORRECCIONES
 echo "Corrigiendo errores de texto..."
 python fix_typos.py
