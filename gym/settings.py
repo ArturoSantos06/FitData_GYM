@@ -17,6 +17,10 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Detectar entorno
+IS_RENDER = 'RENDER' in os.environ
+IS_PRODUCTION = IS_RENDER or os.environ.get('ENVIRONMENT') == 'production'
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -51,9 +55,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -94,6 +98,23 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# CORS en desarrollo: Permitir todo
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# CSRF Configuration para CORS
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://pruebafitdatagym.netlify.app",
+    "https://fit-data-gym.vercel.app",
+]
+
+# Permitir CSRF desde orígenes de confianza
+CSRF_COOKIE_SECURE = IS_PRODUCTION  # Solo HTTPS en producción
+CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JS
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 ROOT_URLCONF = 'gym.urls'
 
