@@ -53,7 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # <-- ¡AÑADIDO!
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -61,11 +61,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# <-- ¡AÑADIDO! Permite que Vite (puerto 5173) hable con Django
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://pruebafitdatagym.netlify.app",
+    "https://fit-data-gym.vercel.app",
 ]
 
 ROOT_URLCONF = 'gym.urls'
@@ -73,7 +74,7 @@ ROOT_URLCONF = 'gym.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [ BASE_DIR / 'templates' ], # <-- ¡MODIFICADO!
+        'DIRS': [ BASE_DIR / 'templates' ], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -160,7 +161,7 @@ STATIC_URL = 'static/'
 # Define dónde se coleccionarán los archivos estáticos en producción
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# --- Configuración de Django-Vite --- # <-- ¡BLOQUE AÑADIDO!
+# --- Configuración de Django-Vite --- 
 DJANGO_VITE_DEV_MODE = DEBUG 
 
 DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "dist"
@@ -185,7 +186,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configuración de Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',  # <--- ¡ESTA ES LA CLAVE!
+        'rest_framework.authentication.TokenAuthentication',  
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
