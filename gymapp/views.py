@@ -267,7 +267,6 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def register_user_with_membership(request):
     data = request.data
     

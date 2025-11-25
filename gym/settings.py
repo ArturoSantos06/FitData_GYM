@@ -56,7 +56,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # MUST BE FIRST
-    'gym.cors_middleware.CustomCorsMiddleware',  # Nuestro middleware personalizado
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -77,6 +76,9 @@ CORS_ALLOWED_ORIGINS = [
 # Permitir credenciales (tokens, cookies)
 CORS_ALLOW_CREDENTIALS = True
 
+# Fuerza que corsheaders maneje TODO (incluso errores)
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_EXPOSE_HEADERS = ['Content-Type', 'Authorization']
 # Permitir métodos HTTP
 CORS_ALLOW_METHODS = [
     'DELETE',
