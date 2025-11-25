@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 function UserMembershipList({ refreshTrigger }) {
   const [assignments, setAssignments] = useState([]);
-  const [searchTerm, setSearchTerm] = useState(''); 
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [sortBy, setSortBy] = useState('recent'); 
+
   const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   const fetchAssignments = async () => {
@@ -23,9 +26,10 @@ function UserMembershipList({ refreshTrigger }) {
 
   useEffect(() => {
     fetchAssignments();
-  }, [refreshTrigger]); 
+  }, [refreshTrigger]);
 
-  // Lógica de Filtrado
+
+  // 1. Primero Filtramos (Buscador)
   const filteredAssignments = assignments.filter(item => {
     const search = searchTerm.toLowerCase();
     const estado = item.is_active ? 'activo' : 'vencido';
@@ -39,6 +43,17 @@ function UserMembershipList({ refreshTrigger }) {
     );
   });
 
+  // 2. Después Ordenamos (Según lo que elijas en el select)
+  const sortedAssignments = [...filteredAssignments].sort((a, b) => {
+    if (sortBy === 'name') {
+      return a.user_name.localeCompare(b.user_name);
+    } 
+    if (sortBy === 'expiration') {
+      return new Date(a.end_date) - new Date(b.end_date);
+    }
+    return new Date(b.start_date) - new Date(a.start_date);
+  });
+
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-teal-500 text-gray-100">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -46,24 +61,38 @@ function UserMembershipList({ refreshTrigger }) {
           Estado de Membresías
         </h2>
         
-        {/* BUSCADOR */}
-        <div className="relative w-full md:w-1/3">
-            <input 
-                type="text" 
-                placeholder="Buscar por usuario, nombre, tipo o estado..." 
-                className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg py-2 px-4 pl-10 focus:outline-none focus:border-teal-500 transition-colors placeholder-slate-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <span className="absolute left-3 top-2.5 text-slate-500">🔍</span>
-        </div>
+        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
+            
+            <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full md:w-auto bg-slate-900 border border-slate-600 text-white rounded-lg py-2 px-4 focus:outline-none focus:border-teal-500 cursor-pointer text-sm"
+            >
+                <option value="recent">📅 Más Recientes</option>
+                <option value="name">🔤 Alfabético (A-Z)</option>
+                <option value="expiration">⚠️ Próximos a Vencer</option>
+            </select>
 
-        <button 
-          onClick={fetchAssignments}
-          className="text-sm text-teal-400 hover:text-teal-300 font-semibold transition-colors whitespace-nowrap"
-        >
-          🔄 Actualizar
-        </button>
+            {/* BUSCADOR */}
+            <div className="relative w-full md:w-64">
+                <input 
+                    type="text" 
+                    placeholder="Buscar..." 
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg py-2 px-4 pl-10 focus:outline-none focus:border-teal-500 transition-colors placeholder-slate-500 text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <span className="absolute left-3 top-2.5 text-slate-500">🔍</span>
+            </div>
+
+            <button 
+              onClick={fetchAssignments}
+              className="text-teal-400 hover:text-teal-300 hover:bg-slate-700 p-2 rounded-lg transition-colors border border-slate-600"
+              title="Actualizar lista"
+            >
+              🔄
+            </button>
+        </div>
       </div>
       
       <div className="overflow-x-auto">
@@ -78,7 +107,7 @@ function UserMembershipList({ refreshTrigger }) {
             </tr>
           </thead>
           <tbody className="text-gray-200 text-sm font-light">
-            {filteredAssignments.map((item) => (
+            {sortedAssignments.map((item) => (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
                 <td className="py-3 px-6 text-left">
                   <div className="flex flex-col">
@@ -113,10 +142,10 @@ function UserMembershipList({ refreshTrigger }) {
               </tr>
             ))}
             
-            {filteredAssignments.length === 0 && (
+            {sortedAssignments.length === 0 && (
               <tr>
                 <td colSpan="5" className="text-center py-6 text-gray-500 italic">
-                  {searchTerm ? 'No se encontraron resultados para tu búsqueda.' : 'No hay membresías asignadas aún.'}
+                  {searchTerm ? 'No se encontraron resultados.' : 'No hay membresías asignadas.'}
                 </td>
               </tr>
             )}

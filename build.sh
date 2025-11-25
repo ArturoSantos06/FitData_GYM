@@ -17,10 +17,10 @@ pip install -r requirements.txt
 echo "Recolectando estáticos..."
 python manage.py collectstatic --no-input
 
-# 4. Migraciones (Crea tablas vacías)
+# 4. Migraciones 
 echo "Corriendo migraciones..."
 python manage.py migrate
 
-# 5. CARGAR TUS DATOS (Aquí ocurre la magia)
+# 5. CARGAR TUS DATOS 
 echo "Cargando respaldo de datos..."
 python manage.py loaddata datos_gym.json

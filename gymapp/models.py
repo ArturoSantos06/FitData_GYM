@@ -11,7 +11,6 @@ class MembershipType(models.Model):
     duration_days = models.IntegerField(verbose_name="Duración (en días)")
     
     image = models.ImageField(upload_to='memberships/', blank=True, null=True, verbose_name="Imagen de Tarjeta")
-
     def __str__(self):
         return f"{self.name} (${self.price})"
 
@@ -43,11 +42,11 @@ class UserMembership(models.Model):
         if not self.start_date:
             self.start_date = timezone.now().date()
             
-        # Calcula la fecha de vencimiento
-        # Se asegura de usar la duración del tipo de membresía
-        self.end_date = self.start_date + timedelta(days=self.membership_type.duration_days)
+        # Calcula la fecha de vencimiento si no existe
+        if not self.end_date:
+            self.end_date = self.start_date + timedelta(days=self.membership_type.duration_days)
         
-        # El campo is_active se usa para filtros, lo actualizaremos con una tarea programada
+        # El campo is_active se usa para filtros
         self.is_active = self.end_date >= timezone.now().date()
         
         super().save(*args, **kwargs)
@@ -83,3 +82,12 @@ class Venta(models.Model):
 
     def __str__(self):
         return f"Folio: {self.folio} - ${self.total}"
+
+class EntradaInventario(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='entradas')
+    cantidad = models.IntegerField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.producto.nombre} (+{self.cantidad})"

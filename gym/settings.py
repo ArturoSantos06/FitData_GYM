@@ -204,3 +204,12 @@ STATICFILES_DIRS = [
 if not DEBUG:
     # Collectfast es útil, pero por ahora solo necesitamos WhiteNoise
     pass
+
+# Configuración de Correo (Gmail)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'artsantoss30@gmail.com' # <--- PON TU CORREO AQUÍ
+EMAIL_HOST_PASSWORD = 'escp yuna xixt ikpw' # <--- PON TU CLAVE DE APLICACIÓN AQUÍ
+DEFAULT_FROM_EMAIL = 'FitData GYM <tu_correo@gmail.com>'

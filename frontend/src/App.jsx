@@ -10,7 +10,7 @@ import AssignMembership from './components/AssignMembership';
 import UserMembershipList from './components/UserMembershipList';
 import MembershipAdmin from './components/MembershipAdmin';
 import PuntoDeVenta from './components/PuntoDeVenta';
-
+import Inventario from './components/Inventario';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -74,6 +74,7 @@ function AdminArea() {
           
           {/* 5. Punto de Venta */}
           <Route path="ventas" element={<PuntoDeVenta />} /> 
+          <Route path="inventario" element={<Inventario />} /> 
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>

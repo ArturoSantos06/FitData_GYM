@@ -7,7 +7,8 @@ from .views import (
     ProductoViewSet, 
     VentaViewSet,
     crear_venta,
-    register_user_with_membership 
+    register_user_with_membership ,
+    EntradaInventarioViewSet
 )
 
 # 1. Configuración del Router (Rutas automáticas CRUD)
@@ -16,7 +17,8 @@ router.register(r'memberships', MembershipTypeViewSet, basename='membershiptype'
 router.register(r'user-memberships', UserMembershipViewSet, basename='user-membership')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'productos', ProductoViewSet, basename='producto')
-router.register(r'ventas', VentaViewSet, basename='venta') 
+router.register(r'ventas', VentaViewSet, basename='venta')
+router.register(r'inventario-entradas', EntradaInventarioViewSet, basename='inventario-entrada') 
 
 # 2. Lista de URLs Unificada
 urlpatterns = [

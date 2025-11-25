@@ -3,6 +3,7 @@ from .models import MembershipType, UserMembership
 from django.contrib.auth.models import User 
 from django.utils import timezone
 from .models import Producto, Venta
+from .models import EntradaInventario
 
 # Serializer existente
 class MembershipTypeSerializer(serializers.ModelSerializer):
@@ -41,20 +42,53 @@ class UserMembershipSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
 
-# --- SERIALIZER: User (ACTUALIZADO) ---
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        # Añadimos 'password' a los campos
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password']
-        # Configuramos password para que se pueda escribir pero NO leer (por seguridad)
         extra_kwargs = {'password': {'write_only': True}}
 
-    # Sobrescribimos el método create para encriptar la contraseña
+    def validate(self, data):
+        # 1. Validar Nombre de Usuario (Username)
+        username = data.get('username')
+        # Si es creación (no hay instancia) y existe el username
+        if not self.instance and username:
+            if User.objects.filter(username=username).exists():
+                raise serializers.ValidationError({"username": ["Este nombre de usuario ya está ocupado."]})
+
+        # 2. Validar Correo Electrónico (¡AQUÍ ESTÁ LA CLAVE!)
+        email = data.get('email', '').strip()
+        if email:
+            # Buscamos si existe algún usuario con este correo
+            user_query = User.objects.filter(email__iexact=email)
+            
+            # Si estamos editando, excluimos al usuario actual de la búsqueda
+            if self.instance:
+                user_query = user_query.exclude(pk=self.instance.pk)
+            
+            if user_query.exists():
+                # Usamos la clave estándar 'email' para que sea más fácil o 'email_error' si prefieres
+                raise serializers.ValidationError({"email_error": [f"El correo '{email}' ya está registrado en el sistema."]})
+
+        # 3. Validar Nombre Completo
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+
+        if first_name and last_name:
+            name_query = User.objects.filter(first_name__iexact=first_name, last_name__iexact=last_name)
+            
+            if self.instance:
+                name_query = name_query.exclude(pk=self.instance.pk)
+
+            if name_query.exists():
+                raise serializers.ValidationError({"fullname_error": [f"Ya existe un cliente registrado como '{first_name} {last_name}'."]})
+        
+        return data
+
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user
-    
+
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
@@ -81,3 +115,12 @@ class VentaSerializer(serializers.ModelSerializer):
             # Si el usuario no tiene nombre registrado, devolvemos el usuario
             return nombre if nombre else obj.cliente.username
         return "Público General"
+    
+
+class EntradaInventarioSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.ReadOnlyField(source='producto.nombre')
+    usuario_nombre = serializers.ReadOnlyField(source='usuario.username')
+
+    class Meta:
+        model = EntradaInventario
+        fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'fecha', 'usuario', 'usuario_nombre']

@@ -1,5 +1,603 @@
 [
 {
+  "model": "admin.logentry",
+  "pk": 1,
+  "fields": {
+    "action_time": "2025-11-18T18:16:48.726Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "2",
+    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 2,
+  "fields": {
+    "action_time": "2025-11-18T18:16:48.726Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "1",
+    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 3,
+  "fields": {
+    "action_time": "2025-11-18T18:41:51.009Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "3",
+    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 4,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "6",
+    "object_repr": "Folio: None - $1400.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 5,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "5",
+    "object_repr": "Folio: None - $1400.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 6,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "4",
+    "object_repr": "Folio: None - $105.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 7,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "3",
+    "object_repr": "Folio: None - $105.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 8,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "2",
+    "object_repr": "Folio: None - $105.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 9,
+  "fields": {
+    "action_time": "2025-11-20T21:14:57.033Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "1",
+    "object_repr": "Folio: None - $35.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 10,
+  "fields": {
+    "action_time": "2025-11-20T21:19:07.709Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "6",
+    "object_repr": "FitData Day Pass ($80.00)",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Duraci\\u00f3n (en d\\u00edas)\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 11,
+  "fields": {
+    "action_time": "2025-11-20T21:19:36.495Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "6",
+    "object_repr": "FitData Day Pass ($80.00)",
+    "action_flag": 2,
+    "change_message": "[]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 12,
+  "fields": {
+    "action_time": "2025-11-20T21:20:07.988Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "6",
+    "object_repr": "Gina_0326 - FitData Day Pass hasta 2025-11-19",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Fecha de Vencimiento\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 13,
+  "fields": {
+    "action_time": "2025-11-20T21:20:21.444Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "4",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-18",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Fecha de Vencimiento\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 14,
+  "fields": {
+    "action_time": "2025-11-21T21:36:44.627Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "8",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-21",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 15,
+  "fields": {
+    "action_time": "2025-11-21T21:41:05.281Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "9",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-21",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 16,
+  "fields": {
+    "action_time": "2025-11-21T21:59:29.095Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "10",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-21",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 17,
+  "fields": {
+    "action_time": "2025-11-21T21:59:51.306Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "11",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-21",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 18,
+  "fields": {
+    "action_time": "2025-11-22T19:36:13.675Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "13",
+    "object_repr": "MaferH - FullData hasta 2026-11-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 19,
+  "fields": {
+    "action_time": "2025-11-22T19:38:15.192Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "15",
+    "object_repr": "Artsantos - FitData Study hasta 2025-12-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 20,
+  "fields": {
+    "action_time": "2025-11-22T19:38:15.192Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "14",
+    "object_repr": "MaferH - FullData hasta 2026-11-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 21,
+  "fields": {
+    "action_time": "2025-11-22T19:47:10.831Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "16",
+    "object_repr": "Artsantos - FitData Study hasta 2025-12-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 22,
+  "fields": {
+    "action_time": "2025-11-22T19:52:41.031Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "17",
+    "object_repr": "Gina_0326 - FitData Day Pass hasta 2025-11-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 23,
+  "fields": {
+    "action_time": "2025-11-22T19:56:17.281Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "18",
+    "object_repr": "Gina_0326 - FitData Day Pass hasta 2025-11-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 24,
+  "fields": {
+    "action_time": "2025-11-22T20:03:01.974Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "19",
+    "object_repr": "Artsantos - FitData Day Pass hasta 2025-11-22",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 25,
+  "fields": {
+    "action_time": "2025-11-22T20:29:12.232Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "7",
+    "object_repr": "ArtPrueba",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 26,
+  "fields": {
+    "action_time": "2025-11-22T20:32:38.365Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "8",
+    "object_repr": "Art1prueba",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 27,
+  "fields": {
+    "action_time": "2025-11-22T20:32:38.365Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "9",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 28,
+  "fields": {
+    "action_time": "2025-11-22T20:35:28.176Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "10",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 29,
+  "fields": {
+    "action_time": "2025-11-22T20:54:09.377Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "14",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 30,
+  "fields": {
+    "action_time": "2025-11-22T20:56:30.033Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "17",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 31,
+  "fields": {
+    "action_time": "2025-11-22T21:02:38.329Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "19",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 32,
+  "fields": {
+    "action_time": "2025-11-22T21:11:28.497Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "21",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 33,
+  "fields": {
+    "action_time": "2025-11-22T21:19:46.444Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "23",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 34,
+  "fields": {
+    "action_time": "2025-11-22T21:19:46.444Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "24",
+    "object_repr": "Artsantos2",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 35,
+  "fields": {
+    "action_time": "2025-11-22T21:20:39.178Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "25",
+    "object_repr": "Artsantos1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 36,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "16",
+    "object_repr": "Folio: V-C0AA96 - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 37,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "15",
+    "object_repr": "Folio: V-FD67A8 - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 38,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "14",
+    "object_repr": "Folio: V-23F0F3 - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 39,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "13",
+    "object_repr": "Folio: V-927B5A - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 40,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "12",
+    "object_repr": "Folio: V-8C44AE - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 41,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "11",
+    "object_repr": "Folio: V-7AC282 - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 42,
+  "fields": {
+    "action_time": "2025-11-24T16:18:17.654Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "10",
+    "object_repr": "Folio: V-B9252B - $4500.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 43,
+  "fields": {
+    "action_time": "2025-11-24T16:23:39.923Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "9",
+    "object_repr": "Folio: V-03A1F1 - $500.00",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Detalle productos\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 44,
+  "fields": {
+    "action_time": "2025-11-24T23:24:12.849Z",
+    "user": 1,
+    "content_type": 10,
+    "object_id": "6",
+    "object_repr": "Gina_0326 - FitData Day Pass hasta 2025-10-24",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Fecha de Inicio\", \"Fecha de Vencimiento\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 45,
+  "fields": {
+    "action_time": "2025-11-25T19:00:20.468Z",
+    "user": 1,
+    "content_type": 4,
+    "object_id": "26",
+    "object_repr": "Prueba1",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 46,
+  "fields": {
+    "action_time": "2025-11-25T19:00:52.409Z",
+    "user": 1,
+    "content_type": 12,
+    "object_id": "17",
+    "object_repr": "Folio: V-FE8230 - $250.00",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
   "model": "auth.user",
   "pk": 1,
   "fields": {
@@ -90,6 +688,50 @@
   }
 },
 {
+  "model": "auth.user",
+  "pk": 27,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$98vSOCi1TbOc3tA7Kgbxmo$KJo7NwtSoGXULNBqrN1o/5t0SX5gokz7npAAHkrnX+Q=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "leona",
+    "first_name": "leonardo",
+    "last_name": "castillo",
+    "email": "leonardo24aldair@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-11-24T23:05:13.943Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 28,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$kLZXvroKVW8pPsfcRWl8pW$Ir+Od0qL5weVVO9Nz25+WhfCtdeLvKubULkP3QN4juY=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "Artsantos1",
+    "first_name": "Prueba",
+    "last_name": "Santos Lopez",
+    "email": "00834546@red.unid.mx",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-11-25T19:17:15.892Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "2oy0cwcj8lt598it4nzgaym92r9v7zmc",
+  "fields": {
+    "session_data": ".eJxVjEEOwiAQRe_C2pBCARmX7nsGMjCDVA0kpV0Z765NutDtf-_9lwi4rSVsnZcwk7gIJU6_W8T04LoDumO9NZlaXZc5yl2RB-1yasTP6-H-HRTs5Vv7aD2BHYFVsma0MKDy1nnjjIku0xA1USI9sseYrVZeMYPCMxgNmUC8P8qZN4w:1vJHd5:ulIQu-b1jQ1T6EG9xf8ULjF9GG2VdWZLicRLvFFerk8",
+    "expire_date": "2025-11-26T20:39:47.399Z"
+  }
+},
+{
   "model": "authtoken.token",
   "pk": "8322ae550cfef3e73d40992a1336ece3546f0eee",
   "fields": {
@@ -101,7 +743,7 @@
   "model": "gymapp.membershiptype",
   "pk": 4,
   "fields": {
-    "name": "MembresÃ­a FullData",
+    "name": "FullData",
     "price": "4500.00",
     "duration_days": 365,
     "image": "memberships/FULLDATA.png"
@@ -111,7 +753,7 @@
   "model": "gymapp.membershiptype",
   "pk": 5,
   "fields": {
-    "name": "MembresÃ­a Flex FitData",
+    "name": "FitData Flex",
     "price": "500.00",
     "duration_days": 30,
     "image": "memberships/FLEX_FITDATA.png"
@@ -131,7 +773,7 @@
   "model": "gymapp.membershiptype",
   "pk": 7,
   "fields": {
-    "name": "MembresÃ­a Study FitData",
+    "name": "FitData Study",
     "price": "250.00",
     "duration_days": 30,
     "image": "memberships/STUDY_FITDATA.png"
@@ -143,8 +785,8 @@
   "fields": {
     "user": 2,
     "membership_type": 6,
-    "start_date": "2025-11-21",
-    "end_date": "2025-11-21",
+    "start_date": "2025-11-25",
+    "end_date": "2025-11-25",
     "is_active": true
   }
 },
@@ -165,9 +807,9 @@
   "fields": {
     "user": 3,
     "membership_type": 6,
-    "start_date": "2025-11-19",
-    "end_date": "2025-11-19",
-    "is_active": false
+    "start_date": "2025-11-24",
+    "end_date": "2025-11-24",
+    "is_active": true
   }
 },
 {
@@ -193,12 +835,34 @@
   }
 },
 {
+  "model": "gymapp.usermembership",
+  "pk": 28,
+  "fields": {
+    "user": 27,
+    "membership_type": 6,
+    "start_date": "2025-11-24",
+    "end_date": "2025-11-24",
+    "is_active": true
+  }
+},
+{
+  "model": "gymapp.usermembership",
+  "pk": 29,
+  "fields": {
+    "user": 28,
+    "membership_type": 4,
+    "start_date": "2025-11-25",
+    "end_date": "2026-11-25",
+    "is_active": true
+  }
+},
+{
   "model": "gymapp.producto",
   "pk": 1,
   "fields": {
     "nombre": "Agua Ciel Purificada 1L",
     "precio": "35.00",
-    "stock": 2,
+    "stock": 30,
     "imagen": "productos/botella_ciel-removebg-preview.png"
   }
 },
@@ -208,7 +872,7 @@
   "fields": {
     "nombre": "Agua Ciel Purificada 600ml",
     "precio": "20.00",
-    "stock": 0,
+    "stock": 25,
     "imagen": "productos/aguaciel_1024x-removebg-preview_MjMLY1C.png"
   }
 },
@@ -218,8 +882,18 @@
   "fields": {
     "nombre": "Gold Standard 100% Whey 5 Lb",
     "precio": "1400.00",
-    "stock": 2,
+    "stock": 10,
     "imagen": "productos/optimun-gold-standard-100-whey-5lb-removebg-preview.png"
+  }
+},
+{
+  "model": "gymapp.producto",
+  "pk": 4,
+  "fields": {
+    "nombre": "Nature Valley Sweet & Protein",
+    "precio": "18.00",
+    "stock": 20,
+    "imagen": "productos/58242210-1600-auto-removebg-preview_wRyc26X.png"
   }
 },
 {
@@ -254,8 +928,252 @@
     "fecha": "2025-11-21T22:11:42.411Z",
     "total": "500.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'MembresÃ­a Flex FitData', 'precio': 500.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Flex FitData', 'precio': 500.00, 'cantidad': 1}]",
     "folio": "V-03A1F1"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 18,
+  "fields": {
+    "cliente": 3,
+    "fecha": "2025-11-24T17:43:30.148Z",
+    "total": "80.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "folio": "V-41BB9D"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 19,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-24T17:48:56.466Z",
+    "total": "35.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 1, 'cantidad': 1, 'nombre': 'Agua Ciel Purificada 1L', 'precio': 35}]",
+    "folio": "V-86D9AD"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 20,
+  "fields": {
+    "cliente": 5,
+    "fecha": "2025-11-24T17:59:00.392Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-FAFD19"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 21,
+  "fields": {
+    "cliente": 27,
+    "fecha": "2025-11-24T23:05:14.298Z",
+    "total": "80.00",
+    "metodo_pago": "TRANSFERENCIA",
+    "detalle_productos": "[{'nombre': 'FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "folio": "V-9BF9C8"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 22,
+  "fields": {
+    "cliente": 3,
+    "fecha": "2025-11-24T23:09:37.203Z",
+    "total": "1435.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 1, 'cantidad': 1, 'nombre': 'Agua Ciel Purificada 1L', 'precio': 35}, {'id': 3, 'cantidad': 1, 'nombre': 'Gold Standard 100% Whey 5 Lb', 'precio': 1400}]",
+    "folio": "V-653A1A"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 23,
+  "fields": {
+    "cliente": 3,
+    "fecha": "2025-11-24T23:25:44.060Z",
+    "total": "80.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "folio": "V-5551A8"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 24,
+  "fields": {
+    "cliente": 27,
+    "fecha": "2025-11-25T17:39:24.220Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-C1A078"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 25,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T17:44:16.536Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-8A9023"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 26,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T17:48:03.880Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-64D71C"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 27,
+  "fields": {
+    "cliente": null,
+    "fecha": "2025-11-25T17:58:24.331Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-CB4811"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 28,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T18:15:12.378Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-12B45B"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 29,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T18:24:11.761Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-AD5115"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 30,
+  "fields": {
+    "cliente": 3,
+    "fecha": "2025-11-25T18:27:00.568Z",
+    "total": "18.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 4, 'cantidad': 1, 'nombre': 'Nature Valley Sweet & Protein', 'precio': 18}]",
+    "folio": "V-A1B42C"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 31,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T18:38:14.871Z",
+    "total": "1400.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'id': 3, 'cantidad': 1, 'nombre': 'Gold Standard 100% Whey 5 Lb', 'precio': 1400}]",
+    "folio": "V-F459E5"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 32,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T19:05:06.220Z",
+    "total": "80.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "folio": "V-8AA168"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 33,
+  "fields": {
+    "cliente": 28,
+    "fecha": "2025-11-25T19:17:16.194Z",
+    "total": "4500.00",
+    "metodo_pago": "EFECTIVO",
+    "detalle_productos": "[{'nombre': 'Membresía: FullData', 'precio': 4500.00, 'cantidad': 1}]",
+    "folio": "V-131323"
+  }
+},
+{
+  "model": "gymapp.venta",
+  "pk": 34,
+  "fields": {
+    "cliente": 2,
+    "fecha": "2025-11-25T19:26:01.388Z",
+    "total": "20.00",
+    "metodo_pago": "TARJETA",
+    "detalle_productos": "[{'id': 2, 'cantidad': 1, 'nombre': 'Agua Ciel Purificada 600ml', 'precio': 20}]",
+    "folio": "V-3529B5"
+  }
+},
+{
+  "model": "gymapp.entradainventario",
+  "pk": 1,
+  "fields": {
+    "producto": 1,
+    "cantidad": 20,
+    "fecha": "2025-11-25T21:14:39.863Z",
+    "usuario": 1
+  }
+},
+{
+  "model": "gymapp.entradainventario",
+  "pk": 2,
+  "fields": {
+    "producto": 2,
+    "cantidad": 5,
+    "fecha": "2025-11-25T21:17:41.236Z",
+    "usuario": 1
+  }
+},
+{
+  "model": "gymapp.entradainventario",
+  "pk": 3,
+  "fields": {
+    "producto": 3,
+    "cantidad": 3,
+    "fecha": "2025-11-25T21:21:43.200Z",
+    "usuario": 1
+  }
+},
+{
+  "model": "gymapp.entradainventario",
+  "pk": 4,
+  "fields": {
+    "producto": 3,
+    "cantidad": 2,
+    "fecha": "2025-11-25T21:23:24.180Z",
+    "usuario": 1
   }
 }
 ]

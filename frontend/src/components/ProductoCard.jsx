@@ -28,7 +28,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
             </div>
 
             {/* IMAGEN: Altura ajustada. h-28 en móvil, h-40 en PC */}
-            <div className="h-32 md:h-40 w-full flex justify-center items-center mb-2 md:mb-4 bg-slate-900/50 rounded-xl overflow-hidden border border-slate-700/50 flex-shrink-0">
+            <div className="h-32 md:h-40 w-full flex justify-center items-center mb-2 md:mb-4 bg-slate-900/50 rounded-xl overflow-hidden border border-slate-700/50 shrink-0">
                 <img 
                     src={imgSrc} 
                     alt={producto.nombre} 
@@ -38,7 +38,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
             </div>
 
             {/* INFO: Crece para llenar espacio */}
-            <div className="flex flex-col flex-grow gap-1 mb-2 md:mb-4">
+            <div className="flex flex-col grow gap-1 mb-2 md:mb-4">
                 {/* Título: Texto más chico en móvil, normal en PC */}
                 <h3 className="text-sm md:text-lg font-bold text-slate-100 leading-tight line-clamp-2 h-9 md:h-12 flex items-center" title={producto.nombre}>
                     {producto.nombre}
@@ -46,7 +46,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
                 
                 <div className="flex items-center justify-between">
                     {/* Precio: Ajuste de tamaño */}
-                    <p className="text-lg md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                    <p className="text-lg md:text-2xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
                         ${parseFloat(producto.precio).toFixed(2)}
                     </p>
                     <span className={`text-[10px] md:text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-md whitespace-nowrap ${
@@ -76,7 +76,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
                     className={`h-9 md:h-10 px-2 rounded-lg font-bold text-white text-[10px] md:text-xs uppercase tracking-wide shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-1 w-full
                         ${producto.stock === 0 
                             ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
-                            : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500'
+                            : 'bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500'
                         }`}
                 >
                     Agregar
