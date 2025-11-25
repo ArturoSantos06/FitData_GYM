@@ -7,7 +7,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "object_repr": "admin - MembresÃ­a FullData hasta 2026-11-18",
     "action_flag": 3,
     "change_message": ""
   }
@@ -20,7 +20,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "1",
-    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "object_repr": "admin - MembresÃ­a FullData hasta 2026-11-18",
     "action_flag": 3,
     "change_message": ""
   }
@@ -33,7 +33,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "3",
-    "object_repr": "admin - Membresía FullData hasta 2026-11-18",
+    "object_repr": "admin - MembresÃ­a FullData hasta 2026-11-18",
     "action_flag": 3,
     "change_message": ""
   }
@@ -940,7 +940,7 @@
     "fecha": "2025-11-24T17:43:30.148Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaciï¿½n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-41BB9D"
   }
 },
@@ -1000,7 +1000,7 @@
     "fecha": "2025-11-24T23:25:44.060Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaciï¿½n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-5551A8"
   }
 },
@@ -1108,7 +1108,7 @@
     "fecha": "2025-11-25T19:05:06.220Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovación: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaciï¿½n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-8AA168"
   }
 },
@@ -1120,7 +1120,7 @@
     "fecha": "2025-11-25T19:17:16.194Z",
     "total": "4500.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Membresía: FullData', 'precio': 4500.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'MembresÃ­a: FullData', 'precio': 4500.00, 'cantidad': 1}]",
     "folio": "V-131323"
   }
 },
