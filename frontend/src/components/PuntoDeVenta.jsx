@@ -36,6 +36,9 @@ function PuntoDeVenta() {
     const [errorMessage, setErrorMessage] = useState('');
     const [errorTitle, setErrorTitle] = useState('');
 
+    // Estado de carga
+    const [isLoading, setIsLoading] = useState(false);
+
     const [recargarHistorial, setRecargarHistorial] = useState(0);
     const [busquedaCliente, setBusquedaCliente] = useState('');
     const [mostrarDropdown, setMostrarDropdown] = useState(false);
@@ -167,6 +170,7 @@ function PuntoDeVenta() {
             }
         }
 
+        setIsLoading(true);
         const token = localStorage.getItem('token');
         const data = {
             cliente_id: clienteSeleccionado || null,
@@ -206,7 +210,14 @@ function PuntoDeVenta() {
                 setErrorMessage(err.error || "Error desconocido al procesar venta.");
                 setShowErrorModal(true);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e);
+            setErrorTitle("Error");
+            setErrorMessage("Error al conectar con el servidor.");
+            setShowErrorModal(true);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // Estilos
@@ -364,7 +375,24 @@ function PuntoDeVenta() {
                         
                         <p className="text-right text-slate-400 text-xs mb-4">(IVA Incluido)</p>
                         
-                        <button style={s.btnPay} onClick={procesarVenta}>COBRAR</button>
+                        <button 
+                            style={s.btnPay} 
+                            onClick={procesarVenta}
+                            disabled={isLoading}
+                            className={`${isLoading ? 'opacity-70 cursor-not-allowed' : ''} flex justify-center items-center gap-2`}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Procesando...</span>
+                                </>
+                            ) : (
+                                "COBRAR"
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>

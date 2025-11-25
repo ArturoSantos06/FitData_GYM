@@ -111,6 +111,11 @@ CSRF_TRUSTED_ORIGINS = [
     "https://fit-data-gym.vercel.app",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://fitdata-api.onrender.com",
+    "https://fit-data-gym.vercel.app",
+]
+
 # Permitir CSRF desde orígenes de confianza
 CSRF_COOKIE_SECURE = IS_PRODUCTION  # Solo HTTPS en producción
 CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JS
