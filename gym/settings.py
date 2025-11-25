@@ -69,6 +69,32 @@ CORS_ALLOWED_ORIGINS = [
     "https://fit-data-gym.vercel.app",
 ]
 
+# Permitir credenciales (tokens, cookies)
+CORS_ALLOW_CREDENTIALS = True
+
+# Permitir métodos HTTP
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Permitir headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 ROOT_URLCONF = 'gym.urls'
 
 TEMPLATES = [

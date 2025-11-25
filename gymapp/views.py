@@ -265,8 +265,6 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
-# --- Vista especial para Registro + Membresía ---
-# En gymapp/views.py
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
