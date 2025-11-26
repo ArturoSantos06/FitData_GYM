@@ -80,7 +80,7 @@ function AssignMembership({ onSuccess }) {
   }, []);
 
   const getImageUrl = (imgPath) => {
-    if (!imgPath) return null;
+    if (!imgPath) return "https://placehold.co/400x250/1e293b/ffffff?text=Sin+Imagen";
     if (imgPath.startsWith('http')) return imgPath;
     return `${API_URL}${imgPath}`;
   };

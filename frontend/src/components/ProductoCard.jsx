@@ -5,7 +5,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
     const getInitialUrl = (img) => {
-        if (!img) return "https://via.placeholder.com/150/1e293b/ffffff?text=Sin+Imagen";
+        if (!img) return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
         if (img.startsWith('http')) return img;
         return `${BASE_URL}${img}`;
     };
@@ -15,7 +15,7 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
 
     const incrementar = () => { if (cantidad < producto.stock) setCantidad(cantidad + 1); };
     const decrementar = () => { if (cantidad > 1) setCantidad(cantidad - 1); };
-    const handleImageError = () => { setImgSrc("https://via.placeholder.com/150/1e293b/ffffff?text=Sin+Imagen"); };
+    const handleImageError = () => { setImgSrc("https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen"); };
 
     return (
         // CARD: Padding pequeño en móvil (p-3), grande en PC (md:p-5)
