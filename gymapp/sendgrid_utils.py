@@ -30,4 +30,13 @@ def sendgrid_send(api_key: str, subject: str, content: str, recipients: List[str
 
     sg = SendGridAPIClient(api_key)
     response = sg.send(message)
+    # Log básico para debugging (aparecerá en stdout/logs de Render)
+    try:
+        status = getattr(response, 'status_code', None)
+        body = getattr(response, 'body', None)
+        print(f"SendGrid response status: {status}")
+        if body:
+            print(f"SendGrid response body: {body}")
+    except Exception:
+        pass
     return response
