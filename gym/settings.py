@@ -162,11 +162,23 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# Credenciales (Leídas del entorno o fallback al valor directo)
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'artsantoss30@gmail.com') 
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'escp yuna xixt ikpw') 
+# Credenciales (Leídas del entorno)
+# En producción preferir usar SendGrid: con SMTP el usuario es 'apikey' y la
+# contraseña es tu API key. Evita dejar valores de correo personales en el repo.
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', os.environ.get('EMAIL_SMTP_USER', 'apikey'))
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', os.environ.get('EMAIL_SMTP_PASSWORD', ''))
 
-DEFAULT_FROM_EMAIL = f'FitData GYM <{EMAIL_HOST_USER}>'
+# DEFAULT_FROM_EMAIL: usar variable de entorno explícita si está disponible.
+# Fallback razonable: 'FitData GYM <no-reply@tu-dominio>' donde `EMAIL_DOMAIN`
+# puede establecerse en las variables de entorno (p. ej. fitdata.example.com).
+# Nota: usar direcciones @gmail.com como remitente puede aumentar las probabilidades
+# de que el correo sea marcado como spam cuando lo envía SendGrid; lo ideal es
+# usar un dominio verificado en SendGrid (SPF/DKIM) y una dirección tipo
+# no-reply@tudominio.com.
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    f"FitData GYM <no-reply@{os.environ.get('EMAIL_DOMAIN', 'fitdata.example.com')}>"
+)
 
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

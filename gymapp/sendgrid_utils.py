@@ -29,14 +29,35 @@ def sendgrid_send(api_key: str, subject: str, content: str, recipients: List[str
     )
 
     sg = SendGridAPIClient(api_key)
-    response = sg.send(message)
-    # Log básico para debugging (aparecerá en stdout/logs de Render)
     try:
-        status = getattr(response, 'status_code', None)
-        body = getattr(response, 'body', None)
-        print(f"SendGrid response status: {status}")
-        if body:
-            print(f"SendGrid response body: {body}")
-    except Exception:
-        pass
-    return response
+        response = sg.send(message)
+        # Log básico para debugging (aparecerá en stdout/logs de Render)
+        try:
+            status = getattr(response, 'status_code', None)
+            body = getattr(response, 'body', None)
+            print(f"SendGrid response status: {status}")
+            if body:
+                # body puede ser bytes o str
+                try:
+                    print(f"SendGrid response body: {body.decode()}")
+                except Exception:
+                    print(f"SendGrid response body: {body}")
+        except Exception:
+            pass
+        return response
+    except Exception as e:
+        # Capturar y mostrar información útil en logs para diagnosticar 403/4xx/5xx
+        try:
+            # La excepción del cliente puede contener 'status_code' y 'body'
+            status = getattr(e, 'status_code', None)
+            body = getattr(e, 'body', None)
+            print(f"SendGrid API send failed - exception status: {status}")
+            if body:
+                try:
+                    print(f"SendGrid API error body: {body.decode()}")
+                except Exception:
+                    print(f"SendGrid API error body: {body}")
+        except Exception:
+            pass
+        # Re-lanzar para que el llamador quede informado (send_mail_async lo captura y lo registra)
+        raise
