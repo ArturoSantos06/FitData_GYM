@@ -8,6 +8,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from django.core.mail import send_mail
+import threading
+import os
 
 # Importar modelos y serializers
 from .models import MembershipType, UserMembership, Producto, Venta
@@ -26,6 +28,34 @@ BaseViewSet = viewsets.ModelViewSet
 # ---------------------------------------------------
 # VIEWSETS
 # ---------------------------------------------------
+
+def send_mail_async(subject, message, recipient_list, from_email=None, fail_silently=True):
+    """Enviar correo en un hilo separado para evitar bloquear el worker.
+
+    Prefiere usar la API Web de SendGrid si existe la variable de entorno `SENDGRID_API_KEY`.
+    """
+    def _send():
+        try:
+            # Preferir SendGrid Web API si está disponible
+            sg_key = os.environ.get('SENDGRID_API_KEY')
+            if sg_key:
+                try:
+                    from .sendgrid_utils import sendgrid_send
+                    sendgrid_send(sg_key, subject, message, recipient_list, from_email=from_email)
+                    return
+                except Exception as e:
+                    # Registrar fallo de SendGrid y caer al backend SMTP
+                    print(f"SendGrid API send failed: {e}")
+
+            # Fallback: usar django.core.mail.send_mail (SMTP)
+            from django.core.mail import send_mail as django_send
+            django_send(subject, message, from_email, recipient_list, fail_silently=fail_silently)
+        except Exception as e:
+            # Registrar error pero no elevar excepción
+            print(f"Error envío correo async: {e}")
+
+    thread = threading.Thread(target=_send, daemon=True)
+    thread.start()
 
 class MembershipTypeViewSet(BaseViewSet):
     queryset = MembershipType.objects.all()
@@ -141,11 +171,11 @@ MÉTODO DE PAGO:     {payment_method}
                         mensaje_mail += "\n¡A entrenar con todo!"
 
                         from django.core.mail import send_mail
-                        send_mail(
+                        send_mail_async(
                             f"Renovación Exitosa - Folio: {nueva_venta.folio}",
                             mensaje_mail,
-                            None,
                             [cliente.email],
+                            from_email=None,
                             fail_silently=True
                         )
                 except Exception as e:
@@ -250,11 +280,11 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
                         
                         mensaje += "\n¡Gracias por tu preferencia!"
 
-                        send_mail(
+                        send_mail_async(
                             asunto,
                             mensaje,
-                            None,
                             [cliente.email],
+                            from_email=None,
                             fail_silently=True
                         )
                 except Exception as e:
@@ -342,11 +372,11 @@ MÉTODO DE PAGO:     {payment_method}
                         
                         mensaje += "\n¡Gracias por unirte a nosotros!"
 
-                        send_mail(
+                        send_mail_async(
                             f"Bienvenido a FitData - Ticket {nueva_venta.folio}",
                             mensaje,
-                            None,
                             [user.email],
+                            from_email=None,
                             fail_silently=True
                         )
                     except Exception as e:
