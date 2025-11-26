@@ -30,6 +30,7 @@ BaseViewSet = viewsets.ModelViewSet
 class MembershipTypeViewSet(BaseViewSet):
     queryset = MembershipType.objects.all()
     serializer_class = MembershipTypeSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]  # Lectura pública, escritura autenticada
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 class UserMembershipViewSet(BaseViewSet):
