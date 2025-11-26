@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # MUST BE FIRST
+    'gym.cors_middleware.SimpleCorsMiddleware',  # Nuestro middleware de CORS garantizado
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -106,6 +107,15 @@ CORS_ALLOW_HEADERS = [
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOWED_ORIGINS = []  # Se ignora si CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # En producción, SIEMPRE permitir los orígenes específicos
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://pruebafitdatagym.netlify.app",
+        "https://fit-data-gym.vercel.app",
+    ]
 
 # CSRF Configuration para CORS
 CSRF_TRUSTED_ORIGINS = [

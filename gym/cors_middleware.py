@@ -1,13 +1,13 @@
 """
-Middleware personalizado para CORS
-Asegura que CORS funcione correctamente en todas las solicitudes
+Middleware personalizado para CORS - Garantiza CORS funcione en todas partes
 """
 import os
+from django.http import HttpResponse
 
-class CustomCorsMiddleware:
+
+class SimpleCorsMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-        # Orígenes permitidos
         self.allowed_origins = [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
@@ -16,37 +16,29 @@ class CustomCorsMiddleware:
         ]
 
     def __call__(self, request):
-        # Obtener origen de la solicitud
         origin = request.META.get('HTTP_ORIGIN', '')
-
-        # Si DEBUG está activo, permitir cualquier origen
-        if os.environ.get('DEBUG', 'True') == 'True':
-            response = self.get_response(request)
+        
+        # Manejar OPTIONS (preflight) PRIMERO
+        if request.method == 'OPTIONS':
+            response = HttpResponse()
             response['Access-Control-Allow-Origin'] = origin or '*'
             response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-            response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRFToken'
             response['Access-Control-Allow-Credentials'] = 'true'
-            response['Access-Control-Max-Age'] = '3600'
+            response['Access-Control-Max-Age'] = '86400'
             return response
-
-        # En producción, solo permitir orígenes específicos
-        if origin in self.allowed_origins:
+        
+        # Obtener respuesta de la vista
+        try:
             response = self.get_response(request)
-            response['Access-Control-Allow-Origin'] = origin
-            response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-            response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-            response['Access-Control-Allow-Credentials'] = 'true'
-            response['Access-Control-Max-Age'] = '3600'
-            return response
-
-        # Manejar preflight requests
-        if request.method == 'OPTIONS':
-            response = self.get_response(request)
-            if origin in self.allowed_origins:
-                response['Access-Control-Allow-Origin'] = origin
-                response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-                response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-                response['Access-Control-Allow-Credentials'] = 'true'
-            return response
-
-        return self.get_response(request)
+        except Exception as e:
+            # Si hay error, devolver respuesta con headers CORS igualmente
+            response = HttpResponse(str(e), status=500)
+        
+        # SIEMPRE añadir headers CORS a la respuesta
+        response['Access-Control-Allow-Origin'] = origin or '*'
+        response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRFToken'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        
+        return response
