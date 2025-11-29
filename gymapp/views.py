@@ -12,8 +12,7 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import threading
-import logging
-from django.conf import settings
+import os
 
 # Importar modelos y serializers
 from .models import MembershipType, UserMembership, Producto, Venta
@@ -33,36 +32,30 @@ BaseViewSet = viewsets.ModelViewSet
 # VIEWSETS
 # ---------------------------------------------------
 
-logger = logging.getLogger(__name__)
-
 def send_mail_async(subject, message, recipient_list, from_email=None, fail_silently=True):
-    """Enviar correo en un hilo separado. Para depuración usa envío síncrono directo.
+    """Enviar correo en un hilo separado para evitar bloquear el worker.
 
-    Si existe `SENDGRID_API_KEY` intenta Web API primero; si falla, cae a SMTP.
-    Cuando `fail_silently` es False, se registran trazas completas de error.
+    Prefiere usar la API Web de SendGrid si existe la variable de entorno `SENDGRID_API_KEY`.
     """
-    if not from_email:
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
-
     def _send():
-        sg_key = os.environ.get('SENDGRID_API_KEY')
-        if sg_key:
-            try:
-                from .sendgrid_utils import sendgrid_send
-                sendgrid_send(sg_key, subject, message, recipient_list, from_email=from_email)
-                logger.info(f"Email (SendGrid) enviado a {recipient_list}")
-                return
-            except Exception as e:
-                logger.warning(f"Fallo SendGrid, usando SMTP: {e}")
         try:
+            # Preferir SendGrid Web API si está disponible
+            sg_key = os.environ.get('SENDGRID_API_KEY')
+            if sg_key:
+                try:
+                    from .sendgrid_utils import sendgrid_send
+                    sendgrid_send(sg_key, subject, message, recipient_list, from_email=from_email)
+                    return
+                except Exception as e:
+                    # Registrar fallo de SendGrid y caer al backend SMTP
+                    print(f"SendGrid API send failed: {e}")
+
+            # Fallback: usar django.core.mail.send_mail (SMTP)
             from django.core.mail import send_mail as django_send
-            sent = django_send(subject, message, from_email, recipient_list, fail_silently=fail_silently)
-            logger.info(f"SMTP enviado={sent} a {recipient_list}")
+            django_send(subject, message, from_email, recipient_list, fail_silently=fail_silently)
         except Exception as e:
-            if fail_silently:
-                logger.error(f"Error envío correo async (silencioso): {e}")
-            else:
-                logger.exception(f"Error envío correo async: {e}")
+            # Registrar error pero no elevar excepción
+            print(f"Error envío correo async: {e}")
 
     thread = threading.Thread(target=_send, daemon=True)
     thread.start()
@@ -362,21 +355,16 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
                         
                         mensaje += "\n¡Gracias por tu preferencia!"
 
-                        # Envío SÍNCRONO para depurar en producción
-                        from django.core.mail import send_mail as django_send
-                        try:
-                            sent = django_send(
-                                asunto,
-                                mensaje,
-                                getattr(settings, 'DEFAULT_FROM_EMAIL', None),
-                                [cliente.email],
-                                fail_silently=False
-                            )
-                            print(f"✅ Correo enviado (sync) a {cliente.email}, sent={sent}")
-                        except Exception as e:
-                            # Propagar excepción para ver 500 y log completo
-                            print(f"❌ Error envío correo sync: {e}")
-                            raise
+                        send_mail_async(
+                            asunto,
+                            mensaje,
+                            [cliente.email],
+                            from_email=None,
+                            fail_silently=False
+                        )
+                        print(f"✅ Correo enviado a {cliente.email}")
+                except Exception as e:
+                    print(f"Error enviando correo: {e}")
             # --------------------------------
 
             return Response({'status': 'success', 'venta_id': nueva_venta.id}, status=201)
