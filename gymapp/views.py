@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth.models import User
+from django.conf import settings
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -12,8 +13,8 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import threading
+import logging
 import os
-
 # Importar modelos y serializers
 from .models import MembershipType, UserMembership, Producto, Venta
 from .serializers import (
@@ -355,16 +356,20 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
                         
                         mensaje += "\n¡Gracias por tu preferencia!"
 
-                        send_mail_async(
+                        # Envío SÍNCRONO para diagnóstico (ver error real)
+                        from django.core.mail import send_mail as django_send
+                        sent = django_send(
                             asunto,
                             mensaje,
+                            getattr(settings, 'DEFAULT_FROM_EMAIL', None),
                             [cliente.email],
-                            from_email=None,
                             fail_silently=False
                         )
-                        print(f"✅ Correo enviado a {cliente.email}")
+                        print(f"✅ Correo enviado (sync) a {cliente.email}, resultado={sent}")
                 except Exception as e:
-                    print(f"Error enviando correo: {e}")
+                    print(f"❌ ERROR ENVÍO CORREO: {e}")
+                    import traceback
+                    traceback.print_exc()
             # --------------------------------
 
             return Response({'status': 'success', 'venta_id': nueva_venta.id}, status=201)
