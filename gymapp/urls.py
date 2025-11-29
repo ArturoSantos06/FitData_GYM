@@ -8,7 +8,12 @@ from .views import (
     VentaViewSet,
     crear_venta,
     register_user_with_membership ,
-    EntradaInventarioViewSet
+    EntradaInventarioViewSet,
+    MiembroViewSet,
+    PagoViewSet,
+    AsistenciaViewSet,
+    client_login,
+    change_password
 )
 
 # 1. Configuración del Router (Rutas automáticas CRUD)
@@ -18,7 +23,12 @@ router.register(r'user-memberships', UserMembershipViewSet, basename='user-membe
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'productos', ProductoViewSet, basename='producto')
 router.register(r'ventas', VentaViewSet, basename='venta')
-router.register(r'inventario-entradas', EntradaInventarioViewSet, basename='inventario-entrada') 
+router.register(r'inventario-entradas', EntradaInventarioViewSet, basename='inventario-entrada')
+
+# Rutas de Joely: Portal de Clientes
+router.register(r'miembros', MiembroViewSet, basename='miembro')
+router.register(r'pagos', PagoViewSet, basename='pago')
+router.register(r'asistencias', AsistenciaViewSet, basename='asistencia') 
 
 # 2. Lista de URLs Unificada
 urlpatterns = [
@@ -29,6 +39,11 @@ urlpatterns = [
     
     # 2. Registrar Usuario y Asignar Membresía en un paso
     path('users/register-with-membership/', register_user_with_membership, name='register-with-membership'),
+
+    # 3. Login de Cliente por Email
+    path('client-login/', client_login, name='client-login'),
+    # 4. Cambio de contraseña del cliente
+    path('change-password/', change_password, name='change-password'),
     
     # --- Rutas Automáticas del Router ---
     path('', include(router.urls)),

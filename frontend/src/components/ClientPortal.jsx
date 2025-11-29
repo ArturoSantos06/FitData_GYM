@@ -1,28 +1,44 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import UserProfile from './UserProfile';
+import ClientMembership from './ClientMembership';
+import ClientStore from './ClientStore';
+import ClientNavbar from './ClientNavbar';
 
 function ClientPortal() {
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <img src="/fitdata-logo.png" alt="Logo" className="h-32 mb-8 opacity-80" />
-      
-      <div className="bg-gray-800 p-10 rounded-2xl shadow-2xl border border-gray-700 text-center max-w-2xl">
-        <h1 className="text-4xl font-bold text-cyan-400 mb-4">Portal de Clientes</h1>
-        <p className="text-xl text-gray-300 mb-8">
-          Estamos construyendo una experiencia increíble para ti. <br/>
-          Pronto podrás ver tus rutinas, estado de membresía y más.
-        </p>
-        
-        <div className="p-4 bg-gray-700/50 rounded-lg border border-dashed border-gray-600 mb-8">
-          <span className="text-purple-400 font-mono">Estado: En Desarrollo 🛠️</span>
-        </div>
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('inicio');
 
-        <Link 
-          to="/" 
-          className="inline-block bg-gray-700 hover:bg-gray-600 text-white px-8 py-3 rounded-full font-bold transition-all"
-        >
-          &larr; Volver al Inicio
-        </Link>
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/cliente/login';
+  };
+
+  // Redirigir automáticamente al login si no hay sesión activa
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/cliente/login');
+    }
+  }, [navigate]);
+
+  return (
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8">
+      <ClientNavbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+      {/* Separador para evitar que el contenido quede debajo del navbar fijo */}
+      <div className="h-20 md:h-24" />
+
+      {/* Contenido Principal: Tabs del cliente */}
+      <div className="max-w-7xl mx-auto pt-2 md:pt-4">
+        {activeTab === 'inicio' && (
+          <ClientMembership />
+        )}
+        {activeTab === 'catalogo' && (
+          <ClientStore />
+        )}
+        {activeTab === 'perfil' && (
+          <UserProfile />
+        )}
       </div>
     </div>
   );

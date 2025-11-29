@@ -5,9 +5,13 @@ Django settings for gym project.
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Cargar variables de entorno desde .env (solo en desarrollo)
+load_dotenv(BASE_DIR / '.env')
 
 # Detectar entorno
 IS_RENDER = 'RENDER' in os.environ
@@ -179,29 +183,18 @@ REST_FRAMEWORK = {
     ],
 }
 
-# --- CONFIGURACIÓN DE CORREO (GMAIL) ---
+# --- CONFIGURACIÓN DE CORREO (GMAIL SMTP) ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# Credenciales (Leídas del entorno)
-# En producción preferir usar SendGrid: con SMTP el usuario es 'apikey' y la
-# contraseña es tu API key. Evita dejar valores de correo personales en el repo.
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', os.environ.get('EMAIL_SMTP_USER', 'apikey'))
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', os.environ.get('EMAIL_SMTP_PASSWORD', ''))
+# Credenciales del Gmail del proyecto
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'fitdatagym@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
-# DEFAULT_FROM_EMAIL: usar variable de entorno explícita si está disponible.
-# Fallback razonable: 'FitData GYM <no-reply@tu-dominio>' donde `EMAIL_DOMAIN`
-# puede establecerse en las variables de entorno (p. ej. fitdata.example.com).
-# Nota: usar direcciones @gmail.com como remitente puede aumentar las probabilidades
-# de que el correo sea marcado como spam cuando lo envía SendGrid; lo ideal es
-# usar un dominio verificado en SendGrid (SPF/DKIM) y una dirección tipo
-# no-reply@tudominio.com.
-DEFAULT_FROM_EMAIL = os.environ.get(
-    'DEFAULT_FROM_EMAIL',
-    f"FitData GYM <no-reply@{os.environ.get('EMAIL_DOMAIN', 'fitdata.example.com')}>"
-)
+# Remitente del proyecto
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'FitData GYM <fitdatagym@gmail.com>')
 
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

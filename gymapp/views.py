@@ -4,9 +4,12 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth.models import User
 from rest_framework import viewsets, mixins, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import threading
 import os
@@ -190,6 +193,42 @@ class UserViewSet(BaseViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """Endpoint para obtener los datos del usuario autenticado"""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+
+# --- LOGIN DE CLIENTE POR EMAIL ---
+@api_view(['POST'])
+@permission_classes([])
+def client_login(request):
+    """Autentica por email + contraseña y devuelve token.
+
+    Body:
+    { "email": "user@example.com", "password": "12345" }
+    """
+    email = request.data.get('email', '').strip()
+    password = request.data.get('password', '')
+    if not email or not password:
+        return Response({'error': 'Email y contraseña son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Buscar usuario por email
+    try:
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Email o contraseña incorrectos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Autenticar usando username real del usuario
+    user_auth = authenticate(username=user.username, password=password)
+    if not user_auth:
+        return Response({'error': 'Email o contraseña incorrectos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Crear/obtener token
+    token, _ = Token.objects.get_or_create(user=user_auth)
+    return Response({'token': token.key, 'username': user_auth.username, 'email': user_auth.email})
+
 class ProductoViewSet(BaseViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
@@ -199,6 +238,42 @@ class VentaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Venta.objects.all().order_by('-fecha')
     serializer_class = VentaSerializer
     permission_classes = [IsAuthenticated]
+
+
+# --- CAMBIO DE CONTRASEÑA DEL CLIENTE ---
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """Permite al usuario autenticado cambiar su contraseña.
+
+    Body esperado:
+    { "current_password": "...", "new_password": "..." }
+    Devuelve nuevo token para mantener la sesión activa.
+    """
+    user = request.user
+    current_password = request.data.get('current_password', '')
+    new_password = request.data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return Response({'error': 'Contraseña actual y nueva son requeridas'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not user.check_password(current_password):
+        return Response({'error': 'La contraseña actual es incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 6:
+        return Response({'error': 'La nueva contraseña debe tener al menos 6 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+
+    # Invalidar token anterior y emitir uno nuevo
+    try:
+        Token.objects.filter(user=user).delete()
+    except Exception:
+        pass
+    new_token = Token.objects.create(user=user)
+
+    return Response({'detail': 'Contraseña actualizada correctamente', 'token': new_token.key})
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -413,3 +488,69 @@ class EntradaInventarioViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+
+# --- VIEWSETS DE JOELY: PORTAL DE CLIENTES ---
+
+from .models import Miembro, Pago, Asistencia
+from .serializers import MiembroSerializer, PagoSerializer, AsistenciaSerializer
+
+class MiembroViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar miembros/clientes"""
+    queryset = Miembro.objects.all().order_by('-fecha_inscripcion')
+    serializer_class = MiembroSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated], parser_classes=[MultiPartParser, FormParser])
+    def upload_avatar(self, request):
+        """Sube o reemplaza el avatar del miembro asociado al usuario autenticado.
+
+        Espera multipart/form-data con campo 'avatar'. Devuelve URL resultante.
+        """
+        user = request.user
+        file_obj = request.FILES.get('avatar')
+        if not file_obj:
+            return Response({'error': 'Archivo avatar requerido'}, status=400)
+        # Buscar miembro asociado
+        miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
+        if not miembro:
+            # Crear uno mínimo si no existe, usando datos básicos del User
+            miembro = Miembro.objects.create(
+                nombre=user.first_name or user.username,
+                apellido=user.last_name or '',
+                email=user.email or f"{user.username}@example.com",
+                user=user
+            )
+        miembro.avatar = file_obj
+        miembro.save()
+        return Response({'avatar_url': miembro.avatar.url if miembro.avatar else None}, status=200)
+
+
+class PagoViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar pagos de membresías (RF-006)"""
+    queryset = Pago.objects.all().order_by('-fecha_pago')
+    serializer_class = PagoSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+class AsistenciaViewSet(viewsets.ModelViewSet):
+    """ViewSet para check-in/asistencia con validación automática (RF-005)"""
+    queryset = Asistencia.objects.all().order_by('-fecha_hora_entrada')
+    serializer_class = AsistenciaSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        """Validación automática de acceso basado en fecha de vencimiento"""
+        miembro = serializer.validated_data['miembro']
+        hoy = timezone.now().date()
+        
+        # Lógica del semáforo: ¿Tiene membresía activa?
+        if miembro.fecha_vencimiento and miembro.fecha_vencimiento >= hoy:
+            acceso = True
+            obs = "Acceso Permitido"
+        else:
+            acceso = False
+            obs = "Membresía Vencida o Inexistente"
+
+        # Guardar con el resultado calculado
+        serializer.save(acceso_permitido=acceso, observacion=obs)
