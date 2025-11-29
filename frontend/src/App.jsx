@@ -14,6 +14,7 @@ import Inventario from './components/Inventario';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
+import ClientLogin from './components/ClientLogin';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
@@ -91,7 +92,8 @@ function App() {
         {/* Ruta Pública: Landing Page (Inicio) */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Ruta Pública: Portal Cliente */}
+        {/* Rutas de Cliente */}
+        <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
 
         {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}

@@ -91,3 +91,66 @@ class EntradaInventario(models.Model):
 
     def __str__(self):
         return f"{self.producto.nombre} (+{self.cantidad})"
+
+
+# --- MODELOS DE JOELY: GESTIÓN DE CLIENTES ---
+
+class Miembro(models.Model):
+    """Modelo para miembros/clientes del gimnasio (trabajo de Joely)"""
+    nombre = models.CharField(max_length=100)
+    apellido = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    telefono = models.CharField(max_length=10, blank=True, null=True)
+    fecha_inscripcion = models.DateField(auto_now_add=True)
+    fecha_vencimiento = models.DateField(null=True, blank=True)
+    # Nuevo: Avatar personalizado (imagen subida por el cliente)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    
+    # Relación con User (opcional, para vincular con sistema de auth)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='miembro_perfil')
+    
+    def __str__(self):
+        return f"{self.nombre} {self.apellido}"
+    
+    class Meta:
+        verbose_name = "Miembro"
+        verbose_name_plural = "Miembros"
+
+
+class Pago(models.Model):
+    """Registro de pagos de membresías (RF-006 - Joely)"""
+    METODOS_PAGO = [
+        ('EFECTIVO', 'Efectivo'),
+        ('TARJETA', 'Tarjeta'),
+    ]
+    
+    miembro = models.ForeignKey(Miembro, on_delete=models.CASCADE, related_name='pagos')
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_pago = models.DateTimeField(auto_now_add=True)
+    metodo = models.CharField(max_length=20, choices=METODOS_PAGO)
+    concepto = models.CharField(max_length=100, default="Mensualidad")
+
+    def __str__(self):
+        return f"Pago de ${self.monto} - {self.miembro}"
+    
+    class Meta:
+        verbose_name = "Pago"
+        verbose_name_plural = "Pagos"
+        ordering = ['-fecha_pago']
+
+
+class Asistencia(models.Model):
+    """Registro de check-in/asistencia con validación (RF-005 - Joely)"""
+    miembro = models.ForeignKey(Miembro, on_delete=models.CASCADE, related_name='asistencias')
+    fecha_hora_entrada = models.DateTimeField(auto_now_add=True)
+    acceso_permitido = models.BooleanField(default=False)
+    observacion = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        estado = "✅ Entrada" if self.acceso_permitido else "❌ Denegado"
+        return f"{estado} - {self.miembro} ({self.fecha_hora_entrada.strftime('%d/%m/%Y %H:%M')})"
+    
+    class Meta:
+        verbose_name = "Asistencia"
+        verbose_name_plural = "Asistencias"
+        ordering = ['-fecha_hora_entrada']

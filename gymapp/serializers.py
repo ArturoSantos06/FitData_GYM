@@ -20,14 +20,16 @@ class UserMembershipSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     
     membership_name = serializers.ReadOnlyField(source='membership_type.name')
+    # Incluir objeto completo del tipo de membresía
+    tipo = MembershipTypeSerializer(source='membership_type', read_only=True)
     
     # Campo calculado de activo/vencido
     is_active = serializers.SerializerMethodField()
     
     class Meta:
         model = UserMembership
-        # Agregamos 'user_full_name' a la lista de campos
-        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'start_date', 'end_date', 'is_active']
+        # Agregamos 'user_full_name' y 'tipo' a la lista de campos
+        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'tipo', 'start_date', 'end_date', 'is_active']
         read_only_fields = ['end_date', 'start_date']
 
     # Función para calcular el estado (ya la tenías)
@@ -124,3 +126,39 @@ class EntradaInventarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntradaInventario
         fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'fecha', 'usuario', 'usuario_nombre']
+
+
+# --- SERIALIZERS DE JOELY: PORTAL DE CLIENTES ---
+
+from .models import Miembro, Pago, Asistencia
+
+class MiembroSerializer(serializers.ModelSerializer):
+    """Serializer para miembros/clientes"""
+    class Meta:
+        model = Miembro
+        fields = '__all__'
+
+
+class PagoSerializer(serializers.ModelSerializer):
+    """Serializer para pagos de membresías"""
+    miembro_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Pago
+        fields = ['id', 'miembro', 'miembro_nombre', 'monto', 'fecha_pago', 'metodo', 'concepto']
+    
+    def get_miembro_nombre(self, obj):
+        return f"{obj.miembro.nombre} {obj.miembro.apellido}"
+
+
+class AsistenciaSerializer(serializers.ModelSerializer):
+    """Serializer para check-in/asistencia"""
+    miembro_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Asistencia
+        fields = ['id', 'miembro', 'miembro_nombre', 'fecha_hora_entrada', 'acceso_permitido', 'observacion']
+        read_only_fields = ['acceso_permitido', 'observacion']
+    
+    def get_miembro_nombre(self, obj):
+        return f"{obj.miembro.nombre} {obj.miembro.apellido}"
