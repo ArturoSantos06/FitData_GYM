@@ -12,7 +12,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
     <>
       <header className="hidden md:flex fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 z-50 h-20 items-center px-8 justify-center shadow-2xl">
         <div className="flex items-center gap-5">
-          <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400 mr-4 cursor-pointer">
+          <span className="text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400 mr-4 cursor-pointer">
             FitData <span className="text-white">GYM</span>
           </span>
 
@@ -26,7 +26,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
                     isActive
-                      ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] translate-y-[-1px]'
+                      ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] -translate-y-px'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-b-2 border-transparent'
                   }`}
                 >

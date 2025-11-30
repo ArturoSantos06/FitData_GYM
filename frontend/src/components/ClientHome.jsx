@@ -34,7 +34,7 @@ function ClientHome({ onNavigateToProfile }) {
   return (
     <div className="w-full flex justify-center">
       <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
+        <div className="h-32 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
           <div className="absolute inset-0 bg-black/20"></div>
         </div>
         <div className="px-8 pb-8 text-center relative">

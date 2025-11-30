@@ -3,7 +3,7 @@ from django.conf import settings
 import os
 
 class Command(BaseCommand):
-    help = 'Enviar un email de prueba usando SendGrid API (si está configurada) o SMTP fallback.'
+    help = 'Enviar un email de prueba usando Gmail API, SendGrid API o SMTP fallback.'
 
     def add_arguments(self, parser):
         parser.add_argument('recipient', type=str, help='Correo destinatario')
@@ -15,8 +15,19 @@ class Command(BaseCommand):
         subject = options['subject']
         message = options['message']
 
-        sg_key = os.environ.get('SENDGRID_API_KEY') or getattr(settings, 'SENDGRID_API_KEY', None)
+        # Intentar Gmail API primero
+        gmail_refresh = os.environ.get('GMAIL_REFRESH_TOKEN')
+        if gmail_refresh:
+            try:
+                from gymapp.gmail_utils import send_gmail_api
+                result = send_gmail_api(subject, message, recipient)
+                self.stdout.write(self.style.SUCCESS(f'✅ Gmail API: Correo enviado exitosamente! MessageId: {result.get("id")}'))
+                return
+            except Exception as e:
+                self.stderr.write(self.style.ERROR(f'Gmail API failed: {e}'))
 
+        # Intentar SendGrid
+        sg_key = os.environ.get('SENDGRID_API_KEY') or getattr(settings, 'SENDGRID_API_KEY', None)
         if sg_key:
             try:
                 from gymapp.sendgrid_utils import sendgrid_send

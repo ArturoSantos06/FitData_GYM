@@ -95,10 +95,10 @@ function ClientMembership() {
                       if (ratio > 0) setCardRatio(ratio);
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 via-slate-950/10 to-transparent"></div>
                 </>
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20"></div>
+                <div className="absolute inset-0 bg-linear-to-br from-slate-900 via-purple-900/20 to-blue-900/20"></div>
               )}
               
               <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-10 pb-6">
@@ -109,7 +109,7 @@ function ClientMembership() {
                 </div>
               </div>
 
-              <div className="absolute top-0 bottom-0 left-0 w-2 bg-gradient-to-b from-purple-500 to-blue-500"></div>
+              <div className="absolute top-0 bottom-0 left-0 w-2 bg-linear-to-b from-purple-500 to-blue-500"></div>
             </div>
           </div>
 
@@ -121,7 +121,7 @@ function ClientMembership() {
               transform: 'rotateY(180deg)'
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800 p-8 flex flex-col justify-between">
+            <div className="absolute inset-0 bg-linear-to-br from-slate-900 to-slate-800 p-8 flex flex-col justify-between">
               
               <div className="flex justify-between items-start">
                 <div>
@@ -177,7 +177,7 @@ function ClientMembership() {
         </div>
         <div className="mt-5 h-4 bg-slate-800 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-purple-500 to-blue-500" 
+            className="h-full bg-linear-to-r from-purple-500 to-blue-500" 
             style={{ 
               width: membership.end_date 
                 ? `${Math.max(0, Math.min(100, ((new Date(membership.end_date) - new Date()) / (365 * 24 * 60 * 60 * 1000)) * 100))}%` 

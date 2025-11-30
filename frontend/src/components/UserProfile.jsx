@@ -64,7 +64,7 @@ function HealthForm() {
 
     return (
         <div className="w-full">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-center rounded-t-2xl relative overflow-hidden">
+            <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-center rounded-t-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-black/10"></div>
                 <h2 className="text-2xl font-bold text-white relative z-10 flex justify-center items-center gap-2">
                     <Activity className="text-blue-200" /> Cuestionario de Salud
@@ -200,7 +200,7 @@ const ProfileHeader = ({ user, onNavigate }) => {
     };
     return (
         <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="h-32 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
+            <div className="h-32 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
                 <div className="absolute inset-0 bg-black/20"></div>
             </div>
 

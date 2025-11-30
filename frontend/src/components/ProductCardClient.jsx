@@ -38,7 +38,7 @@ const ProductCardClient = ({ title, price, stock, image }) => {
       </div>
 
       <div className="p-4">
-        <h4 className="text-slate-200 font-bold text-sm mb-1 line-clamp-2 group-hover:text-cyan-400 transition-colors min-h-[40px]">{title}</h4>
+        <h4 className="text-slate-200 font-bold text-sm mb-1 line-clamp-2 group-hover:text-cyan-400 transition-colors min-h-10">{title}</h4>
         <div className="flex items-center justify-between mt-3">
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Precio</span>
