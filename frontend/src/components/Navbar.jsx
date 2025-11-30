@@ -39,9 +39,15 @@ function Navbar({ onLogout }) {
             <Link to="/admin/ventas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/ventas')}`}>
               Punto de Venta
             </Link>
-                      <Link to="/admin/inventario" className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/admin/inventario')}`}>
-   Inventario
-</Link>
+            <Link to="/admin/inventario" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/inventario')}`}>
+              Inventario
+            </Link>
+            <Link to="/admin/fichas-medicas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/fichas-medicas')}`}>
+              Fichas Médicas
+            </Link>
+            <Link to="/admin/check-in-out" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/check-in-out')}`}>
+              Check In/Out
+            </Link>
           </div>
 
           <div className="hidden md:flex">
@@ -108,9 +114,27 @@ function Navbar({ onLogout }) {
           >
             Punto de Venta
           </Link>
-          <Link to="/admin/inventario" className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/admin/inventario')}`}>
-   Inventario
-</Link>
+          <Link 
+            to="/admin/inventario" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/inventario')}`}
+          >
+            Inventario
+          </Link>
+          <Link 
+            to="/admin/check-in-out" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/check-in-out')}`}
+          >
+            📱 Check In/Out
+          </Link>
+          <Link 
+            to="/admin/fichas-medicas" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/fichas-medicas')}`}
+          >
+            🩺 Fichas Médicas
+          </Link>
           
           {/* Botón Salir Móvil */}
           <div className="pt-4 border-t border-gray-700 mt-2">

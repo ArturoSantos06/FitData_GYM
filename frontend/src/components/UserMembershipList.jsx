@@ -34,12 +34,14 @@ function UserMembershipList({ refreshTrigger }) {
     const search = searchTerm.toLowerCase();
     const estado = item.is_active ? 'activo' : 'vencido';
     const nombreCompleto = item.user_full_name ? item.user_full_name.toLowerCase() : '';
+    const userId = item.user ? item.user.toString() : '';
     
     return (
         item.user_name.toLowerCase().includes(search) ||
         nombreCompleto.includes(search) ||
         item.membership_name.toLowerCase().includes(search) ||
-        estado.includes(search)
+        estado.includes(search) ||
+        userId.includes(search)
     );
   });
 
@@ -99,6 +101,7 @@ function UserMembershipList({ refreshTrigger }) {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-700 text-left text-gray-300 uppercase text-sm leading-normal">
+              <th className="py-3 px-6 border-b border-gray-600">ID</th>
               <th className="py-3 px-6 border-b border-gray-600">Usuario</th>
               <th className="py-3 px-6 border-b border-gray-600">Membresía</th>
               <th className="py-3 px-6 border-b border-gray-600">Inicio</th>
@@ -109,6 +112,9 @@ function UserMembershipList({ refreshTrigger }) {
           <tbody className="text-gray-200 text-sm font-light">
             {sortedAssignments.map((item) => (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
+                <td className="py-3 px-6">
+                  <span className="font-mono text-teal-400 font-semibold">{item.user}</span>
+                </td>
                 <td className="py-3 px-6 text-left">
                   <div className="flex flex-col">
                     <span className="font-bold text-white text-sm">{item.user_name}</span>
@@ -144,7 +150,7 @@ function UserMembershipList({ refreshTrigger }) {
             
             {sortedAssignments.length === 0 && (
               <tr>
-                <td colSpan="5" className="text-center py-6 text-gray-500 italic">
+                <td colSpan="6" className="text-center py-6 text-gray-500 italic">
                   {searchTerm ? 'No se encontraron resultados.' : 'No hay membresías asignadas.'}
                 </td>
               </tr>

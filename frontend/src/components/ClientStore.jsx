@@ -21,7 +21,13 @@ function ClientStore() {
           title: p.nombre || 'Producto',
           price: parseFloat(p.precio || 0),
           stock: parseInt(p.stock || 0),
-          image: p.imagen || null,
+          image: (() => {
+            const img = p.imagen || null;
+            if (!img) return null;
+            if (typeof img === 'string' && img.startsWith('http')) return img;
+            const path = (typeof img === 'string' && img.startsWith('/')) ? img : `/${img}`;
+            return `${API_URL}${path}`;
+          })(),
         }));
         setProducts(mapped);
         setLoading(false);

@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Normaliza URLs de imágenes: si viene relativa (/media/..), la convierte a absoluta con API_URL
+const resolveImageUrl = (url) => {
+  try {
+    if (!url) return null;
+    if (typeof url !== 'string') return null;
+    if (url.startsWith('http')) return url;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${API_URL}${path}`;
+  } catch {
+    return url;
+  }
+};
 
 function formatDate(dateStr) {
   try {
@@ -17,9 +30,126 @@ function formatDate(dateStr) {
 function ClientMembership() {
   const [membership, setMembership] = useState(null);
   const [user, setUser] = useState(null);
+  const [miembro, setMiembro] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardRatio, setCardRatio] = useState(1.58);
+  // Mover el hook de tick arriba para no cambiar orden de hooks entre renders (regla de hooks)
+  const [tick, setTick] = useState(0);
+  const qrRef = useRef(null);
+  const cardBackRef = useRef(null);
+
+  const downloadQR = async () => {
+    try {
+      console.log('Generando tarjeta de membresía...');
+      
+      // Crear canvas - tamaño ajustado para formato vertical tipo tarjeta
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Tamaño vertical (similar a una tarjeta)
+      canvas.width = 800;
+      canvas.height = 1200;
+      
+      // Fondo blanco
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Borde negro
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+      
+      // QR Code en el centro superior
+      const qrSvg = qrRef.current?.querySelector('svg');
+      if (qrSvg) {
+        const svgData = new XMLSerializer().serializeToString(qrSvg);
+        const img = new Image();
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+        
+        await new Promise((resolve) => {
+          img.onload = () => {
+            const qrSize = 500;
+            const qrX = (canvas.width - qrSize) / 2;
+            const qrY = 80;
+            ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          img.src = url;
+        });
+      }
+      
+      // Línea separadora con gradiente de colores FitData (cyan a púrpura)
+      const lineY = 650;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(50, lineY);
+      ctx.lineTo(canvas.width - 50, lineY);
+      ctx.stroke();
+      
+      // Sección inferior con fondo degradado suave
+      const bgGradient = ctx.createLinearGradient(0, lineY + 20, 0, canvas.height - 50);
+      bgGradient.addColorStop(0, '#f0f9ff'); // cyan muy claro
+      bgGradient.addColorStop(1, '#faf5ff'); // púrpura muy claro
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(50, lineY + 20, canvas.width - 100, canvas.height - lineY - 70);
+      
+      // Título "ACCESO FITDATA GYM"
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 48px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('ACCESO', canvas.width / 2, lineY + 100);
+      
+      // Gradiente de texto para "FITDATA GYM"
+      const textGradient = ctx.createLinearGradient(200, 0, canvas.width - 200, 0);
+      textGradient.addColorStop(0, '#06b6d4'); // cyan
+      textGradient.addColorStop(0.5, '#3b82f6'); // blue
+      textGradient.addColorStop(1, '#a855f7'); // purple
+      ctx.fillStyle = textGradient;
+      ctx.font = 'bold 56px Arial, sans-serif';
+      ctx.fillText('FITDATA GYM', canvas.width / 2, lineY + 170);
+      
+      // Nombre del usuario
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 52px Arial, sans-serif';
+      ctx.fillText(userName, canvas.width / 2, lineY + 280);
+      
+      // Separador pequeño
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 - 100, lineY + 310);
+      ctx.lineTo(canvas.width / 2 + 100, lineY + 310);
+      ctx.stroke();
+      
+      // Información adicional en texto más pequeño
+      ctx.fillStyle = '#64748b';
+      ctx.font = '28px Arial, sans-serif';
+      ctx.fillText(`Plan: ${membershipType}`, canvas.width / 2, lineY + 370);
+      ctx.fillText(`Vence: ${formatDate(membership.end_date)}`, canvas.width / 2, lineY + 410);
+      ctx.fillText(`ID: ${userId}`, canvas.width / 2, lineY + 450);
+      
+      console.log('Generando descarga...');
+      
+      // Descargar
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Acceso-FitData-${userName.replace(/\s+/g, '-')}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('✅ Descarga completada');
+      }, 'image/png');
+    } catch (error) {
+      console.error('❌ Error al descargar:', error);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -31,6 +161,13 @@ function ClientMembership() {
       .then(userData => {
         currentUser = userData;
         setUser(userData);
+        // Buscar el miembro asociado al usuario
+        return fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } });
+      })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(miembrosData => {
+        const miembroUser = miembrosData.find(m => m.user === currentUser?.id);
+        if (miembroUser) setMiembro(miembroUser);
         return fetch(`${API_URL}/api/user-memberships/`, { headers: { Authorization: `Token ${token}` } });
       })
       .then(res => res.ok ? res.json() : Promise.reject(res))
@@ -41,6 +178,12 @@ function ClientMembership() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  }, []);
+
+  // Intervalo para actualizar cada minuto (debe ir ANTES de retornos condicionales)
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) return <div className="text-slate-400 text-center">Cargando membresía...</div>;
@@ -56,13 +199,87 @@ function ClientMembership() {
     );
   }
 
-  const vigente = membership.end_date ? (new Date(membership.end_date) >= new Date()) : true;
+  // Helper para parsear fecha AAAA-MM-DD en hora local evitando sesgo UTC
+  const parseLocalDate = (dateStr, h = 0, m = 0, s = 0, ms = 0) => {
+    try {
+      const [y, mo, d] = dateStr.split('-').map(Number);
+      return new Date(y, (mo || 1) - 1, d, h, m, s, ms);
+    } catch {
+      return new Date(dateStr);
+    }
+  };
+
+  // Vigencia: todas las membresías vigentes hasta las 22:00 del día end_date
+  let vigente = true;
+  if (membership.end_date) {
+    const endLocal = parseLocalDate(membership.end_date);
+    const now = new Date();
+    const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);
+    // Si hoy es antes del día de vencimiento -> vigente
+    if (now < parseLocalDate(membership.end_date, 0, 0, 0, 0)) {
+      vigente = true;
+    } else if (
+      now.getFullYear() === endLocal.getFullYear() &&
+      now.getMonth() === endLocal.getMonth() &&
+      now.getDate() === endLocal.getDate()
+    ) {
+      // Mismo día: comparar hora de corte 22:00
+      vigente = now <= endCutoff;
+    } else {
+      // Día posterior al end_date
+      vigente = false;
+    }
+  }
   const userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user?.nombre || user?.username || 'Miembro');
   const userId = user?.id || membership.user || 'FIT-0000';
   const membershipType = membership.tipo?.name || membership.membership_name || 'Full Data Anual';
+  const qrCode = miembro?.qr_code || `FD-USER${userId}`;
+
+
+  // Función de cálculo de porcentaje restante
+  const computeProgress = () => {
+    if (!membership?.end_date) return 0;
+    const now = new Date();
+    const endLocal = parseLocalDate(membership.end_date);
+    const isDayPass = (membership?.tipo?.duration_days === 1) || (membershipType.toLowerCase().includes('day'));
+    if (isDayPass) {
+      // Intervalo virtual mismo día 06:00 - 22:00
+      const startVirtual = parseLocalDate(membership.end_date, 6, 0, 0, 0);
+      const endVirtual = parseLocalDate(membership.end_date, 22, 0, 0, 0);
+      const total = endVirtual - startVirtual;
+      if (total <= 0) return 0;
+      let remaining = endVirtual - now;
+      if (now < startVirtual) remaining = total;
+      if (now > endVirtual) remaining = 0;
+      remaining = Math.max(0, Math.min(remaining, total));
+      let pct = (remaining / total) * 100;
+      if (pct > 0 && pct < 5) pct = 5;
+      return pct;
+    } else {
+      if (!membership.start_date) return 0;
+      const startLocal = parseLocalDate(membership.start_date, 6, 0, 0, 0); // inicio a apertura del primer día
+      const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);   // cierre 22:00 último día
+      const total = endCutoff - startLocal;
+      if (total <= 0) return 0;
+      const remaining = Math.max(0, endCutoff - now);
+      let pct = (remaining / total) * 100;
+      if (pct > 0 && pct < 5) pct = 5;
+      return pct;
+    }
+  };
+
+  let progressPct = computeProgress();
+  const timeRemainingText = membership.time_remaining || '';
+  const isExpired = timeRemainingText.toLowerCase().includes('vencid');
+  if (progressPct === 0 && !isExpired) {
+    progressPct = 5; // aseguramos mínimo visible si no está vencida
+  }
+
+  // Barra fija con gradiente (restaurada a estilo anterior)
+  const barClasses = 'h-full bg-linear-to-r from-purple-500 to-blue-500 transition-all duration-700';
 
   return (
-    <div className="w-full flex flex-col items-center gap-10">
+    <div className="w-full flex flex-col items-center gap-6">
       {/* Tarjeta de Membresía con Flip */}
       <div 
         className="relative w-full max-w-2xl mx-auto cursor-pointer group" 
@@ -85,7 +302,7 @@ function ClientMembership() {
               {membership.tipo?.image ? (
                 <>
                   <img 
-                    src={membership.tipo.image} 
+                    src={resolveImageUrl(membership.tipo.image)} 
                     alt={membershipType}
                     className="absolute inset-0 w-full h-full object-contain"
                     onLoad={(e) => {
@@ -115,13 +332,19 @@ function ClientMembership() {
 
           {/* REVERSO */}
           <div 
-            className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl bg-slate-800 border border-purple-500/40"
+            ref={cardBackRef}
+            data-card-back="true"
+            className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border"
             style={{ 
               backfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)'
+              transform: 'rotateY(180deg)',
+              backgroundColor: '#1e293b',
+              borderColor: 'rgba(168, 85, 247, 0.4)'
             }}
           >
-            <div className="absolute inset-0 bg-linear-to-br from-slate-900 to-slate-800 p-8 flex flex-col justify-between">
+            <div className="absolute inset-0 p-8 flex flex-col justify-between" style={{
+              background: 'linear-gradient(to bottom right, #0f172a, #1e293b)'
+            }}>
               
               <div className="flex justify-between items-start">
                 <div>
@@ -146,11 +369,11 @@ function ClientMembership() {
                   </div>
                 </div>
                 
-                <div className="bg-white p-3 rounded-xl shadow-lg flex items-center justify-center w-32 h-32">
+                <div ref={qrRef} className="bg-white p-3 rounded-xl shadow-lg flex items-center justify-center w-32 h-32">
                   <QRCode
                     size={256}
                     style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                    value={String(userId)}
+                    value={qrCode}
                     viewBox="0 0 256 256"
                     fgColor="#000000"
                     bgColor="#ffffff"
@@ -158,7 +381,11 @@ function ClientMembership() {
                 </div>
               </div>
               
-              <p className="text-[10px] text-center text-slate-600 mt-2">Este código es personal e intransferible.</p>
+              <div className="mt-3 text-center">
+                <p className="text-xs text-slate-400 mb-1">Código manual:</p>
+                <p className="text-lg font-bold text-purple-400 tracking-wider font-mono">{qrCode}</p>
+                <p className="text-[10px] text-slate-600 mt-1">Este código es personal e intransferible.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -169,22 +396,30 @@ function ClientMembership() {
         <div className="flex items-center justify-between">
           <span className="text-slate-300 text-base font-semibold tracking-wide">Tu Vigencia</span>
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-sm uppercase">Días restantes</span>
+            <span className="text-slate-400 text-sm uppercase">Tiempo restante</span>
             <span className="text-3xl font-extrabold text-blue-400 drop-shadow-[0_2px_6px_rgba(56,189,248,0.35)]">
-              {membership.end_date ? Math.max(0, Math.ceil((new Date(membership.end_date) - new Date()) / (1000 * 60 * 60 * 24))) : '∞'}
+              {membership.time_remaining || 'Cargando...'}
             </span>
           </div>
         </div>
         <div className="mt-5 h-4 bg-slate-800 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-linear-to-r from-purple-500 to-blue-500" 
-            style={{ 
-              width: membership.end_date 
-                ? `${Math.max(0, Math.min(100, ((new Date(membership.end_date) - new Date()) / (365 * 24 * 60 * 60 * 1000)) * 100))}%` 
-                : '100%'
-            }}
+          <div
+            className={barClasses}
+            style={{ width: `${progressPct}%` }}
           ></div>
         </div>
+      </div>
+
+      {/* Botón de Descarga */}
+      <div className="w-full max-w-2xl flex justify-center">
+        <button
+          onClick={downloadQR}
+          className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-500 text-white rounded-2xl font-bold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.7)] hover:scale-105 transform"
+        >
+          <Download size={24} className="group-hover:animate-bounce" />
+          <span className="tracking-wide">Descargar Membresía con QR</span>
+          <div className="absolute inset-0 rounded-2xl bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+        </button>
       </div>
     </div>
   );

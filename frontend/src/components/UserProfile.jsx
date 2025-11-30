@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2,Heart, AlertTriangle, CheckCircle, Calendar, Send, Lock
+import {
+    ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -10,22 +10,47 @@ function HealthForm() {
         nombre: '',
         edad: '',
         telefono: '',
-        condicionCorazon: '',
-        presionAlta: '',
-        lesionesRecientes: '',
-        medicamentos: '',
-        infoAdicional: '',
+        condicionCorazon: false,
+        presionAlta: false,
+        lesionesRecientes: false,
+        medicamentos: false,
+        comentarios: '',
         aceptaWaiver: false
     });
 
     const [status, setStatus] = useState('idle');
+        // Cargar datos de usuario y miembro para auto-rellenar nombre y teléfono y bloquear edición
+        useEffect(() => {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                let currentUser = null;
+                fetch(`${API_URL}/api/users/me/`, { headers: { Authorization: `Token ${token}` } })
+                    .then(res => res.ok ? res.json() : Promise.reject())
+                    .then(userData => {
+                        currentUser = userData;
+                        const nombreCompleto = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username;
+                        setFormData(prev => ({ ...prev, nombre: nombreCompleto }));
+                        return fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } });
+                    })
+                    .then(res => res.ok ? res.json() : Promise.reject())
+                    .then(miembros => {
+                        const m = miembros.find(x => x.user === currentUser.id);
+                        if (m && m.telefono) {
+                            setFormData(prev => ({ ...prev, telefono: m.telefono }));
+                        }
+                    })
+                    .catch(() => {});
+        }, []);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        let finalValue = type === 'checkbox' ? checked : value;
-        if (name === 'telefono') {
-            finalValue = value.replace(/\D/g, '').slice(0, 10);
+        if (name === 'telefono') return; // bloqueado
+        if (type === 'radio') {
+            const boolVal = value === 'si';
+            setFormData(prev => ({ ...prev, [name]: boolVal }));
+            return;
         }
-        setFormData(prevState => ({ ...prevState, [name]: finalValue }));
+        const finalValue = type === 'checkbox' ? checked : value;
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleSubmit = (e) => {
@@ -40,27 +65,102 @@ function HealthForm() {
         }
 
         setStatus('loading');
-        setTimeout(() => {
-            console.log("Datos médicos enviados:", formData);
-            setStatus('success');
-        }, 1500);
+                // Guardar vía API (upsert HealthProfile)
+                const token = localStorage.getItem('token');
+                if (!token) { alert('Sesión expirada'); return; }
+                const payload = {
+                    edad: formData.edad ? parseInt(formData.edad,10) : null,
+                    condicion_corazon: formData.condicionCorazon,
+                    presion_alta: formData.presionAlta,
+                    lesiones_recientes: formData.lesionesRecientes,
+                    medicamentos: formData.medicamentos,
+                    comentarios: formData.comentarios
+                };
+                fetch(`${API_URL}/api/health-profiles/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                .then(res => {
+                    if (!res.ok) throw new Error(res.data.error || 'Error guardando ficha');
+                    setStatus('success');
+                })
+                .catch(err => {
+                    alert(err.message);
+                    setStatus('idle');
+                });
     };
+        // Prefetch perfil existente
+        useEffect(() => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            fetch(`${API_URL}/api/health-profiles/`, { headers: { Authorization: `Token ${token}` } })
+                .then(r => r.ok ? r.json() : [])
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        const hp = data[0];
+                        setFormData(prev => ({
+                            ...prev,
+                            edad: hp.edad || '',
+                            condicionCorazon: hp.condicion_corazon,
+                            presionAlta: hp.presion_alta,
+                            lesionesRecientes: hp.lesiones_recientes,
+                            medicamentos: hp.medicamentos,
+                            comentarios: hp.comentarios || ''
+                        }));
+                    }
+                })
+                .catch(()=>{});
+        }, []);
 
     const inputClass = "w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-slate-500";
     const labelClass = "block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2";
 
-    if (status === 'success') {
-        return (
-            <div className="min-h-[300px] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
-                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle size={32} className="text-green-400" />
+        if (status === 'success') {
+            return (
+                <div className="p-6 space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                            <CheckCircle size={28} className="text-green-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Ficha Médica Guardada</h2>
+                            <p className="text-slate-400 text-sm">Puedes revisar tus respuestas o editar si algo cambió.</p>
+                        </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+                            <p className="text-xs text-slate-400">Edad</p>
+                            <p className="text-white font-semibold">{formData.edad || '—'}</p>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+                            <p className="text-xs text-slate-400">Condición del corazón</p>
+                            <p className="text-white font-semibold">{formData.condicionCorazon ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+                            <p className="text-xs text-slate-400">Presión arterial alta</p>
+                            <p className="text-white font-semibold">{formData.presionAlta ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+                            <p className="text-xs text-slate-400">Lesiones recientes</p>
+                            <p className="text-white font-semibold">{formData.lesionesRecientes ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+                            <p className="text-xs text-slate-400">Medicamentos</p>
+                            <p className="text-white font-semibold">{formData.medicamentos ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div className="md:col-span-2 bg-purple-900/30 border border-purple-700/40 rounded-lg p-4">
+                            <p className="text-xs text-purple-300">Comentarios</p>
+                            <p className="text-purple-100 text-sm whitespace-pre-wrap">{formData.comentarios || '—'}</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={() => setStatus('idle')} className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Editar Ficha</button>
+                    </div>
                 </div>
-                <h2 className="text-xl font-bold text-white mb-2">¡Ficha Actualizada!</h2>
-                <p className="text-slate-400">Tus datos médicos se han guardado correctamente.</p>
-                <button onClick={() => setStatus('idle')} className="mt-6 text-blue-400 hover:text-blue-300 text-sm font-medium">Editar de nuevo</button>
-            </div>
-        );
-    }
+            );
+        }
 
     return (
         <div className="w-full">
@@ -74,16 +174,16 @@ function HealthForm() {
             <form onSubmit={handleSubmit} className="p-6 bg-slate-800/50 backdrop-blur-sm rounded-b-2xl border border-slate-700 border-t-0 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                        <label className={labelClass}>Nombre Completo</label>
-                        <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} className={inputClass} placeholder="Nombre y Apellido" />
+                        <label className={labelClass}>Nombre Completo (Automático)</label>
+                        <input type="text" name="nombre" value={formData.nombre} disabled readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} placeholder="Nombre y Apellido" />
                     </div>
                     <div>
                         <label className={labelClass}><Calendar size={16}/> Edad</label>
                         <input type="number" name="edad" value={formData.edad} onChange={handleChange} className={inputClass} placeholder="25" />
                     </div>
                     <div>
-                        <label className={labelClass}><Phone size={16}/> Teléfono</label>
-                        <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} className={inputClass} placeholder="10 dígitos" maxLength={10} />
+                        <label className={labelClass}><Phone size={16}/> Teléfono (Registrado)</label>
+                        <input type="tel" name="telefono" value={formData.telefono} disabled readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} placeholder="10 dígitos" maxLength={10} />
                     </div>
                 </div>
 
@@ -92,15 +192,64 @@ function HealthForm() {
                         <Heart size={18} /> Historial Médico
                     </h3>
                     <div className="space-y-4">
-                        {['¿Padece condición del corazón?', '¿Sufre presión arterial alta?', '¿Lesiones recientes?', '¿Toma medicamentos?'].map((label, idx) => (
-                             <div key={idx} className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
-                                <span className="text-slate-300 text-sm">{label}</span>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name={`q${idx}`} className="accent-blue-500 w-4 h-4"/> <span className="text-slate-400 text-sm">Sí</span></label>
-                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name={`q${idx}`} className="accent-blue-500 w-4 h-4"/> <span className="text-slate-400 text-sm">No</span></label>
-                                </div>
-                             </div>
-                        ))}
+                                                <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
+                                                    <span className="text-slate-300 text-sm">¿Padece condición del corazón?</span>
+                                                    <div className="flex gap-4">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input type="radio" name="condicionCorazon" value="si" checked={formData.condicionCorazon===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                            <span className="text-slate-400 text-sm">Sí</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input type="radio" name="condicionCorazon" value="no" checked={formData.condicionCorazon===false} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                            <span className="text-slate-400 text-sm">No</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
+                                                    <span className="text-slate-300 text-sm">¿Sufre presión arterial alta?</span>
+                                                    <div className="flex gap-4">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input type="radio" name="presionAlta" value="si" checked={formData.presionAlta===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                            <span className="text-slate-400 text-sm">Sí</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input type="radio" name="presionAlta" value="no" checked={formData.presionAlta===false} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                            <span className="text-slate-400 text-sm">No</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4 pt-4">
+                                                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
+                                                        <span className="text-slate-300 text-sm">¿Ha tenido lesiones recientes?</span>
+                                                        <div className="flex gap-4">
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <input type="radio" name="lesionesRecientes" value="si" checked={formData.lesionesRecientes===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                                <span className="text-slate-400 text-sm">Sí</span>
+                                                            </label>
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <input type="radio" name="lesionesRecientes" value="no" checked={formData.lesionesRecientes===false} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                                <span className="text-slate-400 text-sm">No</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
+                                                        <span className="text-slate-300 text-sm">¿Toma medicamentos actualmente?</span>
+                                                        <div className="flex gap-4">
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <input type="radio" name="medicamentos" value="si" checked={formData.medicamentos===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                                <span className="text-slate-400 text-sm">Sí</span>
+                                                            </label>
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <input type="radio" name="medicamentos" value="no" checked={formData.medicamentos===false} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
+                                                                <span className="text-slate-400 text-sm">No</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-purple-300 text-sm mb-1 block">Comentarios (internos)</label>
+                                                         <textarea name="comentarios" value={formData.comentarios} onChange={handleChange} placeholder="Notas adicionales, observaciones..." className="w-full bg-slate-900 border border-purple-700/50 focus:border-purple-500 rounded-lg p-3 text-white text-sm min-h-20 resize-y"></textarea>
+                                                    </div>
+                                                </div>
                     </div>
                 </div>
 
@@ -121,168 +270,84 @@ function HealthForm() {
     );
 }
 
-const AVATAR_OPTIONS = [
-    { id: 'neutral', label: 'Genérico', type: 'svg' },
-    { id: 'seed1', label: 'Avatar 1', type: 'dicebear', seed: 'Athletic' },
-    { id: 'seed2', label: 'Avatar 2', type: 'dicebear', seed: 'Runner' },
-    { id: 'seed3', label: 'Avatar 3', type: 'dicebear', seed: 'Calm' },
+// Paleta de colores disponibles para el fondo del avatar inicial
+const AVATAR_COLORS = [
+  { id: 'azul', value: '#1D4ED8' },
+  { id: 'morado', value: '#6D28D9' },
+  { id: 'verde', value: '#059669' },
+  { id: 'amarillo', value: '#D97706' },
+  { id: 'rojo', value: '#DC2626' },
+  { id: 'rosa', value: '#DB2777' },
 ];
 
-function getAvatarSrc(selection) {
-    if (!selection || selection === 'neutral') return null;
-    // Si es URL directa (subida personalizada)
-    if (/^(https?:\/\/|\/)/.test(selection) || selection.includes('avatars/')) {
-        return selection;
-    }
-    const opt = AVATAR_OPTIONS.find(o => o.id === selection);
-    if (opt && opt.type === 'dicebear') {
-        return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(opt.seed)}`;
-    }
-    return null;
-}
-
 const ProfileHeader = ({ user, onNavigate }) => {
-    const [avatarChoice, setAvatarChoice] = useState(localStorage.getItem(`avatar_choice_${user.id}`) || 'neutral');
-    const [showPicker, setShowPicker] = useState(false);
-    const avatarSrc = getAvatarSrc(avatarChoice);
+  const initial = (user.nombre || user.username || 'U').charAt(0).toUpperCase();
+  const [showColors, setShowColors] = useState(false);
+  const [bgColor, setBgColor] = useState(localStorage.getItem(`avatar_bg_color_${user.id}`) || '#1D4ED8');
 
-    const handleSelect = (id) => {
-        setAvatarChoice(id);
-        localStorage.setItem(`avatar_choice_${user.id}`, id);
-        // Cerrar inmediatamente tras seleccionar
-        setTimeout(() => setShowPicker(false), 120);
-    };
-
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState('');
-    const [preview, setPreview] = useState(null);
-
-    const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { // 2MB
-            setUploadError('Máximo 2MB');
-            return;
+  const handleColor = (val) => {
+    setBgColor(val);
+    localStorage.setItem(`avatar_bg_color_${user.id}`, val);
+    setTimeout(() => setShowColors(false), 150);
+        // Enviar al backend
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch(`${API_URL}/api/miembros/set_color/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Token ${token}`
+                },
+                body: JSON.stringify({ color: val })
+            }).catch(()=>{});
         }
-        setUploadError('');
-        setPreview(URL.createObjectURL(file));
-    };
+  };
 
-    const handleUpload = async () => {
-        const input = document.getElementById('avatarFileInput');
-        const file = input?.files?.[0];
-        if (!file) { setUploadError('Selecciona un archivo'); return; }
-        setUploading(true); setUploadError('');
-        try {
-            const token = localStorage.getItem('token');
-            const form = new FormData();
-            form.append('avatar', file);
-            const res = await fetch(`${API_URL}/api/miembros/upload_avatar/`, {
-                method: 'POST',
-                headers: { 'Authorization': `Token ${token}` },
-                body: form
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error subiendo avatar');
-            if (data.avatar_url) {
-                // Usar URL directa
-                setAvatarChoice(data.avatar_url);
-                localStorage.setItem(`avatar_choice_${user.id}`, data.avatar_url);
-                // Limpiar preview y cerrar
-                setPreview(null);
-                setTimeout(() => setShowPicker(false), 250);
-            }
-        } catch (err) {
-            setUploadError(err.message);
-        } finally {
-            setUploading(false);
-        }
-    };
-    return (
-        <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="h-32 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
-                <div className="absolute inset-0 bg-black/20"></div>
+  return (
+    <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="h-32 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
+        <div className="absolute inset-0 bg-black/20"></div>
+      </div>
+      <div className="px-8 pb-8 text-center relative">
+        <div className="relative -mt-16 mb-4 inline-block">
+          <div className="w-32 h-32 rounded-full border-4 border-slate-900 flex items-center justify-center overflow-hidden shadow-lg relative" style={{ backgroundColor: bgColor }}>
+            <span className="text-white text-5xl font-bold select-none">
+              {initial}
+            </span>
+            <button
+              onClick={() => setShowColors(!showColors)}
+              className="absolute bottom-1 right-1 p-2 rounded-full bg-slate-900/80 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shadow"
+              title="Cambiar color"
+              type="button"
+            >
+              <Edit2 size={16} />
+            </button>
+          </div>
+          {showColors && (
+            <div className="absolute left-1/2 -translate-x-1/2 mt-4 w-[18rem] z-20 bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in">
+              <p className="text-xs text-slate-400 mb-3">Color de fondo:</p>
+              <div className="grid grid-cols-6 gap-3">
+                {AVATAR_COLORS.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => handleColor(c.value)}
+                    type="button"
+                    className={`w-10 h-10 rounded-full border ${bgColor === c.value ? 'border-white shadow-[0_0_6px_rgba(255,255,255,0.5)]' : 'border-slate-600 hover:border-slate-400'} transition-all`}
+                    style={{ backgroundColor: c.value }}
+                    title={c.id}
+                  ></button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowColors(false)}
+                type="button"
+                className="mt-4 w-full text-xs font-semibold text-slate-300 hover:text-white py-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 transition-colors"
+              >Cerrar</button>
             </div>
-
-            <div className="px-8 pb-8 text-center relative">
-                                <div className="relative -mt-16 mb-4 inline-block">
-                                    <div className="w-32 h-32 rounded-full border-4 border-slate-900 bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg relative">
-                                        {avatarSrc ? (
-                                            <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <svg viewBox="0 0 64 64" className="w-24 h-24 text-slate-500" aria-label="Avatar neutral">
-                                                <circle cx="32" cy="32" r="30" fill="#1e293b" />
-                                                <circle cx="32" cy="24" r="10" fill="#334155" />
-                                                <path d="M18 48c0-7 7-10 14-10s14 3 14 10" fill="#334155" />
-                                            </svg>
-                                        )}
-                                        {/* Botón lápiz */}
-                                        <button
-                                            onClick={() => setShowPicker(!showPicker)}
-                                            className="absolute bottom-1 right-1 p-2 rounded-full bg-slate-900/80 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shadow"
-                                            title="Cambiar avatar"
-                                            type="button"
-                                        >
-                                            <Edit2 size={16} />
-                                        </button>
-                                    </div>
-                                    {showPicker && (
-                                        <div className="absolute left-1/2 -translate-x-1/2 mt-4 w-[20rem] z-20 bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in">
-                                            <p className="text-xs text-slate-400 mb-3">Selecciona tu avatar:</p>
-                                            <div className="grid grid-cols-4 gap-3">
-                                                {AVATAR_OPTIONS.map(opt => {
-                                                    const active = avatarChoice === opt.id;
-                                                    const src = getAvatarSrc(opt.id);
-                                                    return (
-                                                        <button
-                                                            key={opt.id}
-                                                            onClick={() => handleSelect(opt.id)}
-                                                            type="button"
-                                                            className={`relative flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] ${active ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_8px_rgba(34,211,238,0.3)] text-cyan-300' : 'border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-300 bg-slate-800/40'}`}
-                                                        >
-                                                            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                                {src ? (
-                                                                    <img src={src} alt={opt.label} className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <svg viewBox="0 0 64 64" className="w-10 h-10 text-slate-500">
-                                                                        <circle cx="32" cy="32" r="30" fill="#1e293b" />
-                                                                        <circle cx="32" cy="24" r="10" fill="#334155" />
-                                                                        <path d="M18 48c0-7 7-10 14-10s14 3 14 10" fill="#334155" />
-                                                                    </svg>
-                                                                )}
-                                                            </div>
-                                                            <span className="truncate w-full text-center">{opt.label}</span>
-                                                            {active && <span className="absolute -top-1 -right-1 bg-cyan-500 text-white text-[10px] rounded-full px-1">✓</span>}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <div className="mt-5 border-t border-slate-700 pt-4">
-                                                <p className="text-xs text-slate-400 mb-2 font-semibold">O subir imagen (JPG/PNG &lt;2MB):</p>
-                                                <div className="flex flex-col gap-3">
-                                                    <input id="avatarFileInput" type="file" accept="image/png,image/jpeg" onChange={handleFileChange} className="text-xs text-slate-300" />
-                                                    {preview && (
-                                                        <div className="flex items-center gap-3">
-                                                            <img src={preview} alt="Preview" className="w-12 h-12 rounded-full object-cover border border-slate-700" />
-                                                            <button type="button" disabled={uploading} onClick={handleUpload} className="px-3 py-2 text-xs font-semibold rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-50">
-                                                                {uploading ? 'Subiendo...' : 'Guardar'}
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                    {uploadError && <span className="text-[10px] text-red-400">{uploadError}</span>}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => setShowPicker(false)}
-                                                type="button"
-                                                className="mt-4 w-full text-xs font-semibold text-slate-300 hover:text-white py-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 transition-colors"
-                                            >Cerrar</button>
-                                        </div>
-                                    )}
-                                </div>
-
-                <h2 className="text-3xl font-bold text-white mb-1">{user.nombre}</h2>
-                <p className="text-blue-400 font-medium mb-4">{user.email}</p>
+          )}
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-1">{user.nombre}</h2>
+        <p className="text-blue-400 font-medium mb-4">{user.email}</p>
 
                 <div className="mt-8 space-y-3 text-left">
                     <button 
@@ -332,7 +397,24 @@ const ProfileHeader = ({ user, onNavigate }) => {
 };
 
 const PersonalData = ({ user, onSave, onBack }) => {
-    const [editForm, setEditForm] = useState({ ...user });
+        const [editForm, setEditForm] = useState({ ...user });
+        const [saving, setSaving] = useState(false);
+        const [errorMsg, setErrorMsg] = useState('');
+        const [successMsg, setSuccessMsg] = useState('');
+        const [miembroId, setMiembroId] = useState(null);
+
+        useEffect(() => {
+                // Obtener miembro para actualizar teléfono si existe
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } })
+                    .then(r => r.ok ? r.json() : [])
+                    .then(data => {
+                        const m = data.find(x => x.email === editForm.email);
+                        if (m) setMiembroId(m.id);
+                    })
+                    .catch(()=>{});
+        }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -344,9 +426,44 @@ const PersonalData = ({ user, onSave, onBack }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSave(editForm);
+        setErrorMsg(''); setSuccessMsg('');
+        setSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('Sesión expirada');
+            // PATCH usuario (email y username)
+            const userRes = await fetch(`${API_URL}/api/users/${editForm.id}/`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: editForm.email, username: editForm.username })
+            });
+            const userData = await userRes.json();
+            if (!userRes.ok) {
+                // Mostrar errores específicos
+                if (userData.email_error) throw new Error(userData.email_error[0]);
+                if (userData.username) throw new Error(userData.username[0]);
+                throw new Error(userData.detail || 'Error actualizando usuario');
+            }
+            // PATCH miembro (teléfono) si existe
+            if (miembroId) {
+                const miembroRes = await fetch(`${API_URL}/api/miembros/${miembroId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefono: editForm.telefono })
+                });
+                if (!miembroRes.ok) {
+                    throw new Error('Error actualizando teléfono');
+                }
+            }
+            onSave(editForm); // Actualiza estado superior (solo teléfono local ya se maneja ahí)
+            setSuccessMsg('Datos actualizados');
+        } catch (err) {
+            setErrorMsg(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const inputClass = "w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed";
@@ -372,18 +489,26 @@ const PersonalData = ({ user, onSave, onBack }) => {
                     </div>
 
                     <div>
-                        <label className={labelClass}>Correo Electrónico</label>
+                        <label className={`${labelClass} text-blue-400 font-semibold`}>Correo Electrónico (Editable)</label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                            <input type="email" value={editForm.email} disabled className={inputClass} />
+                            <Mail className="absolute left-3 top-3.5 text-blue-400" size={18} />
+                            <input type="email" name="email" value={editForm.email} onChange={handleChange} className={`${inputClass} border-blue-500/30 focus:border-blue-500 text-white bg-blue-900/10`} />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className={`${labelClass} text-indigo-400 font-semibold`}>Usuario (Editable)</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-3.5 text-indigo-400" size={18} />
+                            <input type="text" name="username" value={editForm.username} onChange={handleChange} className={`${inputClass} border-indigo-500/30 focus:border-indigo-500 text-white bg-indigo-900/10`} />
                         </div>
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className={labelClass}>Nombre Completo</label>
+                        <label className={labelClass}>Nombre Completo (No editable)</label>
                         <div className="relative">
                             <User className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                            <input type="text" value={editForm.nombre} disabled className={inputClass} />
+                            <input type="text" value={editForm.nombre} disabled readOnly className={inputClass} />
                         </div>
                     </div>
 
@@ -405,9 +530,11 @@ const PersonalData = ({ user, onSave, onBack }) => {
                     </div>
                 </div>
 
-                <div className="pt-4">
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95">
-                        Guardar Cambios
+                {errorMsg && <div className="text-sm text-red-400 bg-red-900/20 border border-red-700 rounded-lg p-3">{errorMsg}</div>}
+                {successMsg && <div className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-lg p-3">{successMsg}</div>}
+                <div className="pt-2">
+                    <button disabled={saving} type="submit" className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95">
+                        {saving ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
                 </div>
             </form>

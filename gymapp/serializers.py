@@ -25,11 +25,12 @@ class UserMembershipSerializer(serializers.ModelSerializer):
     
     # Campo calculado de activo/vencido
     is_active = serializers.SerializerMethodField()
+    # Tiempo restante de la membresía
+    time_remaining = serializers.SerializerMethodField()
     
     class Meta:
         model = UserMembership
-        # Agregamos 'user_full_name' y 'tipo' a la lista de campos
-        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'tipo', 'start_date', 'end_date', 'is_active']
+        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'tipo', 'start_date', 'end_date', 'is_active', 'time_remaining']
         read_only_fields = ['end_date', 'start_date']
 
     # Función para calcular el estado (ya la tenías)
@@ -38,6 +39,10 @@ class UserMembershipSerializer(serializers.ModelSerializer):
         if obj.end_date and obj.end_date < today:
             return False
         return True
+    
+    def get_time_remaining(self, obj):
+        """Obtiene el tiempo restante de la membresía"""
+        return obj.get_time_remaining()
 
     def get_user_full_name(self, obj):
         # Junta nombre y apellido, y quita espacios si están vacíos
@@ -45,9 +50,10 @@ class UserMembershipSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    is_staff = serializers.ReadOnlyField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'is_staff']
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -130,13 +136,22 @@ class EntradaInventarioSerializer(serializers.ModelSerializer):
 
 # --- SERIALIZERS DE JOELY: PORTAL DE CLIENTES ---
 
-from .models import Miembro, Pago, Asistencia
+from .models import Miembro, Pago, Asistencia, HealthProfile
 
 class MiembroSerializer(serializers.ModelSerializer):
     """Serializer para miembros/clientes"""
+    esta_activo = serializers.SerializerMethodField()
+    
     class Meta:
         model = Miembro
         fields = '__all__'
+        read_only_fields = ['qr_code']
+    
+    def get_esta_activo(self, obj):
+        """Verifica si la membresía está vigente"""
+        if obj.fecha_vencimiento:
+            return obj.fecha_vencimiento >= timezone.now().date()
+        return False
 
 
 class PagoSerializer(serializers.ModelSerializer):
@@ -152,13 +167,29 @@ class PagoSerializer(serializers.ModelSerializer):
 
 
 class AsistenciaSerializer(serializers.ModelSerializer):
-    """Serializer para check-in/asistencia"""
+    """Serializer para check-in/check-out"""
     miembro_nombre = serializers.SerializerMethodField()
+    miembro_avatar_color = serializers.SerializerMethodField()
+    tiempo_en_gym = serializers.ReadOnlyField()
     
     class Meta:
         model = Asistencia
-        fields = ['id', 'miembro', 'miembro_nombre', 'fecha_hora_entrada', 'acceso_permitido', 'observacion']
-        read_only_fields = ['acceso_permitido', 'observacion']
+        fields = ['id', 'miembro', 'miembro_nombre', 'miembro_avatar_color', 'fecha_hora_entrada', 'fecha_hora_salida', 'acceso_permitido', 'observacion', 'tiempo_en_gym']
+        read_only_fields = ['acceso_permitido', 'observacion', 'tiempo_en_gym']
     
     def get_miembro_nombre(self, obj):
         return f"{obj.miembro.nombre} {obj.miembro.apellido}"
+    
+    def get_miembro_avatar_color(self, obj):
+        return obj.miembro.avatar_color or '#1D4ED8'
+
+class HealthProfileSerializer(serializers.ModelSerializer):
+    miembro_nombre = serializers.SerializerMethodField()
+    miembro = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = HealthProfile
+        fields = ['id','miembro','miembro_nombre','edad','condicion_corazon','presion_alta','lesiones_recientes','medicamentos','comentarios','actualizado']
+        read_only_fields = ['actualizado','miembro']
+
+    def get_miembro_nombre(self, obj):
+        return f"{obj.miembro.nombre} {obj.miembro.apellido}".strip()

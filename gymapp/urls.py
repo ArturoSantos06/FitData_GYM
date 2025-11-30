@@ -12,8 +12,11 @@ from .views import (
     MiembroViewSet,
     PagoViewSet,
     AsistenciaViewSet,
+    HealthProfileViewSet,
     client_login,
-    change_password
+    change_password,
+    check_in_qr,
+    check_out_qr
 )
 
 # 1. Configuración del Router (Rutas automáticas CRUD)
@@ -29,6 +32,7 @@ router.register(r'inventario-entradas', EntradaInventarioViewSet, basename='inve
 router.register(r'miembros', MiembroViewSet, basename='miembro')
 router.register(r'pagos', PagoViewSet, basename='pago')
 router.register(r'asistencias', AsistenciaViewSet, basename='asistencia') 
+router.register(r'health-profiles', HealthProfileViewSet, basename='health-profile')
 
 # 2. Lista de URLs Unificada
 urlpatterns = [
@@ -44,6 +48,10 @@ urlpatterns = [
     path('client-login/', client_login, name='client-login'),
     # 4. Cambio de contraseña del cliente
     path('change-password/', change_password, name='change-password'),
+    
+    # 5. Check In/Out con QR
+    path('check-in-qr/', check_in_qr, name='check-in-qr'),
+    path('check-out-qr/', check_out_qr, name='check-out-qr'),
     
     # --- Rutas Automáticas del Router ---
     path('', include(router.urls)),

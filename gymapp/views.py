@@ -16,13 +16,16 @@ import threading
 import logging
 import os
 # Importar modelos y serializers
-from .models import MembershipType, UserMembership, Producto, Venta
+from .models import MembershipType, UserMembership, Producto, Venta, Miembro, Asistencia, Pago
 from .serializers import (
     MembershipTypeSerializer, 
     UserMembershipSerializer, 
     UserSerializer, 
     ProductoSerializer, 
-    VentaSerializer
+    VentaSerializer,
+    MiembroSerializer,
+    AsistenciaSerializer,
+    PagoSerializer
 )
 
 # --- LÓGICA INTELIGENTE DE ENTORNO ---
@@ -36,27 +39,44 @@ BaseViewSet = viewsets.ModelViewSet
 def send_mail_async(subject, message, recipient_list, from_email=None, fail_silently=True):
     """Enviar correo en un hilo separado para evitar bloquear el worker.
 
-    Prefiere usar la API Web de SendGrid si existe la variable de entorno `SENDGRID_API_KEY`.
+    Orden de prioridad:
+    1. Gmail API (si GMAIL_REFRESH_TOKEN existe)
+    2. SendGrid Web API (si SENDGRID_API_KEY existe)
+    3. Fallback SMTP
     """
     def _send():
         try:
-            # Preferir SendGrid Web API si está disponible
+            # 1. Intentar Gmail API primero
+            gmail_refresh = os.environ.get('GMAIL_REFRESH_TOKEN')
+            if gmail_refresh:
+                try:
+                    from .gmail_utils import send_gmail_api
+                    # Gmail API envía a un destinatario a la vez
+                    for recipient in recipient_list:
+                        send_gmail_api(subject, message, recipient, from_email=from_email)
+                    print(f"✅ Correo enviado vía Gmail API a {len(recipient_list)} destinatario(s)")
+                    return
+                except Exception as e:
+                    print(f"⚠️ Gmail API send failed: {e}")
+
+            # 2. Intentar SendGrid Web API si está disponible
             sg_key = os.environ.get('SENDGRID_API_KEY')
             if sg_key:
                 try:
                     from .sendgrid_utils import sendgrid_send
                     sendgrid_send(sg_key, subject, message, recipient_list, from_email=from_email)
+                    print(f"✅ Correo enviado vía SendGrid a {len(recipient_list)} destinatario(s)")
                     return
                 except Exception as e:
-                    # Registrar fallo de SendGrid y caer al backend SMTP
-                    print(f"SendGrid API send failed: {e}")
+                    print(f"⚠️ SendGrid API send failed: {e}")
 
-            # Fallback: usar django.core.mail.send_mail (SMTP)
+            # 3. Fallback: usar django.core.mail.send_mail (SMTP)
             from django.core.mail import send_mail as django_send
             django_send(subject, message, from_email, recipient_list, fail_silently=fail_silently)
+            print(f"✅ Correo enviado vía SMTP a {len(recipient_list)} destinatario(s)")
         except Exception as e:
             # Registrar error pero no elevar excepción
-            print(f"Error envío correo async: {e}")
+            print(f"❌ Error envío correo async: {e}")
 
     thread = threading.Thread(target=_send, daemon=True)
     thread.start()
@@ -105,20 +125,38 @@ class UserMembershipViewSet(BaseViewSet):
             # 1. Actualizar o Crear Membresía
             if existing:
                 existing.membership_type = new_membership_type
-                if existing.end_date >= today:
-                     existing.end_date = existing.end_date + timedelta(days=duration)
+                # SIEMPRE reemplazar la fecha desde hoy (no sumar días)
+                existing.start_date = today
+                # Ajuste especial para Day Pass (1 día): vence el mismo día
+                if duration == 1:
+                    existing.end_date = today
                 else:
-                     existing.start_date = today
-                     existing.end_date = today + timedelta(days=duration)
+                    existing.end_date = today + timedelta(days=duration)
                 existing.save()
                 mensaje_exito = f'¡Renovación Exitosa! Vence: {existing.end_date}'
                 obj_result = existing
+                
+                # Actualizar también la fecha del Miembro (para check-in)
+                try:
+                    miembro = Miembro.objects.get(user_id=user_id)
+                    miembro.fecha_vencimiento = existing.end_date
+                    miembro.save()
+                except Miembro.DoesNotExist:
+                    pass
             else:
                 obj_result = UserMembership.objects.create(
                     user_id=user_id,
                     membership_type=new_membership_type
                 )
                 mensaje_exito = f'¡Asignación Exitosa! Vence: {obj_result.end_date}'
+                
+                # Actualizar también la fecha del Miembro (para check-in)
+                try:
+                    miembro = Miembro.objects.get(user_id=user_id)
+                    miembro.fecha_vencimiento = obj_result.end_date
+                    miembro.save()
+                except Miembro.DoesNotExist:
+                    pass
 
             # 2. Registrar Venta y Enviar Correo
             if new_membership_type.price > 0:
@@ -174,7 +212,6 @@ MÉTODO DE PAGO:     {payment_method}
                         
                         mensaje_mail += "\n¡A entrenar con todo!"
 
-                        from django.core.mail import send_mail
                         send_mail_async(
                             f"Renovación Exitosa - Folio: {nueva_venta.folio}",
                             mensaje_mail,
@@ -356,16 +393,15 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
                         
                         mensaje += "\n¡Gracias por tu preferencia!"
 
-                        # Envío SÍNCRONO para diagnóstico (ver error real)
-                        from django.core.mail import send_mail as django_send
-                        sent = django_send(
+                        # Usar send_mail_async que intenta Gmail API primero
+                        send_mail_async(
                             asunto,
                             mensaje,
-                            getattr(settings, 'DEFAULT_FROM_EMAIL', None),
                             [cliente.email],
+                            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
                             fail_silently=False
                         )
-                        print(f"✅ Correo enviado (sync) a {cliente.email}, resultado={sent}")
+                        print(f"📧 Correo programado para envío a {cliente.email}")
                 except Exception as e:
                     print(f"❌ ERROR ENVÍO CORREO: {e}")
                     import traceback
@@ -397,10 +433,22 @@ def register_user_with_membership(request):
             payment_method = data.get('payment_method', 'EFECTIVO')
             monto_recibido = float(data.get('monto_recibido', 0)) # Nuevo dato
 
-            # 3. Asignar Membresía
+            # 3. Calcular fecha de vencimiento
+            fecha_vencimiento = timezone.now().date() + timedelta(days=membership.duration_days)
+
+            # 4. Crear Miembro (para check-in/QR) con fecha de vencimiento
+            Miembro.objects.create(
+                nombre=user.first_name,
+                apellido=user.last_name,
+                email=user.email,
+                fecha_vencimiento=fecha_vencimiento,
+                user=user
+            )
+
+            # 5. Asignar Membresía
             UserMembership.objects.create(user=user, membership_type=membership)
 
-            # 4. Registrar Venta (Solo si tiene precio)
+            # 5. Registrar Venta (Solo si tiene precio)
             if membership.price > 0:
                 nueva_venta = Venta.objects.create(
                     cliente=user,
@@ -409,7 +457,7 @@ def register_user_with_membership(request):
                     detalle_productos=f"[{{'nombre': 'Membresía: {membership.name}', 'precio': {membership.price}, 'cantidad': 1}}]"
                 )
 
-                # --- 5. ENVIAR TICKET POR CORREO ---
+                # --- 6. ENVIAR TICKET POR CORREO ---
                 if user.email:
                     try:
                         fecha_local = timezone.localtime(nueva_venta.fecha)
@@ -498,8 +546,9 @@ class EntradaInventarioViewSet(viewsets.ModelViewSet):
 
 # --- VIEWSETS DE JOELY: PORTAL DE CLIENTES ---
 
-from .models import Miembro, Pago, Asistencia
-from .serializers import MiembroSerializer, PagoSerializer, AsistenciaSerializer
+from .models import Miembro, Pago, Asistencia, HealthProfile
+from .serializers import MiembroSerializer, PagoSerializer, AsistenciaSerializer, HealthProfileSerializer
+from rest_framework import serializers as drf_serializers
 
 class MiembroViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar miembros/clientes"""
@@ -507,29 +556,22 @@ class MiembroViewSet(viewsets.ModelViewSet):
     serializer_class = MiembroSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated], parser_classes=[MultiPartParser, FormParser])
-    def upload_avatar(self, request):
-        """Sube o reemplaza el avatar del miembro asociado al usuario autenticado.
+    @action(detail=False, methods=['PATCH'], permission_classes=[IsAuthenticated])
+    def set_color(self, request):
+        """Actualiza el color del avatar inicial del miembro autenticado.
 
-        Espera multipart/form-data con campo 'avatar'. Devuelve URL resultante.
+        Body: { "color": "#FFFFFF" }
         """
+        color = request.data.get('color', '').strip()
+        if not color or not color.startswith('#') or len(color) not in (4,7):
+            return Response({'error': 'Color hex inválido'}, status=400)
         user = request.user
-        file_obj = request.FILES.get('avatar')
-        if not file_obj:
-            return Response({'error': 'Archivo avatar requerido'}, status=400)
-        # Buscar miembro asociado
         miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
         if not miembro:
-            # Crear uno mínimo si no existe, usando datos básicos del User
-            miembro = Miembro.objects.create(
-                nombre=user.first_name or user.username,
-                apellido=user.last_name or '',
-                email=user.email or f"{user.username}@example.com",
-                user=user
-            )
-        miembro.avatar = file_obj
-        miembro.save()
-        return Response({'avatar_url': miembro.avatar.url if miembro.avatar else None}, status=200)
+            return Response({'error': 'Miembro no encontrado'}, status=404)
+        miembro.avatar_color = color
+        miembro.save(update_fields=['avatar_color'])
+        return Response({'status': 'ok', 'avatar_color': miembro.avatar_color}, status=200)
 
 
 class PagoViewSet(viewsets.ModelViewSet):
@@ -540,10 +582,32 @@ class PagoViewSet(viewsets.ModelViewSet):
 
 
 class AsistenciaViewSet(viewsets.ModelViewSet):
-    """ViewSet para check-in/asistencia con validación automática (RF-005)"""
+    """ViewSet para check-in/check-out con validación automática (RF-005)"""
     queryset = Asistencia.objects.all().order_by('-fecha_hora_entrada')
     serializer_class = AsistenciaSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """Filtrar asistencias por fecha y búsqueda de nombre"""
+        queryset = super().get_queryset()
+        
+        # Filtro por fecha específica
+        fecha = self.request.query_params.get('fecha', None)
+        if fecha:
+            queryset = queryset.filter(fecha_hora_entrada__date=fecha)
+        
+        # Búsqueda por nombre de miembro
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                miembro__nombre__icontains=search
+            ) | queryset.filter(
+                miembro__apellido__icontains=search
+            ) | queryset.filter(
+                miembro__email__icontains=search
+            )
+        
+        return queryset
 
     def perform_create(self, serializer):
         """Validación automática de acceso basado en fecha de vencimiento"""
@@ -560,3 +624,204 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
 
         # Guardar con el resultado calculado
         serializer.save(acceso_permitido=acceso, observacion=obs)
+    
+    @action(detail=False, methods=['get'])
+    def hoy(self, request):
+        """Obtener todas las asistencias del día actual"""
+        hoy = timezone.now().date()
+        asistencias = self.queryset.filter(fecha_hora_entrada__date=hoy)
+        serializer = self.get_serializer(asistencias, many=True)
+        return Response(serializer.data)
+
+class HealthProfileViewSet(viewsets.ModelViewSet):
+    queryset = HealthProfile.objects.select_related('miembro').all().order_by('-actualizado')
+    serializer_class = HealthProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        # Si es staff ve todos, sino solo el suyo
+        if user.is_staff:
+            return self.queryset
+        miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
+        if miembro and hasattr(miembro, 'health_profile'):
+            return HealthProfile.objects.filter(miembro=miembro)
+        return HealthProfile.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        miembro_id = self.request.data.get('miembro_id')
+        if user.is_staff and miembro_id:
+            miembro = Miembro.objects.filter(id=miembro_id).first()
+            if not miembro:
+                raise drf_serializers.ValidationError({'miembro_id': 'Miembro no encontrado'})
+        else:
+            miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
+        if not miembro:
+            raise drf_serializers.ValidationError({'miembro': 'Perfil de miembro no encontrado'})
+        existing = getattr(miembro, 'health_profile', None)
+        if existing:
+            for field in ['edad','condicion_corazon','presion_alta','lesiones_recientes','medicamentos','comentarios']:
+                if field in self.request.data:
+                    setattr(existing, field, self.request.data.get(field, getattr(existing, field)))
+            existing.save()
+            # Asegurar que el serializer tenga instancia para la respuesta
+            serializer.instance = existing
+            return
+        serializer.save(miembro=miembro)
+
+    def create(self, request, *args, **kwargs):
+        # Permitir upsert
+        try:
+            res = super().create(request, *args, **kwargs)
+            return res
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+
+# --- ENDPOINTS PARA CHECK IN/OUT CON QR ---
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_in_qr(request):
+    """
+    Check-in usando código QR
+    POST /api/check-in-qr/
+    Body: { "qr_code": "FD-XXXXXXXXXX" }
+    """
+    qr_code = request.data.get('qr_code', '').strip()
+    
+    if not qr_code:
+        return Response({'error': 'Código QR requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Buscar miembro por código QR
+        miembro = Miembro.objects.get(qr_code=qr_code)
+        ahora = timezone.now()
+        hoy = ahora.date()
+        
+        # Verificar si ya hizo check-in hoy y no ha hecho check-out
+        asistencia_activa = Asistencia.objects.filter(
+            miembro=miembro,
+            fecha_hora_entrada__date=hoy,
+            fecha_hora_salida__isnull=True
+        ).first()
+        
+        if asistencia_activa:
+            return Response({
+                'error': 'El miembro ya hizo check-in hoy',
+                'asistencia_id': asistencia_activa.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar membresía activa (considerar horario de cierre para day pass)
+        from datetime import datetime, time
+        
+        # Obtener la membresía del miembro para saber si es day pass
+        user_membership = UserMembership.objects.filter(
+            user=miembro.user,
+            end_date__gte=hoy
+        ).order_by('-end_date').first()
+        
+        # Verificar fecha de vencimiento básica
+        if not miembro.fecha_vencimiento or miembro.fecha_vencimiento < hoy:
+            # RECHAZAR ACCESO si está vencido
+            return Response({
+                'error': f'Acceso Denegado: Membresía Vencida',
+                'miembro': f'{miembro.nombre} {miembro.apellido}',
+                'fecha_vencimiento': miembro.fecha_vencimiento,
+                'acceso_permitido': False
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Si es day pass (1 día) y la fecha de vencimiento es hoy, validar horario de cierre (10 PM)
+        if user_membership and user_membership.membership_type.duration_days == 1:
+            if miembro.fecha_vencimiento == hoy:
+                # Horario de cierre: 10 PM
+                closing_time = timezone.make_aware(datetime.combine(hoy, time(22, 0, 0)))
+                if ahora >= closing_time:
+                    return Response({
+                        'error': f'Acceso Denegado: Day Pass vencido (horario de cierre: 10 PM)',
+                        'miembro': f'{miembro.nombre} {miembro.apellido}',
+                        'fecha_vencimiento': miembro.fecha_vencimiento,
+                        'acceso_permitido': False
+                    }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Membresía ACTIVA - Permitir acceso
+        asistencia = Asistencia.objects.create(
+            miembro=miembro,
+            acceso_permitido=True,
+            observacion="Acceso Permitido"
+        )
+        
+        serializer = AsistenciaSerializer(asistencia, context={'request': request})
+        
+        return Response({
+            'success': True,
+            'message': f'Check-in exitoso para {miembro.nombre} {miembro.apellido}',
+            'acceso_permitido': True,
+            'asistencia': serializer.data
+        }, status=status.HTTP_201_CREATED)
+        
+    except Miembro.DoesNotExist:
+        return Response({
+            'error': 'Código QR no válido o miembro no encontrado'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Error procesando check-in: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_out_qr(request):
+    """
+    Check-out usando código QR
+    POST /api/check-out-qr/
+    Body: { "qr_code": "FD-XXXXXXXXXX" }
+    """
+    qr_code = request.data.get('qr_code', '').strip()
+    
+    if not qr_code:
+        return Response({'error': 'Código QR requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Buscar miembro por código QR
+        miembro = Miembro.objects.get(qr_code=qr_code)
+        hoy = timezone.now().date()
+        
+        # Buscar asistencia activa (sin check-out)
+        asistencia = Asistencia.objects.filter(
+            miembro=miembro,
+            fecha_hora_entrada__date=hoy,
+            fecha_hora_salida__isnull=True
+        ).first()
+        
+        if not asistencia:
+            return Response({
+                'error': 'No hay check-in activo para este miembro hoy'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Registrar salida
+        asistencia.fecha_hora_salida = timezone.now()
+        asistencia.save()
+        
+        serializer = AsistenciaSerializer(asistencia, context={'request': request})
+        
+        return Response({
+            'success': True,
+            'message': f'Check-out exitoso para {miembro.nombre} {miembro.apellido}',
+            'tiempo_en_gym': asistencia.tiempo_en_gym,
+            'asistencia': serializer.data
+        }, status=status.HTTP_200_OK)
+        
+    except Miembro.DoesNotExist:
+        return Response({
+            'error': 'Código QR no válido o miembro no encontrado'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Error procesando check-out: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

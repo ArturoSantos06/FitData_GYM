@@ -2,6 +2,141 @@ import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal'; 
 
+// Formulario rápido para ficha médica inicial administrada
+function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [miembroId, setMiembroId] = useState(null);
+  const [data, setData] = useState({
+    edad: '',
+    condicion_corazon: false,
+    presion_alta: false,
+    lesiones_recientes: false,
+    medicamentos: false,
+    comentarios: ''
+  });
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  // Buscar miembro recién creado por email
+  useEffect(() => {
+    if (!miembroEmail) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch(`${API_URL}/api/miembros/?search=${encodeURIComponent(miembroEmail)}`, { headers: { Authorization: `Token ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(list => {
+        // Fallback: si endpoint no soporta search, filtrar manualmente
+        const arr = Array.isArray(list.results) ? list.results : list;
+        const found = arr.find(m => m.email.toLowerCase() === miembroEmail.toLowerCase());
+        if (found) setMiembroId(found.id);
+      })
+      .catch(()=>{});
+  }, [miembroEmail]);
+
+  const handleChange = (e) => {
+    const { name, type, value } = e.target;
+    if (type === 'radio') {
+      setData(prev => ({ ...prev, [name]: value === 'si' }));
+    } else {
+      setData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+    if (!miembroId) {
+      setError('No se encontró el miembro para asociar la ficha.');
+      return;
+    }
+    if (!data.edad) {
+      setError('Edad requerida');
+      return;
+    }
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    fetch(`${API_URL}/api/health-profiles/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+      body: JSON.stringify({ miembro_id: miembroId, ...data, edad: parseInt(data.edad,10) })
+    })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(res => {
+        if (!res.ok) throw new Error(res.d.error || 'Error guardando ficha');
+        console.log('✅ Ficha médica guardada exitosamente');
+        setSaved(true);
+        if (onSaved) {
+          console.log('🔄 Llamando callback onSaved para actualizar lista');
+          onSaved();
+        }
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  };
+
+  if (saved) {
+    return (
+      <div className="mt-6 bg-emerald-900/20 border border-emerald-600 p-4 rounded-lg">
+        <p className="text-emerald-400 font-semibold mb-2">Ficha médica inicial guardada.</p>
+        <button onClick={onClose} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-sm font-bold">Cerrar</button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-6 space-y-4 bg-slate-800/60 p-4 rounded-lg border border-slate-700">
+      <h3 className="text-lg font-bold text-purple-300">Ficha Médica Inicial</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Edad</label>
+          <input type="number" name="edad" value={data.edad} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+        </div>
+        <div className="bg-slate-900 border border-slate-700 rounded p-2">
+          <p className="text-xs text-slate-400 mb-1">Condición del corazón</p>
+          <div className="flex gap-3 text-xs">
+            <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="si" checked={data.condicion_corazon===true} onChange={handleChange} /> Sí</label>
+            <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="no" checked={data.condicion_corazon===false} onChange={handleChange} /> No</label>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-700 rounded p-2">
+          <p className="text-xs text-slate-400 mb-1">Presión arterial alta</p>
+          <div className="flex gap-3 text-xs">
+            <label className="flex items-center gap-1"><input type="radio" name="presion_alta" value="si" checked={data.presion_alta===true} onChange={handleChange} /> Sí</label>
+            <label className="flex items-center gap-1"><input type="radio" name="presion_alta" value="no" checked={data.presion_alta===false} onChange={handleChange} /> No</label>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-700 rounded p-2">
+          <p className="text-xs text-slate-400 mb-1">Lesiones recientes</p>
+          <div className="flex gap-3 text-xs">
+            <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="si" checked={data.lesiones_recientes===true} onChange={handleChange} /> Sí</label>
+            <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="no" checked={data.lesiones_recientes===false} onChange={handleChange} /> No</label>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-700 rounded p-2">
+          <p className="text-xs text-slate-400 mb-1">Toma medicamentos</p>
+          <div className="flex gap-3 text-xs">
+            <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="si" checked={data.medicamentos===true} onChange={handleChange} /> Sí</label>
+            <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="no" checked={data.medicamentos===false} onChange={handleChange} /> No</label>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-purple-300 mb-1">Comentarios</label>
+        <textarea name="comentarios" value={data.comentarios} onChange={handleChange} className="w-full bg-slate-900 border border-purple-700/40 rounded p-2 text-white text-sm min-h-20"></textarea>
+      </div>
+      {error && <p className="text-red-400 text-xs">{error}</p>}
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onClose} className="px-3 py-2 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Omitir</button>
+        <button type="submit" disabled={loading || !miembroId} className="px-4 py-2 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold disabled:opacity-50">
+          {loading ? 'Guardando...' : 'Guardar Ficha'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function RegisterUser({ onUserRegistered }) {
   const [formData, setFormData] = useState({
     username: '',
@@ -26,6 +161,8 @@ function RegisterUser({ onUserRegistered }) {
   const [errorTitle, setErrorTitle] = useState('');
   
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showHealthForm, setShowHealthForm] = useState(false);
+  const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
 
@@ -126,21 +263,25 @@ function RegisterUser({ onUserRegistered }) {
       // --- ÉXITO ---
       setSuccessMessage('¡Cliente Registrado Exitosamente!');
       
-      if (formData.payment_method === 'EFECTIVO') {
-          setSuccessSubMessage(`💰 Cambio: $${cambio.toFixed(2)}\n📧 Ticket enviado.`);
-      } else {
-          setSuccessSubMessage("📧 Bienvenida enviada al correo.");
-      }
+      const ticketInfo = '📧 Comprobante enviado al correo';
+      const cambioInfo = formData.payment_method === 'EFECTIVO'
+        ? ` • 💰 Cambio: $${cambio.toFixed(2)}`
+        : '';
+      setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
       setShowSuccessModal(true);
 
-      // Limpieza
+        // Guardar email para ficha y mostrar formulario salud
+        setRecentEmail(formData.email);
+        setShowHealthForm(true);
+
+        // Limpieza
       setFormData({ 
           username: '', email: '', password: '', first_name: '', last_name: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
       
-      if (onUserRegistered) onUserRegistered();
+      // NO llamar onUserRegistered aquí, solo cuando se guarde la ficha médica
 
     } catch (err) {
       console.error(err);
@@ -164,11 +305,28 @@ function RegisterUser({ onUserRegistered }) {
 
       <SuccessModal 
         isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
+        onClose={() => { setShowSuccessModal(false); setShowHealthForm(false); }}
         title="¡Registro Exitoso!"
         message={successMessage}
         subMessage={successSubMessage}
-      />
+      >
+        {showHealthForm && (
+          <div className="mt-2">
+            <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
+            <AdminHealthForm 
+              miembroEmail={recentEmail} 
+              onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }} 
+              onSaved={() => { 
+                console.log('🎯 RegisterUser: Ficha guardada, callback existe?', !!onUserRegistered);
+                if (onUserRegistered) {
+                  console.log('🚀 Ejecutando onUserRegistered');
+                  onUserRegistered();
+                }
+              }}
+            />
+          </div>
+        )}
+      </SuccessModal>
 
       <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-blue-400">
         Registrar Nuevo Cliente
@@ -289,6 +447,7 @@ function RegisterUser({ onUserRegistered }) {
         </div>
 
       </form>
+      {/* Ya se renderiza dentro del modal de éxito */}
     </div>
   );
 }

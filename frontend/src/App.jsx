@@ -11,6 +11,8 @@ import UserMembershipList from './components/UserMembershipList';
 import MembershipAdmin from './components/MembershipAdmin';
 import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
+import CheckInOut from './components/CheckInOut';
+import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -22,6 +24,11 @@ function AdminArea() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [refreshList, setRefreshList] = useState(0);
+  const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
+  
+  useEffect(() => {
+    console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
+  }, [refreshHealthProfiles]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -59,7 +66,7 @@ function AdminArea() {
           <Route path="/" element={<Home />} />
           
           {/* 2. Registrar Clientes Nuevos */}
-          <Route path="registrar" element={<RegisterUser />} />
+          <Route path="registrar" element={<RegisterUser onUserRegistered={() => setRefreshHealthProfiles(prev => prev + 1)} />} />
           
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
@@ -75,7 +82,13 @@ function AdminArea() {
           
           {/* 5. Punto de Venta */}
           <Route path="ventas" element={<PuntoDeVenta />} /> 
-          <Route path="inventario" element={<Inventario />} /> 
+          <Route path="inventario" element={<Inventario />} />
+          
+          {/* 6. Check In/Out con QR */}
+          <Route path="check-in-out" element={<CheckInOut />} />
+
+          {/* 7. Fichas Médicas (Health Profiles) */}
+          <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>

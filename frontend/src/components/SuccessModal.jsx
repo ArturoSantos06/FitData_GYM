@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SuccessModal = ({ isOpen, onClose, title, message, subMessage }) => {
+const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children }) => {
   if (!isOpen) return null;
 
   return (
@@ -26,12 +26,20 @@ const SuccessModal = ({ isOpen, onClose, title, message, subMessage }) => {
           </div>
         )}
 
-        <button 
-          onClick={onClose} 
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg uppercase tracking-wide"
-        >
-          Aceptar
-        </button>
+        {children && (
+          <div className="mb-4 text-left">
+            {children}
+          </div>
+        )}
+
+        {!children && (
+          <button 
+            onClick={onClose} 
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg uppercase tracking-wide"
+          >
+            Aceptar
+          </button>
+        )}
       </div>
     </div>
   );
