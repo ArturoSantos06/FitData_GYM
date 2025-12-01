@@ -136,7 +136,6 @@ function PuntoDeVenta() {
         const existe = carrito.find(item => item.id === producto.id);
         const actual = existe ? existe.cantidad : 0;
         if (actual + cantidad > producto.stock) { 
-            // ALERTA DE STOCK PERSONALIZADA
             setErrorTitle("Stock Insuficiente");
             setErrorMessage("No hay suficientes productos en el inventario.");
             setShowErrorModal(true);
@@ -151,7 +150,6 @@ function PuntoDeVenta() {
     };
 
     const procesarVenta = async () => {
-        // CAMBIO 1: Modal si el carrito está vacío
         if (carrito.length === 0) {
             setErrorTitle("Carrito Vacío");
             setErrorMessage("Agrega productos antes de cobrar.");
@@ -162,7 +160,6 @@ function PuntoDeVenta() {
         const total = calcularTotal();
         if (metodoPago === 'EFECTIVO') {
             if (!montoRecibido || parseFloat(montoRecibido) < total) {
-                // CAMBIO 2: Modal si falta dinero
                 setErrorTitle("Pago Insuficiente");
                 setErrorMessage("El monto recibido es menor al total.");
                 setShowErrorModal(true);

@@ -142,19 +142,15 @@ function AboutSection() {
           <div className="w-20 h-1 bg-cyan-500 mx-auto mt-4 rounded-full"></div>
         </div>
 
-        {/* Contenedor Principal: Columna en móvil, Fila en Desktop */}
         <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
           
-          {/* 1. IMAGEN */}
           <div className="w-full md:w-1/2">
             <div className="relative group">
-              {/* Borde decorativo */}
               <div className="absolute -inset-1 bg-linear-to-r from-cyan-400 to-blue-600 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
               
               <img 
                 src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070" 
                 alt="Gym Interior" 
-                // Altura adaptable: h-64 en móvil, h-[500px] en PC
                 className="relative rounded-xl shadow-2xl w-full h-64 md:h-[500px] object-cover grayscale hover:grayscale-0 transition-all duration-500"
               />
             </div>
@@ -163,15 +159,12 @@ function AboutSection() {
           {/* 2. TEXTO E ICONOS */}
           <div className="w-full md:w-1/2 space-y-8 md:space-y-10">
             
-            {/* Item 1 */}
             <div className="flex gap-4 md:gap-6 items-start group">
-              {/* Icono (flex-shrink-0 evita que se aplaste) */}
               <div className="shrink-0">
                 <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 group-hover:border-cyan-400 transition-colors">
                   <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 </div>
               </div>
-              {/* Texto (flex-1 permite que ocupe el espacio restante y haga salto de línea) */}
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">Tecnología de Vanguardia</h3>
                 <p className="text-gray-400 leading-relaxed text-sm md:text-base">
@@ -314,8 +307,7 @@ function NewsSection() {
 
           {/* COLUMNA DERECHA: Eventos  */}
           <div className="w-full lg:w-2/3 space-y-12">
-            
-            {/* Evento 1 (Imagen Izquierda) - INAGURACIÓN */}
+            {/* Evento 1 */}
             <div className="flex flex-col md:flex-row items-center gap-8 group">
               <div className="w-40 h-40 shrink-0 relative">
                 <div className="absolute inset-0 bg-cyan-500 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
@@ -334,7 +326,7 @@ function NewsSection() {
               </div>
             </div>
 
-            {/* Evento 2 (Imagen Derecha) - Masterclass */}
+            {/* Evento 2 */}
             <div className="flex flex-col md:flex-row-reverse items-center gap-8 group">
               <div className="w-40 h-40 shrink-0 relative">
                  <div className="absolute inset-0 bg-purple-400 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
@@ -353,7 +345,7 @@ function NewsSection() {
               </div>
             </div>
 
-            {/* Evento 3 (Imagen Izquierda) - Torneo */}
+            {/* Evento 3 */}
             <div className="flex flex-col md:flex-row items-center gap-8 group">
               <div className="w-40 h-40 shrink-0 relative">
                 <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>

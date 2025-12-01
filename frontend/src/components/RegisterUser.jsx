@@ -19,7 +19,6 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
 
   const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-  // Buscar miembro recién creado por email
   useEffect(() => {
     if (!miembroEmail) return;
     const token = localStorage.getItem('token');
@@ -27,7 +26,6 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     fetch(`${API_URL}/api/miembros/?search=${encodeURIComponent(miembroEmail)}`, { headers: { Authorization: `Token ${token}` } })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(list => {
-        // Fallback: si endpoint no soporta search, filtrar manualmente
         const arr = Array.isArray(list.results) ? list.results : list;
         const found = arr.find(m => m.email.toLowerCase() === miembroEmail.toLowerCase());
         if (found) setMiembroId(found.id);
@@ -94,7 +92,7 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
           <input type="number" name="edad" value={data.edad} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">Condición del corazón</p>
+          <p className="text-xs text-slate-400 mb-1">¿Padece alguna condición del corazón?</p>
           <div className="flex gap-3 text-xs">
             <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="si" checked={data.condicion_corazon===true} onChange={handleChange} /> Sí</label>
             <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="no" checked={data.condicion_corazon===false} onChange={handleChange} /> No</label>
@@ -108,14 +106,14 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">Lesiones recientes</p>
+          <p className="text-xs text-slate-400 mb-1">¿Ha tenido lesiones físicas recientes?</p>
           <div className="flex gap-3 text-xs">
             <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="si" checked={data.lesiones_recientes===true} onChange={handleChange} /> Sí</label>
             <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="no" checked={data.lesiones_recientes===false} onChange={handleChange} /> No</label>
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">Toma medicamentos</p>
+          <p className="text-xs text-slate-400 mb-1">¿Toma medicamentos regularmente?</p>
           <div className="flex gap-3 text-xs">
             <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="si" checked={data.medicamentos===true} onChange={handleChange} /> Sí</label>
             <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="no" checked={data.medicamentos===false} onChange={handleChange} /> No</label>
@@ -123,7 +121,7 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
         </div>
       </div>
       <div>
-        <label className="block text-xs text-purple-300 mb-1">Comentarios</label>
+        <label className="block text-xs text-purple-300 mb-1">Información adicional</label>
         <textarea name="comentarios" value={data.comentarios} onChange={handleChange} className="w-full bg-slate-900 border border-purple-700/40 rounded p-2 text-white text-sm min-h-20"></textarea>
       </div>
       {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -281,7 +279,6 @@ function RegisterUser({ onUserRegistered }) {
       });
       setMontoRecibido('');
       
-      // NO llamar onUserRegistered aquí, solo cuando se guarde la ficha médica
 
     } catch (err) {
       console.error(err);
@@ -447,7 +444,6 @@ function RegisterUser({ onUserRegistered }) {
         </div>
 
       </form>
-      {/* Ya se renderiza dentro del modal de éxito */}
     </div>
   );
 }

@@ -55,24 +55,6 @@
 },
 {
   "model": "auth.user",
-  "pk": 4,
-  "fields": {
-    "password": "pbkdf2_sha256$1000000$JVyRCwDbguG2rgLuS9USou$UMYaXY+ZeQRsOPI9hsZykaYTbpK+b0O/6af5sWAUBxE=",
-    "last_login": null,
-    "is_superuser": false,
-    "username": "Aldo1",
-    "first_name": "Aldo",
-    "last_name": "Echeverria",
-    "email": "aldo@gmail.com",
-    "is_staff": false,
-    "is_active": true,
-    "date_joined": "2025-11-20T00:40:52.217Z",
-    "groups": [],
-    "user_permissions": []
-  }
-},
-{
-  "model": "auth.user",
   "pk": 5,
   "fields": {
     "password": "pbkdf2_sha256$1000000$b0lUsiOqHXxQDPp9pXGGgQ$Zj1sD5EZLPDw5AVox44hqDk//NMr6S5elhgi+2yrhfs=",
@@ -109,24 +91,6 @@
 },
 {
   "model": "auth.user",
-  "pk": 30,
-  "fields": {
-    "password": "pbkdf2_sha256$1000000$OZS4l2TOqwX6osRvracPEc$yLpJFTB+3F6HJAb5vmjKWCQHgFRknlOQARM050UFqNY=",
-    "last_login": null,
-    "is_superuser": false,
-    "username": "juan",
-    "first_name": "Juan",
-    "last_name": "Perez",
-    "email": "juan@example.com",
-    "is_staff": false,
-    "is_active": true,
-    "date_joined": "2025-11-27T14:20:33.933Z",
-    "groups": [],
-    "user_permissions": []
-  }
-},
-{
-  "model": "auth.user",
   "pk": 31,
   "fields": {
     "password": "pbkdf2_sha256$1000000$uWDx87mVFhIiNDAVdRimqT$3rx37Dfv06xSPLK3CRZ5dFE/YSIiGAMqtRjMA/qdsSw=",
@@ -144,55 +108,11 @@
   }
 },
 {
-  "model": "auth.user",
-  "pk": 40,
-  "fields": {
-    "password": "pbkdf2_sha256$1000000$0n5cY82qN8foQuezRf56OB$zyrnOs4X8EWfleuIOEn4T5WLuZryFUuwDfzn3Zi9PlE=",
-    "last_login": null,
-    "is_superuser": false,
-    "username": "Prueba",
-    "first_name": "Prueba",
-    "last_name": "Santos Lopez",
-    "email": "00834546@red.unid.mx",
-    "is_staff": false,
-    "is_active": true,
-    "date_joined": "2025-11-30T20:56:53.251Z",
-    "groups": [],
-    "user_permissions": []
-  }
-},
-{
-  "model": "auth.user",
-  "pk": 41,
-  "fields": {
-    "password": "pbkdf2_sha256$1000000$SRgaOLt8caUXl8ltlTJUvC$lrvv8hpm8TxaKYFjVyWq/irm3gEjQP8kVwZBTBHryps=",
-    "last_login": null,
-    "is_superuser": false,
-    "username": "Prueba5",
-    "first_name": "Prueba",
-    "last_name": "Arturo",
-    "email": "artsantoss30@gmail.com",
-    "is_staff": false,
-    "is_active": true,
-    "date_joined": "2025-11-30T20:59:54.699Z",
-    "groups": [],
-    "user_permissions": []
-  }
-},
-{
   "model": "authtoken.token",
   "pk": "1859c60647c542227ea94bc57ee10f39ef5cc6a7",
   "fields": {
     "user": 3,
     "created": "2025-11-26T22:01:10.119Z"
-  }
-},
-{
-  "model": "authtoken.token",
-  "pk": "3363ba99ff95142475ca3d14f312e9cdca1b52fd",
-  "fields": {
-    "user": 41,
-    "created": "2025-11-30T21:02:13.999Z"
   }
 },
 {
@@ -209,14 +129,6 @@
   "fields": {
     "user": 1,
     "created": "2025-11-18T17:40:41.054Z"
-  }
-},
-{
-  "model": "authtoken.token",
-  "pk": "957e7e6a38b1afc68a10f508ce29a6fac64a2033",
-  "fields": {
-    "user": 4,
-    "created": "2025-11-26T22:30:41.142Z"
   }
 },
 {
@@ -310,17 +222,6 @@
 },
 {
   "model": "gymapp.usermembership",
-  "pk": 7,
-  "fields": {
-    "user": 4,
-    "membership_type": 4,
-    "start_date": "2025-11-20",
-    "end_date": "2026-11-20",
-    "is_active": true
-  }
-},
-{
-  "model": "gymapp.usermembership",
   "pk": 12,
   "fields": {
     "user": 5,
@@ -349,28 +250,6 @@
     "membership_type": 5,
     "start_date": "2025-11-28",
     "end_date": "2025-12-28",
-    "is_active": true
-  }
-},
-{
-  "model": "gymapp.usermembership",
-  "pk": 40,
-  "fields": {
-    "user": 40,
-    "membership_type": 5,
-    "start_date": "2025-11-30",
-    "end_date": "2025-12-30",
-    "is_active": true
-  }
-},
-{
-  "model": "gymapp.usermembership",
-  "pk": 41,
-  "fields": {
-    "user": 41,
-    "membership_type": 5,
-    "start_date": "2025-11-30",
-    "end_date": "2025-12-30",
     "is_active": true
   }
 },
@@ -446,7 +325,7 @@
     "fecha": "2025-11-24T17:43:30.148Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-41BB9D"
   }
 },
@@ -506,7 +385,7 @@
     "fecha": "2025-11-24T23:25:44.060Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-5551A8"
   }
 },
@@ -602,7 +481,7 @@
     "fecha": "2025-11-25T19:05:06.220Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-8AA168"
   }
 },
@@ -662,7 +541,7 @@
     "fecha": "2025-11-28T00:09:14.481Z",
     "total": "500.00",
     "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Membres铆a: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Membres韆: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
     "folio": "V-DADB17"
   }
 },
@@ -770,32 +649,8 @@
     "fecha": "2025-11-30T18:25:24.567Z",
     "total": "80.00",
     "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-A40B98"
-  }
-},
-{
-  "model": "gymapp.venta",
-  "pk": 58,
-  "fields": {
-    "cliente": 40,
-    "fecha": "2025-11-30T20:56:53.589Z",
-    "total": "500.00",
-    "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Membres铆a: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
-    "folio": "V-7572A2"
-  }
-},
-{
-  "model": "gymapp.venta",
-  "pk": 59,
-  "fields": {
-    "cliente": 41,
-    "fecha": "2025-11-30T20:59:55.010Z",
-    "total": "500.00",
-    "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Membres铆a: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
-    "folio": "V-319B62"
   }
 },
 {
@@ -865,32 +720,77 @@
 },
 {
   "model": "gymapp.miembro",
-  "pk": 10,
+  "pk": 12,
   "fields": {
-    "nombre": "Prueba",
-    "apellido": "Santos Lopez",
-    "email": "00834546@red.unid.mx",
-    "telefono": null,
-    "fecha_inscripcion": "2025-11-30",
-    "fecha_vencimiento": "2025-12-30",
-    "avatar_color": "#1D4ED8",
-    "qr_code": "FD-BA63DCD38D07",
-    "user": 40
+    "nombre": "admin",
+    "apellido": "",
+    "email": "admin@temp.com",
+    "telefono": "",
+    "fecha_inscripcion": "2025-12-01",
+    "fecha_vencimiento": null,
+    "avatar_color": "#059669",
+    "qr_code": "FD-6C7859FA8468",
+    "user": 1
   }
 },
 {
   "model": "gymapp.miembro",
-  "pk": 11,
+  "pk": 13,
   "fields": {
-    "nombre": "Prueba",
-    "apellido": "Arturo",
-    "email": "artsantoss30@gmail.com",
-    "telefono": null,
-    "fecha_inscripcion": "2025-11-30",
-    "fecha_vencimiento": "2025-12-30",
-    "avatar_color": "#1D4ED8",
-    "qr_code": "FD-376F716E323B",
-    "user": 41
+    "nombre": "Joely",
+    "apellido": "Georgina Balam Reyes",
+    "email": "reyesjoely448@gmail.com",
+    "telefono": "",
+    "fecha_inscripcion": "2025-12-01",
+    "fecha_vencimiento": null,
+    "avatar_color": "#0891B2",
+    "qr_code": "FD-4C272B282916",
+    "user": 3
+  }
+},
+{
+  "model": "gymapp.miembro",
+  "pk": 14,
+  "fields": {
+    "nombre": "Maria",
+    "apellido": "Fernanda Horta Hernandez",
+    "email": "mafer.horta@gmail.com",
+    "telefono": "",
+    "fecha_inscripcion": "2025-12-01",
+    "fecha_vencimiento": null,
+    "avatar_color": "#059669",
+    "qr_code": "FD-F9377C16B68C",
+    "user": 5
+  }
+},
+{
+  "model": "gymapp.miembro",
+  "pk": 15,
+  "fields": {
+    "nombre": "leonardo",
+    "apellido": "castillo",
+    "email": "leonardo24aldair@gmail.com",
+    "telefono": "",
+    "fecha_inscripcion": "2025-12-01",
+    "fecha_vencimiento": null,
+    "avatar_color": "#0891B2",
+    "qr_code": "FD-2722E1756EAF",
+    "user": 27
+  }
+},
+{
+  "model": "gymapp.miembro",
+  "pk": 16,
+  "fields": {
+    "nombre": "Marcelo",
+    "apellido": "Segovia",
+    "email": "marcelogpe.segoviacam@gmail.com",
+    "telefono": "",
+    "fecha_inscripcion": "2025-12-01",
+    "fecha_vencimiento": null,
+    "avatar_color": "#4F46E5",
+    "qr_code": "FD-456D63576648",
+    "user": 31
   }
 },
 {
@@ -900,17 +800,6 @@
     "miembro": 1,
     "fecha_hora_entrada": "2025-11-30T18:26:30.887Z",
     "fecha_hora_salida": "2025-11-30T18:34:47.463Z",
-    "acceso_permitido": true,
-    "observacion": "Acceso Permitido"
-  }
-},
-{
-  "model": "gymapp.asistencia",
-  "pk": 7,
-  "fields": {
-    "miembro": 11,
-    "fecha_hora_entrada": "2025-11-30T21:05:01.297Z",
-    "fecha_hora_salida": "2025-11-30T21:33:02.366Z",
     "acceso_permitido": true,
     "observacion": "Acceso Permitido"
   }
@@ -927,34 +816,6 @@
     "medicamentos": false,
     "comentarios": "no",
     "actualizado": "2025-11-30T20:08:59.304Z"
-  }
-},
-{
-  "model": "gymapp.healthprofile",
-  "pk": 8,
-  "fields": {
-    "miembro": 10,
-    "edad": 19,
-    "condicion_corazon": false,
-    "presion_alta": false,
-    "lesiones_recientes": false,
-    "medicamentos": false,
-    "comentarios": "no",
-    "actualizado": "2025-11-30T20:57:01.587Z"
-  }
-},
-{
-  "model": "gymapp.healthprofile",
-  "pk": 9,
-  "fields": {
-    "miembro": 11,
-    "edad": 19,
-    "condicion_corazon": false,
-    "presion_alta": false,
-    "lesiones_recientes": false,
-    "medicamentos": false,
-    "comentarios": "no se",
-    "actualizado": "2025-11-30T21:00:08.077Z"
   }
 }
 ]

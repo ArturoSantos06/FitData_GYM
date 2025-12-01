@@ -89,7 +89,6 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
                 </div>
             )}
 
-            {/* Renderizar éxito SOLO si se activó */}
             <SuccessModal 
                 isOpen={showSuccess}
                 onClose={() => setShowSuccess(false)}

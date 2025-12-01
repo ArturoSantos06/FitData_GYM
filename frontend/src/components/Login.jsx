@@ -6,7 +6,6 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
-  // 1. Nuevo estado para saber si está cargando
   const [isLoading, setIsLoading] = useState(false); 
   
   const navigate = useNavigate();
@@ -15,7 +14,6 @@ function Login({ onLogin }) {
     e.preventDefault();
     setError('');
     
-    // 2. Activamos el modo carga
     setIsLoading(true); 
 
     try {

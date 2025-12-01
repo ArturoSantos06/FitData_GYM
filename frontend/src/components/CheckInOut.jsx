@@ -40,7 +40,7 @@ const CheckInOut = () => {
 
   useEffect(() => {
     cargarAsistencias();
-    const interval = setInterval(cargarAsistencias, 10000); // Actualizar cada 10 segundos
+    const interval = setInterval(cargarAsistencias, 10000);
     return () => clearInterval(interval);
   }, [dateFilter, searchTerm]);
 

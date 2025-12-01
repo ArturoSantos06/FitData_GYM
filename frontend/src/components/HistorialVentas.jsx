@@ -28,7 +28,7 @@ const HistorialVentas = ({ reloadTrigger }) => {
             const productos = JSON.parse(venta.detalle_productos.replace(/'/g, '"'));
             
             return productos.map(prod => ({
-                id_unico: `${venta.id}-${prod.id}`, // Key única para React
+                id_unico: `${venta.id}-${prod.id}`,
                 
                 folio: venta.folio || 'PENDIENTE',
                 nombre_completo: venta.cliente_nombre_completo,

@@ -29,7 +29,6 @@ function UserMembershipList({ refreshTrigger }) {
   }, [refreshTrigger]);
 
 
-  // 1. Primero Filtramos (Buscador)
   const filteredAssignments = assignments.filter(item => {
     const search = searchTerm.toLowerCase();
     const estado = item.is_active ? 'activo' : 'vencido';
@@ -45,7 +44,6 @@ function UserMembershipList({ refreshTrigger }) {
     );
   });
 
-  // 2. Después Ordenamos (Según lo que elijas en el select)
   const sortedAssignments = [...filteredAssignments].sort((a, b) => {
     if (sortBy === 'name') {
       return a.user_name.localeCompare(b.user_name);

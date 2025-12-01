@@ -19,7 +19,6 @@ function HealthForm() {
     });
 
     const [status, setStatus] = useState('idle');
-        // Cargar datos de usuario y miembro para auto-rellenar nombre y teléfono y bloquear edición
         useEffect(() => {
                 const token = localStorage.getItem('token');
                 if (!token) return;
@@ -43,7 +42,7 @@ function HealthForm() {
         }, []);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        if (name === 'telefono') return; // bloqueado
+        if (name === 'telefono') return; 
         if (type === 'radio') {
             const boolVal = value === 'si';
             setFormData(prev => ({ ...prev, [name]: boolVal }));
@@ -65,7 +64,6 @@ function HealthForm() {
         }
 
         setStatus('loading');
-                // Guardar vía API (upsert HealthProfile)
                 const token = localStorage.getItem('token');
                 if (!token) { alert('Sesión expirada'); return; }
                 const payload = {
@@ -91,7 +89,6 @@ function HealthForm() {
                     setStatus('idle');
                 });
     };
-        // Prefetch perfil existente
         useEffect(() => {
             const token = localStorage.getItem('token');
             if (!token) return;
@@ -193,7 +190,7 @@ function HealthForm() {
                     </h3>
                     <div className="space-y-4">
                                                 <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
-                                                    <span className="text-slate-300 text-sm">¿Padece condición del corazón?</span>
+                                                    <span className="text-slate-300 text-sm">¿Padece alguna condición del corazón?</span>
                                                     <div className="flex gap-4">
                                                         <label className="flex items-center gap-2 cursor-pointer">
                                                             <input type="radio" name="condicionCorazon" value="si" checked={formData.condicionCorazon===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
@@ -220,7 +217,7 @@ function HealthForm() {
                                                 </div>
                                                 <div className="space-y-4 pt-4">
                                                     <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
-                                                        <span className="text-slate-300 text-sm">¿Ha tenido lesiones recientes?</span>
+                                                        <span className="text-slate-300 text-sm">¿Ha tenido lesiones físicas recientes?</span>
                                                         <div className="flex gap-4">
                                                             <label className="flex items-center gap-2 cursor-pointer">
                                                                 <input type="radio" name="lesionesRecientes" value="si" checked={formData.lesionesRecientes===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
@@ -233,7 +230,7 @@ function HealthForm() {
                                                         </div>
                                                     </div>
                                                     <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center border border-slate-700/50">
-                                                        <span className="text-slate-300 text-sm">¿Toma medicamentos actualmente?</span>
+                                                        <span className="text-slate-300 text-sm">¿Toma medicamentos regularmente?</span>
                                                         <div className="flex gap-4">
                                                             <label className="flex items-center gap-2 cursor-pointer">
                                                                 <input type="radio" name="medicamentos" value="si" checked={formData.medicamentos===true} onChange={handleChange} className="accent-blue-500 w-4 h-4"/>
@@ -246,7 +243,7 @@ function HealthForm() {
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className="text-purple-300 text-sm mb-1 block">Comentarios (internos)</label>
+                                                        <label className="text-purple-300 text-sm mb-1 block">Información adicional</label>
                                                          <textarea name="comentarios" value={formData.comentarios} onChange={handleChange} placeholder="Notas adicionales, observaciones..." className="w-full bg-slate-900 border border-purple-700/50 focus:border-purple-500 rounded-lg p-3 text-white text-sm min-h-20 resize-y"></textarea>
                                                     </div>
                                                 </div>
@@ -270,7 +267,6 @@ function HealthForm() {
     );
 }
 
-// Paleta de colores disponibles para el fondo del avatar inicial
 const AVATAR_COLORS = [
   { id: 'azul', value: '#1D4ED8' },
   { id: 'morado', value: '#6D28D9' },
@@ -404,7 +400,6 @@ const PersonalData = ({ user, onSave, onBack }) => {
         const [miembroId, setMiembroId] = useState(null);
 
         useEffect(() => {
-                // Obtener miembro para actualizar teléfono si existe
                 const token = localStorage.getItem('token');
                 if (!token) return;
                 fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } })
@@ -433,7 +428,6 @@ const PersonalData = ({ user, onSave, onBack }) => {
         try {
             const token = localStorage.getItem('token');
             if (!token) throw new Error('Sesión expirada');
-            // PATCH usuario (email y username)
             const userRes = await fetch(`${API_URL}/api/users/${editForm.id}/`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
@@ -441,12 +435,10 @@ const PersonalData = ({ user, onSave, onBack }) => {
             });
             const userData = await userRes.json();
             if (!userRes.ok) {
-                // Mostrar errores específicos
                 if (userData.email_error) throw new Error(userData.email_error[0]);
                 if (userData.username) throw new Error(userData.username[0]);
                 throw new Error(userData.detail || 'Error actualizando usuario');
             }
-            // PATCH miembro (teléfono) si existe
             if (miembroId) {
                 const miembroRes = await fetch(`${API_URL}/api/miembros/${miembroId}/`, {
                     method: 'PATCH',
@@ -457,7 +449,7 @@ const PersonalData = ({ user, onSave, onBack }) => {
                     throw new Error('Error actualizando teléfono');
                 }
             }
-            onSave(editForm); // Actualiza estado superior (solo teléfono local ya se maneja ahí)
+            onSave(editForm); 
             setSuccessMsg('Datos actualizados');
         } catch (err) {
             setErrorMsg(err.message);
@@ -568,7 +560,6 @@ function UserProfile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Cargar datos del usuario autenticado
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -579,7 +570,6 @@ function UserProfile() {
                     return;
                 }
 
-                // Obtener datos del usuario autenticado
                 const userResponse = await fetch(`${API_URL}/api/users/me/`, {
                     headers: {
                         'Authorization': `Token ${token}`,
@@ -600,7 +590,6 @@ function UserProfile() {
                     username: userData.username
                 });
 
-                // Intentar obtener el perfil de miembro asociado
                 try {
                     const miembrosResponse = await fetch(`${API_URL}/api/miembros/`, {
                         headers: {
@@ -611,7 +600,6 @@ function UserProfile() {
 
                     if (miembrosResponse.ok) {
                         const miembrosData = await miembrosResponse.json();
-                        // Buscar el miembro asociado al email del usuario
                         const miembroEncontrado = miembrosData.find(m => m.email === userData.email);
                         if (miembroEncontrado) {
                             setMiembro(miembroEncontrado);
@@ -640,7 +628,6 @@ function UserProfile() {
         try {
             const token = localStorage.getItem('token');
             
-            // Si existe un perfil de miembro, actualizar el teléfono allí
             if (miembro) {
                 const response = await fetch(`${API_URL}/api/miembros/${miembro.id}/`, {
                     method: 'PATCH',
@@ -722,7 +709,6 @@ function UserProfile() {
             {currentView === 'change-password' && (
                 <ChangePassword onBack={() => setCurrentView('menu')} />
             )}
-            {/* Eliminado flujo separado de avatar; ahora se edita inline */}
         </div>
     );
 }

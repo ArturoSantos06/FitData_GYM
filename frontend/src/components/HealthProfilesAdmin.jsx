@@ -16,7 +16,6 @@ function HealthProfilesAdmin({ refreshTrigger }) {
     if (!token) { setError('Sesión no válida'); setLoading(false); return; }
     setLoading(true);
     setError('');
-    // Agregar timestamp para evitar caché del navegador
     const timestamp = new Date().getTime();
     fetch(`${API_URL}/api/health-profiles/?_t=${timestamp}`, { 
       headers: { Authorization: `Token ${token}` } 
@@ -96,7 +95,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
                   <p className="text-white font-semibold">{selected.edad ?? '—'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
-                  <p className="text-slate-400 text-xs">Condición Corazón</p>
+                  <p className="text-slate-400 text-xs">Condición del Corazón</p>
                   <p className="text-white font-semibold">{selected.condicion_corazon ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
@@ -106,7 +105,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-800 rounded-lg p-3">
-                  <p className="text-slate-400 text-xs">Lesiones Recientes</p>
+                  <p className="text-slate-400 text-xs">Lesiones Físicas Recientes</p>
                   <p className="text-white font-semibold">{selected.lesiones_recientes ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
@@ -115,7 +114,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
                 </div>
               </div>
               <div>
-                <p className="text-slate-400 text-xs mb-1">Comentarios</p>
+                <p className="text-slate-400 text-xs mb-1">Información adicional</p>
                 <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap min-h-[60px]">{selected.comentarios || '—'}</div>
               </div>
             </div>

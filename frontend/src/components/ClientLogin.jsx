@@ -37,7 +37,7 @@ function ClientLogin() {
       
       // Redirigir al portal de cliente
       navigate('/cliente');
-      window.location.reload(); // Recargar para actualizar el estado
+      window.location.reload(); 
     } catch (err) {
       setError(err.message);
       setIsLoading(false);

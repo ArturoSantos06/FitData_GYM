@@ -4,7 +4,6 @@ import QRCode from "react-qr-code";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Normaliza URLs de imágenes: si viene relativa (/media/..), la convierte a absoluta con API_URL
 const resolveImageUrl = (url) => {
   try {
     if (!url) return null;
@@ -34,7 +33,6 @@ function ClientMembership() {
   const [loading, setLoading] = useState(true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardRatio, setCardRatio] = useState(1.58);
-  // Mover el hook de tick arriba para no cambiar orden de hooks entre renders (regla de hooks)
   const [tick, setTick] = useState(0);
   const qrRef = useRef(null);
   const cardBackRef = useRef(null);
@@ -43,11 +41,9 @@ function ClientMembership() {
     try {
       console.log('Generando tarjeta de membresía...');
       
-      // Crear canvas - tamaño ajustado para formato vertical tipo tarjeta
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
-      // Tamaño vertical (similar a una tarjeta)
       canvas.width = 800;
       canvas.height = 1200;
       
@@ -180,7 +176,6 @@ function ClientMembership() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Intervalo para actualizar cada minuto (debe ir ANTES de retornos condicionales)
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(interval);
@@ -199,7 +194,6 @@ function ClientMembership() {
     );
   }
 
-  // Helper para parsear fecha AAAA-MM-DD en hora local evitando sesgo UTC
   const parseLocalDate = (dateStr, h = 0, m = 0, s = 0, ms = 0) => {
     try {
       const [y, mo, d] = dateStr.split('-').map(Number);
@@ -209,13 +203,11 @@ function ClientMembership() {
     }
   };
 
-  // Vigencia: todas las membresías vigentes hasta las 22:00 del día end_date
   let vigente = true;
   if (membership.end_date) {
     const endLocal = parseLocalDate(membership.end_date);
     const now = new Date();
     const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);
-    // Si hoy es antes del día de vencimiento -> vigente
     if (now < parseLocalDate(membership.end_date, 0, 0, 0, 0)) {
       vigente = true;
     } else if (
@@ -223,10 +215,8 @@ function ClientMembership() {
       now.getMonth() === endLocal.getMonth() &&
       now.getDate() === endLocal.getDate()
     ) {
-      // Mismo día: comparar hora de corte 22:00
       vigente = now <= endCutoff;
     } else {
-      // Día posterior al end_date
       vigente = false;
     }
   }
@@ -243,7 +233,6 @@ function ClientMembership() {
     const endLocal = parseLocalDate(membership.end_date);
     const isDayPass = (membership?.tipo?.duration_days === 1) || (membershipType.toLowerCase().includes('day'));
     if (isDayPass) {
-      // Intervalo virtual mismo día 06:00 - 22:00
       const startVirtual = parseLocalDate(membership.end_date, 6, 0, 0, 0);
       const endVirtual = parseLocalDate(membership.end_date, 22, 0, 0, 0);
       const total = endVirtual - startVirtual;
@@ -257,8 +246,8 @@ function ClientMembership() {
       return pct;
     } else {
       if (!membership.start_date) return 0;
-      const startLocal = parseLocalDate(membership.start_date, 6, 0, 0, 0); // inicio a apertura del primer día
-      const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);   // cierre 22:00 último día
+      const startLocal = parseLocalDate(membership.start_date, 6, 0, 0, 0); 
+      const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);  
       const total = endCutoff - startLocal;
       if (total <= 0) return 0;
       const remaining = Math.max(0, endCutoff - now);
@@ -272,10 +261,10 @@ function ClientMembership() {
   const timeRemainingText = membership.time_remaining || '';
   const isExpired = timeRemainingText.toLowerCase().includes('vencid');
   if (progressPct === 0 && !isExpired) {
-    progressPct = 5; // aseguramos mínimo visible si no está vencida
+    progressPct = 5; 
   }
 
-  // Barra fija con gradiente (restaurada a estilo anterior)
+  // Barra fija con gradiente 
   const barClasses = 'h-full bg-linear-to-r from-purple-500 to-blue-500 transition-all duration-700';
 
   return (
@@ -369,7 +358,7 @@ function ClientMembership() {
                   </div>
                 </div>
                 
-                <div ref={qrRef} className="bg-white p-3 rounded-xl shadow-lg flex items-center justify-center w-32 h-32">
+                <div ref={qrRef} className="bg-white p-2 sm:p-3 rounded-xl shadow-lg flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0">
                   <QRCode
                     size={256}
                     style={{ height: "auto", maxWidth: "100%", width: "100%" }}

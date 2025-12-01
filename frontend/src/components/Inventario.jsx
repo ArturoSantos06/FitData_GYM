@@ -23,7 +23,7 @@ function Inventario() {
   const cargarDatos = async () => {
     const token = localStorage.getItem('token');
     try {
-      // 1. Cargar Productos (Stock actual)
+      // 1. Cargar Productos 
       const resProd = await fetch(`${API_URL}/api/productos/`, { headers: { 'Authorization': `Token ${token}` } });
       if (resProd.ok) setProductos(await resProd.json());
 

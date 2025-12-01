@@ -14,7 +14,6 @@ function ClientPortal() {
     window.location.href = '/cliente/login';
   };
 
-  // Redirigir automáticamente al login si no hay sesión activa
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {

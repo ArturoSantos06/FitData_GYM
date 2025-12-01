@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// --- MODAL DE TÉRMINOS (Sin cambios) ---
+// --- MODAL DE TÉRMINOS ---
 const TermsModal = ({ onClose }) => (
   <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-2xl w-full shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar">
