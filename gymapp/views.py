@@ -825,3 +825,50 @@ def check_out_qr(request):
         return Response({
             'error': f'Error procesando check-out: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ============================================
+# ENDPOINT TEMPORAL PARA SINCRONIZACIÓN COMPLETA
+# ============================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def clean_duplicate_health_profiles(request):
+    """
+    Endpoint temporal para sincronizar TODA la base de datos de producción con datos_gym.json.
+    ADVERTENCIA: Esto eliminará TODOS los datos actuales y cargará los datos del archivo JSON.
+    ELIMINAR ENDPOINT DESPUÉS DE USAR.
+    """
+    # Verificar que sea el admin
+    if not request.user.is_superuser:
+        return Response({
+            'error': 'Solo el administrador puede ejecutar esta acción'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        from django.core.management import call_command
+        import io
+        
+        # Capturar salida del comando
+        out = io.StringIO()
+        
+        # Eliminar todos los datos excepto el superusuario
+        call_command('flush', '--no-input', stdout=out)
+        
+        # Cargar datos desde datos_gym.json
+        call_command('loaddata', 'datos_gym.json', stdout=out)
+        
+        output = out.getvalue()
+        
+        return Response({
+            'success': True,
+            'message': 'Base de datos sincronizada exitosamente con datos_gym.json',
+            'detalles': output
+        }, status=status.HTTP_200_OK)
+        
+    except FileNotFoundError:
+        return Response({
+            'error': 'El archivo datos_gym.json no se encontró en el servidor'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Error al sincronizar datos: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
