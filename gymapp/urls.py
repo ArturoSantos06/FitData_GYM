@@ -16,8 +16,7 @@ from .views import (
     client_login,
     change_password,
     check_in_qr,
-    check_out_qr,
-    clean_duplicate_health_profiles
+    check_out_qr
 )
 
 # 1. Configuración del Router (Rutas automáticas CRUD)
@@ -53,9 +52,6 @@ urlpatterns = [
     # 5. Check In/Out con QR
     path('check-in-qr/', check_in_qr, name='check-in-qr'),
     path('check-out-qr/', check_out_qr, name='check-out-qr'),
-    
-    # 6. TEMPORAL: Limpiar fichas de salud duplicadas en producción
-    path('admin/clean-health-profiles/', clean_duplicate_health_profiles, name='clean-health-profiles'),
     
     # --- Rutas Automáticas del Router ---
     path('', include(router.urls)),
