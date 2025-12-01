@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const [cantidad, setCantidad] = useState(1);
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     const getInitialUrl = (img) => {
         if (!img) return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";

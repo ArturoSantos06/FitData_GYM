@@ -12,33 +12,25 @@ const CheckInOut = () => {
   const [dateFilter, setDateFilter] = useState('');
   const html5QrcodeRef = useRef(null);
 
+  // Usar variable de entorno para la API
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
   // Cargar asistencias recientes con filtros
   const cargarAsistencias = async () => {
     try {
       const token = localStorage.getItem('token');
-      let url = 'http://localhost:8000/api/asistencias/';
+      let url = `${API_URL}/api/asistencias/`;
       const params = new URLSearchParams();
-      
-      if (dateFilter) {
-        params.append('fecha', dateFilter);
-      }
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-      
-      if (params.toString()) {
-        url += '?' + params.toString();
-      }
-      
+      if (dateFilter) params.append('fecha', dateFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      if (params.toString()) url += '?' + params.toString();
       const response = await fetch(url, {
         headers: {
           'Authorization': `Token ${token}`
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
-        // Si la respuesta es paginada, tomar results, si no, usar data directamente
         setAsistencias(Array.isArray(data) ? data : data.results || []);
       }
     } catch (err) {
@@ -63,7 +55,7 @@ const CheckInOut = () => {
       const token = localStorage.getItem('token');
       
       // Primero intentar check-in
-      let response = await fetch(`http://localhost:8000/api/check-in-qr/`, {
+      let response = await fetch(`${API_URL}/api/check-in-qr/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +68,7 @@ const CheckInOut = () => {
 
       // Si ya tiene check-in activo, intentar check-out automáticamente
       if (!response.ok && data.error?.includes('ya hizo check-in')) {
-        response = await fetch(`http://localhost:8000/api/check-out-qr/`, {
+        response = await fetch(`${API_URL}/api/check-out-qr/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

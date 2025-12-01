@@ -3,7 +3,7 @@ import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function HealthForm() {
     const [formData, setFormData] = useState({

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // Normaliza URLs de imágenes: si viene relativa (/media/..), la convierte a absoluta con API_URL
 const resolveImageUrl = (url) => {
@@ -414,7 +414,7 @@ function ClientMembership() {
       <div className="w-full max-w-2xl flex justify-center">
         <button
           onClick={downloadQR}
-          className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-500 text-white rounded-2xl font-bold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.7)] hover:scale-105 transform"
+          className="group relative inline-flex items-center gap-3 px-8 py-4 bg-linear-to-r from-blue-500 to-purple-600 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-500 text-white rounded-2xl font-bold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.7)] hover:scale-105 transform"
         >
           <Download size={24} className="group-hover:animate-bounce" />
           <span className="tracking-wide">Descargar Membresía con QR</span>

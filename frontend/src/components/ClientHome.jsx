@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ChevronRight, User } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function ClientHome({ onNavigateToProfile }) {
   const [user, setUser] = useState(null);
