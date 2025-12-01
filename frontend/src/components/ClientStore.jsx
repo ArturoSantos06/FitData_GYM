@@ -53,7 +53,6 @@ function ClientStore() {
           .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
         setSales(sorted);
       } catch {
-        // ignorar historial si falla
       }
     };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { QrCode, ShoppingBag, User } from 'lucide-react';
+import { QrCode, ShoppingBag, User, LogOut } from 'lucide-react';
 
 const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   const tabs = [
@@ -48,7 +48,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
       </header>
 
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        <div className="grid grid-cols-3 h-full">
+        <div className="grid grid-cols-4 h-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -69,6 +69,15 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
               </button>
             );
           })}
+          <button
+            onClick={onLogout}
+            className="flex flex-col items-center justify-center gap-1 text-red-400"
+          >
+            <div className="w-6 h-6">
+              <LogOut size={24} />
+            </div>
+            <span className="text-[10px] font-medium">Salir</span>
+          </button>
         </div>
       </nav>
     </>

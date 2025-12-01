@@ -102,8 +102,6 @@ function HealthProfilesAdmin({ refreshTrigger }) {
                   <p className="text-slate-400 text-xs">Presión Alta</p>
                   <p className="text-white font-semibold">{selected.presion_alta ? 'Sí' : 'No'}</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Lesiones Físicas Recientes</p>
                   <p className="text-white font-semibold">{selected.lesiones_recientes ? 'Sí' : 'No'}</p>
@@ -114,8 +112,8 @@ function HealthProfilesAdmin({ refreshTrigger }) {
                 </div>
               </div>
               <div>
-                <p className="text-slate-400 text-xs mb-1">Información adicional</p>
-                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap min-h-[60px]">{selected.comentarios || '—'}</div>
+                <p className="text-slate-400 text-xs mb-2">Información adicional</p>
+                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap">{selected.comentarios || 'Sin información adicional'}</div>
               </div>
             </div>
             <div className="mt-6 flex justify-end">

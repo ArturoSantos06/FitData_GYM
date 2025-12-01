@@ -372,10 +372,10 @@ function ClientMembership() {
                 </div>
               </div>
               
-              <div className="mt-2 sm:mt-3 text-center">
-                <p className="text-[9px] sm:text-xs text-slate-400 mb-0.5 sm:mb-1">Código manual:</p>
-                <p className="text-sm sm:text-lg font-bold text-purple-400 tracking-wider font-mono">{qrCode}</p>
-                <p className="text-[8px] sm:text-[10px] text-slate-600 mt-0.5 sm:mt-1">Este código es personal e intransferible.</p>
+              <div className="mt-1.5 sm:mt-3 text-center">
+                <p className="text-[8px] sm:text-xs text-slate-400 mb-0.5 sm:mb-1">Código manual:</p>
+                <p className="text-xs sm:text-lg font-bold text-purple-400 tracking-wider font-mono">{qrCode}</p>
+                <p className="text-[7px] sm:text-[10px] text-slate-600 mt-0 sm:mt-1">Este código es personal e intransferible.</p>
               </div>
             </div>
           </div>
