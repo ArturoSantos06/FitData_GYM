@@ -66,8 +66,10 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
         console.log('✅ Ficha médica guardada exitosamente');
         setSaved(true);
         if (typeof onSaved === 'function') {
-          console.log('🔄 Llamando onSaved para refrescar Fichas Médicas');
+          console.log('🔄 [LOG] AdminHealthForm: Llamando onSaved para refrescar Fichas Médicas');
           onSaved();
+        } else {
+          console.log('⚠️ [LOG] AdminHealthForm: onSaved no es función');
         }
       })
       .catch(err => setError(err.message))
@@ -314,10 +316,12 @@ function RegisterUser({ onUserRegistered }) {
               miembroEmail={recentEmail} 
               onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }} 
               onSaved={() => { 
-                console.log('🎯 RegisterUser: Ficha guardada, callback existe?', !!onUserRegistered);
+                console.log('🎯 [LOG] RegisterUser: Ficha guardada, callback existe?', !!onUserRegistered);
                 if (onUserRegistered) {
-                  console.log('🚀 Ejecutando onUserRegistered');
+                  console.log('🚀 [LOG] RegisterUser: Ejecutando onUserRegistered para refrescar Fichas Médicas');
                   onUserRegistered();
+                } else {
+                  console.log('⚠️ [LOG] RegisterUser: onUserRegistered no existe');
                 }
               }}
             />
