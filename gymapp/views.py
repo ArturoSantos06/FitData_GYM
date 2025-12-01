@@ -547,6 +547,7 @@ class EntradaInventarioViewSet(viewsets.ModelViewSet):
 # --- VIEWSETS DE JOELY: PORTAL DE CLIENTES ---
 
 from .models import Miembro, Pago, Asistencia, HealthProfile
+from django.db.models import Q
 from .serializers import MiembroSerializer, PagoSerializer, AsistenciaSerializer, HealthProfileSerializer
 from rest_framework import serializers as drf_serializers
 
@@ -640,8 +641,8 @@ class HealthProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # Si es staff ve todos, sino solo el suyo
-        if user.is_staff:
+        # Si es staff o superusuario ve todos, sino solo el suyo
+        if user.is_staff or user.is_superuser:
             return self.queryset
         miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
         if miembro and hasattr(miembro, 'health_profile'):
@@ -863,8 +864,8 @@ def purge_health_profile(request):
             qs = qs.filter(miembro_id=miembro_id)
         elif name:
             qs = qs.filter(
-                models.Q(miembro__nombre__icontains=name) |
-                models.Q(miembro__apellido__icontains=name)
+                Q(miembro__nombre__icontains=name) |
+                Q(miembro__apellido__icontains=name)
             )
         else:
             return Response({'error': 'Proporciona perfil_id, miembro_id o name'}, status=status.HTTP_400_BAD_REQUEST)
