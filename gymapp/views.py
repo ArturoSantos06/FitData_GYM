@@ -851,13 +851,13 @@ def purge_health_profile(request):
     if not request.user.is_superuser:
         return Response({'error': 'Solo el administrador puede ejecutar esta acción'}, status=status.HTTP_403_FORBIDDEN)
 
-    from .models import HealthProfile
     perfil_id = request.data.get('perfil_id')
     miembro_id = request.data.get('miembro_id')
     name = request.data.get('name', '').strip()
 
     try:
-        qs = HealthProfile.objects.all()
+        # Usar .using('default') para forzar query directa sin managers custom
+        qs = HealthProfile.objects.using('default').all()
         if perfil_id:
             qs = qs.filter(id=perfil_id)
         elif miembro_id:
@@ -874,10 +874,11 @@ def purge_health_profile(request):
         if count == 0:
             return Response({'success': True, 'eliminadas': 0, 'detalle': 'No se encontraron fichas a eliminar'}, status=status.HTTP_200_OK)
 
-        qs.delete()
-        return Response({'success': True, 'eliminadas': count}, status=status.HTTP_200_OK)
+        deleted_count, _ = qs.delete()
+        return Response({'success': True, 'eliminadas': deleted_count}, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        import traceback
+        return Response({'error': str(e), 'traceback': traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ============================================
 # ENDPOINT TEMPORAL: PURGAR USUARIO COMPLETO
