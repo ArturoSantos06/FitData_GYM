@@ -648,35 +648,44 @@ class HealthProfileViewSet(viewsets.ModelViewSet):
             return HealthProfile.objects.filter(miembro=miembro)
         return HealthProfile.objects.none()
 
-    def perform_create(self, serializer):
-        user = self.request.user
-        miembro_id = self.request.data.get('miembro_id')
-        if user.is_staff and miembro_id:
-            miembro = Miembro.objects.filter(id=miembro_id).first()
-            if not miembro:
-                raise drf_serializers.ValidationError({'miembro_id': 'Miembro no encontrado'})
-        else:
-            miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
-        if not miembro:
-            raise drf_serializers.ValidationError({'miembro': 'Perfil de miembro no encontrado'})
-        existing = getattr(miembro, 'health_profile', None)
-        if existing:
-            for field in ['edad','condicion_corazon','presion_alta','lesiones_recientes','medicamentos','comentarios']:
-                if field in self.request.data:
-                    setattr(existing, field, self.request.data.get(field, getattr(existing, field)))
-            existing.save()
-            # Asegurar que el serializer tenga instancia para la respuesta
-            serializer.instance = existing
-            return
-        serializer.save(miembro=miembro)
-
     def create(self, request, *args, **kwargs):
-        # Permitir upsert
+        """
+        Crear o actualizar ficha de salud (upsert).
+        """
         try:
-            res = super().create(request, *args, **kwargs)
-            return res
+            user = request.user
+            miembro_id = request.data.get('miembro_id')
+            
+            # Determinar el miembro
+            if user.is_staff and miembro_id:
+                miembro = Miembro.objects.filter(id=miembro_id).first()
+                if not miembro:
+                    return Response({'error': 'Miembro no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
+                if not miembro:
+                    return Response({'error': 'Perfil de miembro no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Verificar si ya existe una ficha para este miembro
+            existing = getattr(miembro, 'health_profile', None)
+            
+            if existing:
+                # Actualizar ficha existente
+                for field in ['edad', 'condicion_corazon', 'presion_alta', 'lesiones_recientes', 'medicamentos', 'comentarios']:
+                    if field in request.data:
+                        setattr(existing, field, request.data.get(field))
+                existing.save()
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                # Crear nueva ficha
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save(miembro=miembro)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
@@ -824,52 +833,4 @@ def check_out_qr(request):
     except Exception as e:
         return Response({
             'error': f'Error procesando check-out: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ============================================
-# ENDPOINT TEMPORAL PARA SINCRONIZACIÓN COMPLETA
-# ============================================
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def clean_duplicate_health_profiles(request):
-    """
-    Endpoint temporal para eliminar fichas de salud duplicadas en producción.
-    Solo conserva la ficha con ID 1 (Arturo Santos Lopez).
-    ELIMINAR ENDPOINT DESPUÉS DE USAR.
-    """
-    # Verificar que sea el admin
-    if not request.user.is_superuser:
-        return Response({
-            'error': 'Solo el administrador puede ejecutar esta acción'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    try:
-        from gymapp.models import HealthProfile
-        
-        # Contar fichas antes
-        total_before = HealthProfile.objects.count()
-        fichas_antes = list(HealthProfile.objects.values('id', 'miembro__nombre', 'miembro__apellido'))
-        
-        # Eliminar todas excepto la ID 1
-        to_delete = HealthProfile.objects.exclude(id=1)
-        deleted_count = to_delete.count()
-        to_delete.delete()
-        
-        # Contar fichas después
-        total_after = HealthProfile.objects.count()
-        fichas_despues = list(HealthProfile.objects.values('id', 'miembro__nombre', 'miembro__apellido'))
-        
-        return Response({
-            'success': True,
-            'message': 'Fichas de salud duplicadas eliminadas exitosamente',
-            'total_antes': total_before,
-            'total_despues': total_after,
-            'eliminadas': deleted_count,
-            'fichas_antes': fichas_antes,
-            'fichas_despues': fichas_despues
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response({
-            'error': f'Error al limpiar datos: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
