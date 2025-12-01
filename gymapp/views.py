@@ -913,7 +913,7 @@ def purge_user(request):
         elif email:
             qs = qs.filter(email__iexact=email)
         elif name:
-            qs = qs.filter(models.Q(first_name__icontains=name) | models.Q(last_name__icontains=name))
+            qs = qs.filter(Q(first_name__icontains=name) | Q(last_name__icontains=name))
         else:
             return Response({'error': 'Proporciona user_id, username, email o name'}, status=status.HTTP_400_BAD_REQUEST)
 
