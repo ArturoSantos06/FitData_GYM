@@ -834,3 +834,46 @@ def check_out_qr(request):
         return Response({
             'error': f'Error procesando check-out: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ============================================
+# ENDPOINT TEMPORAL: PURGAR FICHA DE SALUD
+# ============================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def purge_health_profile(request):
+    """
+    Elimina una ficha de salud específica por `perfil_id`, `miembro_id`
+    o por nombre del miembro (`name` contiene).
+
+    Seguridad: Solo superusuarios.
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Solo el administrador puede ejecutar esta acción'}, status=status.HTTP_403_FORBIDDEN)
+
+    from .models import HealthProfile
+    perfil_id = request.data.get('perfil_id')
+    miembro_id = request.data.get('miembro_id')
+    name = request.data.get('name', '').strip()
+
+    try:
+        qs = HealthProfile.objects.all()
+        if perfil_id:
+            qs = qs.filter(id=perfil_id)
+        elif miembro_id:
+            qs = qs.filter(miembro_id=miembro_id)
+        elif name:
+            qs = qs.filter(
+                models.Q(miembro__nombre__icontains=name) |
+                models.Q(miembro__apellido__icontains=name)
+            )
+        else:
+            return Response({'error': 'Proporciona perfil_id, miembro_id o name'}, status=status.HTTP_400_BAD_REQUEST)
+
+        count = qs.count()
+        if count == 0:
+            return Response({'success': True, 'eliminadas': 0, 'detalle': 'No se encontraron fichas a eliminar'}, status=status.HTTP_200_OK)
+
+        qs.delete()
+        return Response({'success': True, 'eliminadas': count}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
