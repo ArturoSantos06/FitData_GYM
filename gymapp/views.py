@@ -833,8 +833,8 @@ def check_out_qr(request):
 @permission_classes([IsAuthenticated])
 def clean_duplicate_health_profiles(request):
     """
-    Endpoint temporal para sincronizar TODA la base de datos de producción con datos_gym.json.
-    ADVERTENCIA: Esto eliminará TODOS los datos actuales y cargará los datos del archivo JSON.
+    Endpoint temporal para eliminar fichas de salud duplicadas en producción.
+    Solo conserva la ficha con ID 1 (Arturo Santos Lopez).
     ELIMINAR ENDPOINT DESPUÉS DE USAR.
     """
     # Verificar que sea el admin
@@ -844,31 +844,32 @@ def clean_duplicate_health_profiles(request):
         }, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        from django.core.management import call_command
-        import io
+        from gymapp.models import HealthProfile
         
-        # Capturar salida del comando
-        out = io.StringIO()
+        # Contar fichas antes
+        total_before = HealthProfile.objects.count()
+        fichas_antes = list(HealthProfile.objects.values('id', 'miembro__nombre', 'miembro__apellido'))
         
-        # Eliminar todos los datos excepto el superusuario
-        call_command('flush', '--no-input', stdout=out)
+        # Eliminar todas excepto la ID 1
+        to_delete = HealthProfile.objects.exclude(id=1)
+        deleted_count = to_delete.count()
+        to_delete.delete()
         
-        # Cargar datos desde datos_gym.json
-        call_command('loaddata', 'datos_gym.json', stdout=out)
-        
-        output = out.getvalue()
+        # Contar fichas después
+        total_after = HealthProfile.objects.count()
+        fichas_despues = list(HealthProfile.objects.values('id', 'miembro__nombre', 'miembro__apellido'))
         
         return Response({
             'success': True,
-            'message': 'Base de datos sincronizada exitosamente con datos_gym.json',
-            'detalles': output
+            'message': 'Fichas de salud duplicadas eliminadas exitosamente',
+            'total_antes': total_before,
+            'total_despues': total_after,
+            'eliminadas': deleted_count,
+            'fichas_antes': fichas_antes,
+            'fichas_despues': fichas_despues
         }, status=status.HTTP_200_OK)
         
-    except FileNotFoundError:
-        return Response({
-            'error': 'El archivo datos_gym.json no se encontró en el servidor'
-        }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({
-            'error': f'Error al sincronizar datos: {str(e)}'
+            'error': f'Error al limpiar datos: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
