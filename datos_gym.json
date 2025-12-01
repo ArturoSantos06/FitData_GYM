@@ -325,7 +325,7 @@
     "fecha": "2025-11-24T17:43:30.148Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-41BB9D"
   }
 },
@@ -385,7 +385,7 @@
     "fecha": "2025-11-24T23:25:44.060Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-5551A8"
   }
 },
@@ -481,7 +481,7 @@
     "fecha": "2025-11-25T19:05:06.220Z",
     "total": "80.00",
     "metodo_pago": "EFECTIVO",
-    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-8AA168"
   }
 },
@@ -541,7 +541,7 @@
     "fecha": "2025-11-28T00:09:14.481Z",
     "total": "500.00",
     "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Membres韆: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Membres铆a: FitData Flex', 'precio': 500.00, 'cantidad': 1}]",
     "folio": "V-DADB17"
   }
 },
@@ -649,7 +649,7 @@
     "fecha": "2025-11-30T18:25:24.567Z",
     "total": "80.00",
     "metodo_pago": "TARJETA",
-    "detalle_productos": "[{'nombre': 'Renovaci髇: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
+    "detalle_productos": "[{'nombre': 'Renovaci贸n: FitData Day Pass', 'precio': 80.00, 'cantidad': 1}]",
     "folio": "V-A40B98"
   }
 },
