@@ -17,7 +17,8 @@ from .views import (
     change_password,
     check_in_qr,
     check_out_qr,
-    purge_health_profile
+    purge_health_profile,
+    purge_user
 )
 
 # 1. Configuración del Router (Rutas automáticas CRUD)
@@ -56,6 +57,8 @@ urlpatterns = [
     
     # 6. TEMPORAL: Purgar ficha(s) de salud por id/nombre (solo admin)
     path('admin/purge-health-profile/', purge_health_profile, name='purge-health-profile'),
+    # 7. TEMPORAL: Purgar usuario completo por id/username/email/nombre (solo admin)
+    path('admin/purge-user/', purge_user, name='purge-user'),
     
     # --- Rutas Automáticas del Router ---
     path('', include(router.urls)),

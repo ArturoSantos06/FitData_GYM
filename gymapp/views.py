@@ -878,3 +878,52 @@ def purge_health_profile(request):
         return Response({'success': True, 'eliminadas': count}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ============================================
+# ENDPOINT TEMPORAL: PURGAR USUARIO COMPLETO
+# ============================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def purge_user(request):
+    """
+    Elimina un usuario y todo lo relacionado por cascada.
+
+    Admite filtros:
+    - user_id
+    - username
+    - email
+    - name (coincidencia en first_name/last_name)
+
+    Seguridad: Solo superusuarios.
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Solo el administrador puede ejecutar esta acción'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_id = request.data.get('user_id')
+    username = request.data.get('username', '').strip()
+    email = request.data.get('email', '').strip()
+    name = request.data.get('name', '').strip()
+
+    try:
+        qs = User.objects.all()
+        if user_id:
+            qs = qs.filter(id=user_id)
+        elif username:
+            qs = qs.filter(username__iexact=username)
+        elif email:
+            qs = qs.filter(email__iexact=email)
+        elif name:
+            qs = qs.filter(models.Q(first_name__icontains=name) | models.Q(last_name__icontains=name))
+        else:
+            return Response({'error': 'Proporciona user_id, username, email o name'}, status=status.HTTP_400_BAD_REQUEST)
+
+        count = qs.count()
+        if count == 0:
+            return Response({'success': True, 'eliminados': 0, 'detalle': 'No se encontraron usuarios a eliminar'}, status=status.HTTP_200_OK)
+
+        # Mantener lista para reporte
+        usuarios = list(qs.values_list('username', flat=True))
+        qs.delete()
+        return Response({'success': True, 'eliminados': count, 'usuarios': usuarios}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
