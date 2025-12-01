@@ -65,8 +65,12 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
         if (!res.ok) throw new Error(res.d.error || 'Error guardando ficha');
         console.log('✅ Ficha médica guardada exitosamente');
         setSaved(true);
-        if (onSaved) {
-          console.log('🔄 Llamando callback onSaved para actualizar lista');
+        if (typeof onUserRegistered === 'function') {
+          console.log('🔄 Llamando onUserRegistered para refrescar Fichas Médicas');
+          onUserRegistered();
+        }
+        if (typeof onSaved === 'function') {
+          console.log('🔄 Llamando onSaved para compatibilidad');
           onSaved();
         }
       })
