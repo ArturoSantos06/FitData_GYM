@@ -643,7 +643,7 @@ class HealthProfileViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Si es staff o superusuario ve todos, sino solo el suyo
         if user.is_staff or user.is_superuser:
-            return self.queryset
+            return HealthProfile.objects.select_related('miembro').all().order_by('-actualizado')
         miembro = Miembro.objects.filter(user=user).first() or Miembro.objects.filter(email__iexact=user.email).first()
         if miembro and hasattr(miembro, 'health_profile'):
             return HealthProfile.objects.filter(miembro=miembro)
