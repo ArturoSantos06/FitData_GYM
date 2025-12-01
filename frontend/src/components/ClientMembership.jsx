@@ -346,19 +346,19 @@ function ClientMembership() {
                 </div>
               </div>
 
-              <div className="flex items-end justify-between mt-4">
-                <div className="space-y-2">
+              <div className="flex items-end justify-between mt-4 gap-3">
+                <div className="space-y-2 flex-shrink min-w-0">
                   <div>
                     <p className="text-[11px] text-slate-400 uppercase tracking-wide">Plan</p>
-                    <p className="text-lg text-blue-300 font-semibold">{membershipType}</p>
+                    <p className="text-base sm:text-lg text-blue-300 font-semibold truncate">{membershipType}</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-slate-400 uppercase tracking-wide">Vencimiento</p>
-                    <p className="text-lg text-white font-semibold">{formatDate(membership.end_date)}</p>
+                    <p className="text-base sm:text-lg text-white font-semibold">{formatDate(membership.end_date)}</p>
                   </div>
                 </div>
                 
-                <div ref={qrRef} className="bg-white p-2 sm:p-3 rounded-xl shadow-lg flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0">
+                <div ref={qrRef} className="bg-white p-2 rounded-xl shadow-lg flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
                   <QRCode
                     size={256}
                     style={{ height: "auto", maxWidth: "100%", width: "100%" }}
