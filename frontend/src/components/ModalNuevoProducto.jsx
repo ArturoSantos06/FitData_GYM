@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import ConfirmModal from './ConfirmModal';
 
 const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState('');
     const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     if (!isOpen) return null;
@@ -27,16 +30,19 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
         try {
             const response = await fetch(`${API_URL}/api/productos/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Token ${token}` }, // IMPORTANTE: Token
+                headers: { 'Authorization': `Token ${token}` }, 
                 body: formData
             });
             if (response.ok) {
-                alert("¡Producto creado!");
+                setShowSuccess(true);
                 onProductoCreado();
-                onClose();
                 setNuevoProd({ nombre: '', precio: '', stock: '', imagen: null });
+                setTimeout(() => {
+                  setShowSuccess(false);
+                  onClose();
+                }, 1800);
             } else {
-                alert("Error al crear producto");
+                setShowError('Error al crear producto');
             }
         } catch (error) { console.error(error); }
     };
@@ -52,23 +58,50 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     };
 
     return (
+        <>
+        {/* Modal de éxito estilo ConfirmModal */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-1100 p-4 animate-fade-in">
+            <div className="bg-slate-900 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center transform scale-100 transition-transform">
+              <div className="mb-4 flex justify-center">
+                <div className="bg-green-500/20 p-3 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">¡Producto creado!</h3>
+              <p className="text-gray-400 text-sm">Se ha agregado exitosamente</p>
+            </div>
+          </div>
+        )}
+
         <div style={styles.overlay}>
             <div style={styles.modal}>
                 <button style={styles.btnClose} onClick={onClose}>✕</button>
                 <h2 style={{ textAlign: 'center', marginTop: 0, color: '#22c55e' }}>Nuevo Producto</h2>
+
+                {/* Error */}
+                {Boolean(showError) && (
+                  <div style={{ marginBottom: '12px', background: '#7f1d1d', color: 'white', padding: '8px 10px', borderRadius: '8px' }}>
+                    {showError}
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
                     <label style={styles.label}>Nombre:</label>
-                    <input type="text" name="nombre" onChange={handleChange} style={styles.input} required />
+                    <input type="text" name="nombre" value={nuevoProd.nombre} onChange={handleChange} style={styles.input} required />
                     <label style={styles.label}>Precio ($):</label>
-                    <input type="number" name="precio" onChange={handleChange} style={styles.input} required min="0" step="0.01" />
+                    <input type="number" name="precio" value={nuevoProd.precio} onChange={handleChange} style={styles.input} required min="0" step="0.01" />
                     <label style={styles.label}>Stock:</label>
-                    <input type="number" name="stock" onChange={handleChange} style={styles.input} required min="0" />
+                    <input type="number" name="stock" value={nuevoProd.stock} onChange={handleChange} style={styles.input} required min="0" />
                     <label style={styles.label}>Imagen:</label>
                     <input type="file" accept="image/*" onChange={handleFileChange} style={{...styles.input, padding: '5px'}} />
                     <button type="submit" style={styles.btnSave}>GUARDAR</button>
                 </form>
             </div>
         </div>
+        </>
     );
 };
 export default ModalNuevoProducto;

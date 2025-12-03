@@ -101,6 +101,7 @@ function UserMembershipList({ refreshTrigger }) {
             <tr className="bg-gray-700 text-left text-gray-300 uppercase text-sm leading-normal">
               <th className="py-3 px-6 border-b border-gray-600">ID</th>
               <th className="py-3 px-6 border-b border-gray-600">Usuario</th>
+              <th className="py-3 px-6 border-b border-gray-600">Email</th>
               <th className="py-3 px-6 border-b border-gray-600">Membresía</th>
               <th className="py-3 px-6 border-b border-gray-600">Inicio</th>
               <th className="py-3 px-6 border-b border-gray-600">Vencimiento</th>
@@ -122,6 +123,9 @@ function UserMembershipList({ refreshTrigger }) {
                       </span>
                     )}
                   </div>
+                </td>
+                <td className="py-3 px-6">
+                  <span className="text-gray-300 text-sm">{item.user_email || 'N/A'}</span>
                 </td>
                 <td className="py-3 px-6">
                   {item.membership_name}
@@ -148,7 +152,7 @@ function UserMembershipList({ refreshTrigger }) {
             
             {sortedAssignments.length === 0 && (
               <tr>
-                <td colSpan="6" className="text-center py-6 text-gray-500 italic">
+                <td colSpan="7" className="text-center py-6 text-gray-500 italic">
                   {searchTerm ? 'No se encontraron resultados.' : 'No hay membresías asignadas.'}
                 </td>
               </tr>

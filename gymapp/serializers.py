@@ -18,6 +18,8 @@ class UserMembershipSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
     # NUEVO CAMPO: Nombre completo
     user_full_name = serializers.SerializerMethodField()
+    # NUEVO CAMPO: Email del usuario
+    user_email = serializers.ReadOnlyField(source='user.email')
     
     membership_name = serializers.ReadOnlyField(source='membership_type.name')
     # Incluir objeto completo del tipo de membresía
@@ -30,7 +32,7 @@ class UserMembershipSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserMembership
-        fields = ['id', 'user', 'user_name', 'user_full_name', 'membership_type', 'membership_name', 'tipo', 'start_date', 'end_date', 'is_active', 'time_remaining']
+        fields = ['id', 'user', 'user_name', 'user_full_name', 'user_email', 'membership_type', 'membership_name', 'tipo', 'start_date', 'end_date', 'is_active', 'time_remaining']
         read_only_fields = ['end_date', 'start_date']
 
     # Función para calcular el estado (ya la tenías)
