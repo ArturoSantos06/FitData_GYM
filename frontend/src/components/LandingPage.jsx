@@ -62,6 +62,7 @@ function TopBar() {
 
 // --- HERO SECTION ---
 function HeroSection({ onOpenModal }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navItems = [
     { name: 'INICIO', href: '#home' },
     { name: 'NOSOTROS', href: '#about' },
@@ -70,6 +71,16 @@ function HeroSection({ onOpenModal }) {
     { name: 'CONTACTO', href: '#contact' },
 
   ];
+
+  const handleNavClick = (e, href) => {
+    e.preventDefault();
+    const id = href.replace('#', '');
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileNavOpen(false);
+  };
 
   return (
     <header id="home" className="relative w-full h-screen overflow-hidden flex flex-col justify-center items-center">
@@ -107,21 +118,61 @@ function HeroSection({ onOpenModal }) {
         </button>
       </div>
 
-      {/* 4. NAVBAR INFERIOR */}
-      <div className="absolute bottom-0 left-0 w-full z-20 border-t border-white/5 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto">
-          <ul className="flex flex-wrap justify-center items-center gap-10 md:gap-20 py-6">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <a 
-                  href={item.href} 
-                  className="text-xs md:text-sm font-bold text-gray-400 hover:text-cyan-400 hover:shadow-[0_2px_0_#22d3ee] transition-all duration-300 tracking-widest uppercase pb-1"
-                >
-                  {item.name}
-                </a>
-              </li>
-            ))}
-          </ul>
+      {/* 4. NAVBAR INFERIOR RESPONSIVE */}
+      <div className="absolute bottom-0 left-0 w-full z-20 border-t border-white/5 bg-black/30 backdrop-blur-sm">
+        <div className="container mx-auto px-4">
+          {/* Desktop nav */}
+          <div className="hidden sm:block">
+            <ul className="flex flex-wrap justify-center items-center gap-8 md:gap-16 py-5">
+              {navItems.map((item, index) => (
+                <li key={index}>
+                  <a
+                    href={item.href}
+                    onClick={e => handleNavClick(e, item.href)}
+                    className="cursor-pointer text-xs md:text-sm font-bold text-gray-300 hover:text-cyan-400 hover:shadow-[0_2px_0_#22d3ee] transition-all duration-300 tracking-widest uppercase pb-1"
+                  >
+                    {item.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Mobile nav trigger */}
+          <div className="sm:hidden flex items-center justify-center py-4">
+            <button
+              aria-label={mobileNavOpen ? 'Cerrar menú' : 'Abrir menú'}
+              onClick={() => setMobileNavOpen(prev => !prev)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-700 bg-gray-900/60 text-gray-200 hover:text-cyan-400 hover:border-cyan-500 transition-colors"
+            >
+              <svg className={`w-6 h-6 ${mobileNavOpen ? 'hidden' : 'block'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+              <svg className={`w-6 h-6 ${mobileNavOpen ? 'block' : 'hidden'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+              <span className="text-xs font-bold tracking-widest uppercase">Menú</span>
+            </button>
+          </div>
+
+          {/* Mobile nav panel */}
+          {mobileNavOpen && (
+            <div className="sm:hidden pb-4">
+              <ul className="grid grid-cols-1 gap-2">
+                {navItems.map((item, index) => (
+                  <li key={index}>
+                    <a
+                      href={item.href}
+                      onClick={e => handleNavClick(e, item.href)}
+                      className="block w-full text-center px-4 py-3 rounded-lg border border-gray-700 bg-gray-900/70 text-gray-200 hover:text-cyan-400 hover:border-cyan-500 transition-colors text-xs font-bold tracking-widest uppercase cursor-pointer"
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

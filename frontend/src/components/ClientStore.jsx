@@ -75,7 +75,7 @@ function ClientStore() {
       </div>
 
       {/* Historial de compras del cliente */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl mb-20">
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <h3 className="text-lg font-bold text-emerald-400">Historial de Compras</h3>
           <span className="text-slate-500 text-sm">{sales.length} ventas</span>

@@ -5,12 +5,12 @@ function AboutTeam() {
   const navigate = useNavigate();
 
   const teamMembers = [
-    { name: 'Arturo Santos', role: 'Full Stack Developer', avatar: 'AS', image: 'ArturoSantos.jpeg' },
-    { name: 'Leonardo Castillo', role: 'Full Stack Developer', avatar: 'LC', image: 'LeonardoCastillo.jpg' },
+    { name: 'Arturo Santos', role: 'Full Stack Developer', avatar: 'AS', image: 'ArturoSantos.png' },
+    { name: 'Leonardo Castillo', role: 'Full Stack Developer', avatar: 'LC', image: 'Leonardo.jpeg' },
     { name: 'Joely Balam', role: 'Full Stack Developer', avatar: 'JB', image: 'JoelyBalam.jpg' },
-    { name: 'Agustín Hernández', role: 'Full Stack Developer', avatar: 'AH', image: 'AgustinHernandez.jpg' }
+    { name: 'Agustín Hernández', role: 'Full Stack Developer', avatar: 'AH', image: 'Agustin1.jpeg' }
   ];
-
+  
   const technologies = {
     frontend: {
       title: 'Frontend',
