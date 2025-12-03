@@ -10,7 +10,7 @@ function Home() {
         <h1 className="text-6xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-blue-400 to-teal-400 tracking-tight leading-tight">
           FitData GYM
         </h1>
-        <p className="text-xl md:text-2xl text-gray-400 mt-3">TRANSFORMA TU CUERPO Y MENTE HOY</p>
+        <p className="text-xl md:text-2xl text-gray-400 mt-3">PROCESANDO TU TRANSFORMACIÓN</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl w-full">

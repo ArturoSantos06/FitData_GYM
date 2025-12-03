@@ -17,6 +17,7 @@ import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
+import AboutTeam from './components/AboutTeam';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
@@ -104,6 +105,9 @@ function App() {
       <Routes>
         {/* Ruta Pública: Landing Page (Inicio) */}
         <Route path="/" element={<LandingPage />} />
+
+        {/* Ruta Pública: Acerca del Equipo */}
+        <Route path="/equipo" element={<AboutTeam />} />
 
         {/* Rutas de Cliente */}
         <Route path="/cliente/login" element={<ClientLogin />} />

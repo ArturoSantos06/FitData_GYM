@@ -14,34 +14,32 @@ const TermsModal = ({ onClose }) => (
         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
           <h4 className="text-lg font-bold text-white mb-2">1. Membresía FullData (Anual)</h4>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
-            <li>Acceso ilimitado 365 días.</li>
-            <li>Zonas húmedas y lockers incluidos.</li>
-            <li>2 invitados al mes.</li>
-            <li>Congelamiento por 30 días.</li>
+            <li>Acceso los 365 días del año.</li>
+            <li>Locker personalizado</li>
+            <li>Una Agua gratis a la semana</li>
+            <li>Atención prioritaria</li>
           </ul>
         </div>
         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
           <h4 className="text-lg font-bold text-white mb-2">2. Membresía Flex (Mensual)</h4>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
             <li>Acceso ilimitado por 30 días.</li>
-            <li>Cancelación en cualquier momento.</li>
-            <li>Renovación automática opcional.</li>
+            <li>Locker durante entrenamiento.</li>
           </ul>
         </div>
         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
           <h4 className="text-lg font-bold text-white mb-2">3. Membresía Study (Estudiantes)</h4>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
             <li>Requiere credencial vigente.</li>
-            <li>Horario restringido L-V (6am-4pm).</li>
-            <li>Fines de semana libre.</li>
+            <li>Acceso ilimitado por 30 días.</li>
+            <li>Locker durante entrenamiento.</li>
           </ul>
         </div>
         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
           <h4 className="text-lg font-bold text-white mb-2">4. Day Pass (Visita)</h4>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
             <li>Acceso único por un día.</li>
-            <li>Vence a las 11:59 PM.</li>
-            <li>Incluye una clase grupal.</li>
+            <li>Vence a las 10:00 PM.</li>
           </ul>
         </div>
       </div>

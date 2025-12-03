@@ -30,13 +30,11 @@ function HealthProfilesAdmin({ refreshTrigger }) {
       .finally(()=>setLoading(false));
   };
 
-  // Cargar al montar el componente
   useEffect(() => {
     console.log('🔄 Componente montado, cargando perfiles iniciales');
     loadProfiles();
   }, []);
 
-  // Recargar cuando cambia refreshTrigger
   useEffect(() => {
     if (refreshTrigger !== lastTrigger) {
       console.log('🔔 refreshTrigger cambió de', lastTrigger, 'a', refreshTrigger);
@@ -52,7 +50,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
 
   return (
     <div className="w-full max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-white mb-4">Perfiles de Salud (Clientes)</h1>
+      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-blue-400 mb-4">Perfiles de Salud</h1>
       <div className="flex gap-3 mb-4">
         <input
           type="text"
