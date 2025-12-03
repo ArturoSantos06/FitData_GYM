@@ -633,6 +633,27 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         asistencias = self.queryset.filter(fecha_hora_entrada__date=hoy)
         serializer = self.get_serializer(asistencias, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['delete'], permission_classes=[IsAuthenticated])
+    def sin_checkout(self, request):
+        """Eliminar todas las asistencias sin check-out (solo para staff)"""
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Solo administradores pueden realizar esta acción'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Obtener asistencias sin check-out
+        sin_checkout = Asistencia.objects.filter(fecha_hora_salida__isnull=True)
+        count = sin_checkout.count()
+        
+        # Eliminar
+        sin_checkout.delete()
+        
+        return Response({
+            'message': f'Se eliminaron {count} asistencias sin check-out',
+            'count': count
+        }, status=status.HTTP_200_OK)
 
 class HealthProfileViewSet(viewsets.ModelViewSet):
     queryset = HealthProfile.objects.select_related('miembro').all().order_by('-actualizado')
