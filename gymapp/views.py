@@ -615,7 +615,21 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         miembro = serializer.validated_data['miembro']
         hoy = timezone.now().date()
         
-        # Lógica del semáforo: ¿Tiene membresía activa?
+        # 1. VALIDACIÓN CRÍTICA: Verificar si ya hizo check-in hoy sin check-out
+        asistencia_activa = Asistencia.objects.filter(
+            miembro=miembro,
+            fecha_hora_entrada__date=hoy,
+            fecha_hora_salida__isnull=True
+        ).first()
+        
+        if asistencia_activa:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(
+                f'No se puede hacer otro check-in. El miembro ya está dentro del gym. '
+                f'Debe hacer check-out primero (entrada: {asistencia_activa.fecha_hora_entrada.strftime("%H:%M")})'
+            )
+        
+        # 2. Lógica del semáforo: ¿Tiene membresía activa?
         if miembro.fecha_vencimiento and miembro.fecha_vencimiento >= hoy:
             acceso = True
             obs = "Acceso Permitido"
@@ -722,6 +736,9 @@ def check_in_qr(request):
     Check-in usando código QR
     POST /api/check-in-qr/
     Body: { "qr_code": "FD-XXXXXXXXXX" }
+    
+    Si el miembro ya tiene check-in activo (sin check-out), devuelve error.
+    El usuario DEBE hacer check-out antes de poder hacer otro check-in.
     """
     qr_code = request.data.get('qr_code', '').strip()
     
@@ -734,7 +751,7 @@ def check_in_qr(request):
         ahora = timezone.now()
         hoy = ahora.date()
         
-        # Verificar si ya hizo check-in hoy y no ha hecho check-out
+        # VALIDACIÓN CRÍTICA: Verificar si ya hizo check-in hoy y no ha hecho check-out
         asistencia_activa = Asistencia.objects.filter(
             miembro=miembro,
             fecha_hora_entrada__date=hoy,
@@ -742,10 +759,13 @@ def check_in_qr(request):
         ).first()
         
         if asistencia_activa:
+            # El miembro ya está dentro - NO permitir otro check-in
             return Response({
-                'error': 'El miembro ya hizo check-in hoy',
-                'asistencia_id': asistencia_activa.id
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'error': 'Ya tienes un check-in activo',
+                'mensaje': f'Debes hacer CHECK-OUT primero (entrada: {asistencia_activa.fecha_hora_entrada.strftime("%H:%M %p")})',
+                'asistencia_id': asistencia_activa.id,
+                'requiere_checkout': True
+            }, status=status.HTTP_409_CONFLICT)
         
         # Validar membresía activa (considerar horario de cierre para day pass)
         from datetime import datetime, time
@@ -857,95 +877,3 @@ def check_out_qr(request):
             'error': f'Error procesando check-out: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# ============================================
-# ENDPOINT TEMPORAL: PURGAR FICHA DE SALUD
-# ============================================
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def purge_health_profile(request):
-    """
-    Elimina una ficha de salud específica por `perfil_id`, `miembro_id`
-    o por nombre del miembro (`name` contiene).
-
-    Seguridad: Solo superusuarios.
-    """
-    if not request.user.is_superuser:
-        return Response({'error': 'Solo el administrador puede ejecutar esta acción'}, status=status.HTTP_403_FORBIDDEN)
-
-    perfil_id = request.data.get('perfil_id')
-    miembro_id = request.data.get('miembro_id')
-    name = request.data.get('name', '').strip()
-
-    try:
-        # Usar .using('default') para forzar query directa sin managers custom
-        qs = HealthProfile.objects.using('default').all()
-        if perfil_id:
-            qs = qs.filter(id=perfil_id)
-        elif miembro_id:
-            qs = qs.filter(miembro_id=miembro_id)
-        elif name:
-            qs = qs.filter(
-                Q(miembro__nombre__icontains=name) |
-                Q(miembro__apellido__icontains=name)
-            )
-        else:
-            return Response({'error': 'Proporciona perfil_id, miembro_id o name'}, status=status.HTTP_400_BAD_REQUEST)
-
-        count = qs.count()
-        if count == 0:
-            return Response({'success': True, 'eliminadas': 0, 'detalle': 'No se encontraron fichas a eliminar'}, status=status.HTTP_200_OK)
-
-        deleted_count, _ = qs.delete()
-        return Response({'success': True, 'eliminadas': deleted_count}, status=status.HTTP_200_OK)
-    except Exception as e:
-        import traceback
-        return Response({'error': str(e), 'traceback': traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ============================================
-# ENDPOINT TEMPORAL: PURGAR USUARIO COMPLETO
-# ============================================
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def purge_user(request):
-    """
-    Elimina un usuario y todo lo relacionado por cascada.
-
-    Admite filtros:
-    - user_id
-    - username
-    - email
-    - name (coincidencia en first_name/last_name)
-
-    Seguridad: Solo superusuarios.
-    """
-    if not request.user.is_superuser:
-        return Response({'error': 'Solo el administrador puede ejecutar esta acción'}, status=status.HTTP_403_FORBIDDEN)
-
-    user_id = request.data.get('user_id')
-    username = request.data.get('username', '').strip()
-    email = request.data.get('email', '').strip()
-    name = request.data.get('name', '').strip()
-
-    try:
-        qs = User.objects.all()
-        if user_id:
-            qs = qs.filter(id=user_id)
-        elif username:
-            qs = qs.filter(username__iexact=username)
-        elif email:
-            qs = qs.filter(email__iexact=email)
-        elif name:
-            qs = qs.filter(Q(first_name__icontains=name) | Q(last_name__icontains=name))
-        else:
-            return Response({'error': 'Proporciona user_id, username, email o name'}, status=status.HTTP_400_BAD_REQUEST)
-
-        count = qs.count()
-        if count == 0:
-            return Response({'success': True, 'eliminados': 0, 'detalle': 'No se encontraron usuarios a eliminar'}, status=status.HTTP_200_OK)
-
-        # Mantener lista para reporte
-        usuarios = list(qs.values_list('username', flat=True))
-        qs.delete()
-        return Response({'success': True, 'eliminados': count, 'usuarios': usuarios}, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
