@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { checkInMember, checkOutMember, getAttendances } from '../firebase';
 
 const CheckInOut = () => {
   const [scanning, setScanning] = useState(false);
@@ -12,26 +13,16 @@ const CheckInOut = () => {
   const [dateFilter, setDateFilter] = useState('');
   const html5QrcodeRef = useRef(null);
 
-  // Usar variable de entorno para la API
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   // Cargar asistencias recientes con filtros
   const cargarAsistencias = async () => {
     try {
-      const token = localStorage.getItem('token');
-      let url = `${API_URL}/api/asistencias/`;
-      const params = new URLSearchParams();
-      if (dateFilter) params.append('fecha', dateFilter);
-      if (searchTerm) params.append('search', searchTerm);
-      if (params.toString()) url += '?' + params.toString();
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Token ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAsistencias(Array.isArray(data) ? data : data.results || []);
+      const filters = {};
+      if (dateFilter) filters.fecha = dateFilter;
+      if (searchTerm) filters.search = searchTerm;
+      
+      const result = await getAttendances(filters);
+      if (result.success) {
+        setAsistencias(result.data);
       }
     } catch (err) {
       console.error('Error cargando asistencias:', err);
@@ -52,46 +43,27 @@ const CheckInOut = () => {
     setMensaje('');
 
     try {
-      const token = localStorage.getItem('token');
-      
       // Primero intentar check-in
-      let response = await fetch(`${API_URL}/api/check-in-qr/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify({ qr_code: qrCode })
-      });
-
-      let data = await response.json();
+      let result = await checkInMember(qrCode);
 
       // Si ya tiene check-in activo, intentar check-out automáticamente
-      if (!response.ok && data.error?.includes('ya hizo check-in')) {
-        response = await fetch(`${API_URL}/api/check-out-qr/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`
-          },
-          body: JSON.stringify({ qr_code: qrCode })
-        });
-        data = await response.json();
+      if (!result.success && result.hasActiveCheckIn) {
+        result = await checkOutMember(qrCode);
       }
 
-      if (response.ok) {
-        setMensaje(data.message);
-        if (data.tiempo_en_gym) {
-          setMensaje(`${data.message} - Tiempo en gym: ${data.tiempo_en_gym}`);
+      if (result.success) {
+        setMensaje(result.message);
+        if (result.tiempo_en_gym) {
+          setMensaje(`${result.message} - Tiempo en gym: ${result.tiempo_en_gym}`);
         }
         cargarAsistencias();
         setManualCode('');
       } else {
         // Mostrar mensaje especial para membresía vencida
-        if (response.status === 403) {
-          setError(`🚫 ${data.error} - ${data.miembro || ''}`);
+        if (result.error?.includes('vencida') || result.error?.includes('inexistente')) {
+          setError(`🚫 ${result.error} ${result.miembro ? '- ' + result.miembro : ''}`);
         } else {
-          setError(data.error || 'Error procesando solicitud');
+          setError(result.error || 'Error procesando solicitud');
         }
       }
     } catch (err) {
@@ -292,17 +264,21 @@ const CheckInOut = () => {
                         className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 border border-slate-700"
                         style={{ backgroundColor: asistencia.miembro_avatar_color || '#1D4ED8' }}
                       >
-                        {asistencia.miembro_nombre.charAt(0).toUpperCase()}
+                        {(asistencia.miembro_nombre || 'U').charAt(0).toUpperCase()}
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">
-                          {asistencia.miembro_nombre}
+                          {asistencia.miembro_nombre || 'N/A'}
                         </h3>
                         <div className="text-xs text-slate-400 space-y-0.5 mt-1">
                           <div className="flex items-center gap-2">
-                            <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                            {asistencia.fecha_hora_entrada ? (
+                              <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                            ) : (
+                              <span className="text-slate-400">🕐 Sin hora</span>
+                            )}
                             {asistencia.fecha_hora_salida ? (
                               <span>→ 🚪 {new Date(asistencia.fecha_hora_salida).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                             ) : (
@@ -310,7 +286,7 @@ const CheckInOut = () => {
                             )}
                           </div>
                           <p className="text-blue-400 font-semibold text-xs">
-                            ⏱ {asistencia.tiempo_en_gym}
+                            ⏱ {asistencia.tiempo_en_gym || 'En curso'}
                           </p>
                         </div>
                       </div>

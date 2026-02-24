@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SuccessModal from './SuccessModal';
+import { getProducts, getInventoryEntries, createInventoryEntry, getCurrentUser, getUser } from '../firebase';
 
 function Inventario() {
   const [productos, setProductos] = useState([]);
@@ -13,27 +14,40 @@ function Inventario() {
   // Estados para el Modal de Éxito
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const [currentUserName, setCurrentUserName] = useState('Sistema');
 
   useEffect(() => {
     cargarDatos();
+    
+    // Cargar nombre del usuario actual
+    const loadUser = async () => {
+      const user = getCurrentUser();
+      if (user) {
+        const userResult = await getUser(user.uid);
+        if (userResult.success) {
+          setCurrentUserName(userResult.data.username || userResult.data.email || 'Sistema');
+        }
+      }
+    };
+    loadUser();
   }, []);
 
   const cargarDatos = async () => {
-    const token = localStorage.getItem('token');
     try {
       // 1. Cargar Productos 
-      const resProd = await fetch(`${API_URL}/api/productos/`, { headers: { 'Authorization': `Token ${token}` } });
-      if (resProd.ok) setProductos(await resProd.json());
+      const productsResult = await getProducts();
+      if (productsResult.success) {
+        setProductos(productsResult.data);
+      }
 
       // 2. Cargar Historial de Entradas
-      const resHist = await fetch(`${API_URL}/api/inventario-entradas/`, { headers: { 'Authorization': `Token ${token}` } });
-      if (resHist.ok) {
-          const data = await resHist.json();
-          setHistorial(data.results || data);
+      const entriesResult = await getInventoryEntries();
+      if (entriesResult.success) {
+        setHistorial(entriesResult.data);
       }
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
   const abrirModal = (prod) => {
@@ -50,25 +64,21 @@ function Inventario() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${API_URL}/api/inventario-entradas/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-        body: JSON.stringify({
-            producto: selectedProduct.id,
-            cantidad: parseInt(cantidadAgregar)
-        })
+      const result = await createInventoryEntry({
+        productoId: selectedProduct.id,
+        cantidad: parseInt(cantidadAgregar),
+        usuarioNombre: currentUserName
       });
 
-      if (response.ok) {
+      if (result.success) {
         setSuccessMessage(`¡Stock actualizado! Se agregaron ${cantidadAgregar} unidades.`);
         setShowSuccess(true);
         setShowModal(false);
         setCantidadAgregar('');
         cargarDatos(); 
       } else {
-        setSuccessMessage("Error al registrar entrada");
+        setSuccessMessage(result.error || "Error al registrar entrada");
         setShowSuccess(true);
       }
     } catch (error) { 
@@ -143,16 +153,19 @@ function Inventario() {
                 {historial.length === 0 ? (
                     <tr><td colSpan="4" className="text-center py-4 italic">No hay registros aún.</td></tr>
                 ) : (
-                    historial.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-700 hover:bg-slate-700/50">
-                        <td className="px-4 py-3 text-xs">
-                            {new Date(item.fecha).toLocaleDateString()} {new Date(item.fecha).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                        </td>
-                        <td className="px-4 py-3 text-white">{item.producto_nombre}</td>
-                        <td className="px-4 py-3 text-right text-emerald-400 font-bold">+{item.cantidad}</td>
-                        <td className="px-4 py-3 text-xs text-slate-500 uppercase">{item.usuario_nombre || 'Sistema'}</td>
-                    </tr>
-                    ))
+                    historial.map((item) => {
+                      const fechaObj = item.fecha?.toDate?.() || new Date(item.fecha || Date.now());
+                      return (
+                        <tr key={item.id} className="border-b border-slate-700 hover:bg-slate-700/50">
+                            <td className="px-4 py-3 text-xs">
+                                {fechaObj.toLocaleDateString()} {fechaObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                            </td>
+                            <td className="px-4 py-3 text-white">{item.producto_nombre}</td>
+                            <td className="px-4 py-3 text-right text-emerald-400 font-bold">+{item.cantidad}</td>
+                            <td className="px-4 py-3 text-xs text-slate-500 uppercase">{item.usuario_nombre || 'Sistema'}</td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>

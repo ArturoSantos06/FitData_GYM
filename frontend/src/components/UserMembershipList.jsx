@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 function UserMembershipList({ refreshTrigger }) {
   const [assignments, setAssignments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [usersById, setUsersById] = useState({});
   
-  const [sortBy, setSortBy] = useState('recent'); 
-
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const [sortBy, setSortBy] = useState('recent');
 
   const fetchAssignments = async () => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${API_URL}/api/user-memberships/`, {
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+      const [membershipsSnapshot, usersSnapshot] = await Promise.all([
+        getDocs(collection(db, 'memberships')),
+        getDocs(collection(db, 'users'))
+      ]);
+
+      const data = membershipsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      const usersMap = {};
+      usersSnapshot.docs.forEach(docSnap => {
+        usersMap[docSnap.id] = docSnap.data();
       });
-      if (!response.ok) throw new Error('Error al cargar asignaciones');
-      const data = await response.json();
-      setAssignments(data.results || data);
+
+      setAssignments(data);
+      setUsersById(usersMap);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -31,14 +40,17 @@ function UserMembershipList({ refreshTrigger }) {
 
   const filteredAssignments = assignments.filter(item => {
     const search = searchTerm.toLowerCase();
-    const estado = item.is_active ? 'activo' : 'vencido';
-    const nombreCompleto = item.user_full_name ? item.user_full_name.toLowerCase() : '';
-    const userId = item.user ? item.user.toString() : '';
+    const estado = item.isActive ? 'activo' : 'vencido';
+    const userData = usersById[item.userId] || {};
+    const nombre = (item.userName || userData.username || '').toLowerCase();
+    const nombreCompleto = (item.userFullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim()).toLowerCase();
+    const userId = item.userId ? item.userId.toString() : '';
+    const membershipName = (item.membershipTypeName || item.membershipName || '').toLowerCase();
     
     return (
-        item.user_name.toLowerCase().includes(search) ||
+        nombre.includes(search) ||
         nombreCompleto.includes(search) ||
-        item.membership_name.toLowerCase().includes(search) ||
+        membershipName.includes(search) ||
         estado.includes(search) ||
         userId.includes(search)
     );
@@ -46,12 +58,12 @@ function UserMembershipList({ refreshTrigger }) {
 
   const sortedAssignments = [...filteredAssignments].sort((a, b) => {
     if (sortBy === 'name') {
-      return a.user_name.localeCompare(b.user_name);
+      return (a.userName || '').localeCompare(b.userName || '');
     } 
     if (sortBy === 'expiration') {
-      return new Date(a.end_date) - new Date(b.end_date);
+      return new Date(a.endDate) - new Date(b.endDate);
     }
-    return new Date(b.start_date) - new Date(a.start_date);
+    return new Date(b.startDate) - new Date(a.startDate);
   });
 
   return (
@@ -112,39 +124,43 @@ function UserMembershipList({ refreshTrigger }) {
             {sortedAssignments.map((item) => (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
                 <td className="py-3 px-6">
-                  <span className="font-mono text-teal-400 font-semibold">{item.user}</span>
+                  <span className="font-mono text-teal-400 font-semibold">{item.userId}</span>
                 </td>
                 <td className="py-3 px-6 text-left">
                   <div className="flex flex-col">
-                    <span className="font-bold text-white text-sm">{item.user_name}</span>
-                    {item.user_full_name && (
+                    <span className="font-bold text-white text-sm">
+                      {item.userName || usersById[item.userId]?.username || 'N/A'}
+                    </span>
+                    {(item.userFullName || usersById[item.userId]?.firstName || usersById[item.userId]?.lastName) && (
                       <span className="text-xs text-gray-400 uppercase tracking-wide">
-                        {item.user_full_name}
+                        {item.userFullName || `${usersById[item.userId]?.firstName || ''} ${usersById[item.userId]?.lastName || ''}`.trim()}
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="py-3 px-6">
-                  <span className="text-gray-300 text-sm">{item.user_email || 'N/A'}</span>
+                  <span className="text-gray-300 text-sm">
+                    {item.userEmail || usersById[item.userId]?.email || 'N/A'}
+                  </span>
                 </td>
                 <td className="py-3 px-6">
-                  {item.membership_name}
+                  {item.membershipTypeName || item.membershipName || 'N/A'}
                 </td>
                 <td className="py-3 px-6">
-                  {item.start_date}
+                  {new Date(item.startDate).toLocaleDateString()}
                 </td>
                 <td className="py-3 px-6 font-mono text-slate-300">
-                  {item.end_date}
+                  {new Date(item.endDate).toLocaleDateString()}
                 </td>
                 <td className="py-3 px-6 text-center">
                   <span
                     className={`py-1 px-3 rounded-full text-xs font-bold ${
-                      item.is_active
+                      item.isActive
                         ? 'bg-green-700 text-green-100 border border-green-500'
                         : 'bg-red-700 text-red-100 border border-red-500'
                     }`}
                   >
-                    {item.is_active ? 'ACTIVO' : 'VENCIDO'}
+                    {item.isActive ? 'ACTIVO' : 'VENCIDO'}
                   </span>
                 </td>
               </tr>

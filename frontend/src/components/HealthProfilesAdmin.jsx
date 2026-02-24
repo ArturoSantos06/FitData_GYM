@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 function HealthProfilesAdmin({ refreshTrigger }) {
   const [profiles, setProfiles] = useState([]);
@@ -10,24 +10,23 @@ function HealthProfilesAdmin({ refreshTrigger }) {
   const [filter, setFilter] = useState('');
   const [lastTrigger, setLastTrigger] = useState(refreshTrigger);
 
-  const loadProfiles = () => {
+  const loadProfiles = async () => {
     console.log('📋 HealthProfilesAdmin: Cargando perfiles...');
-    const token = localStorage.getItem('token');
-    if (!token) { setError('Sesión no válida'); setLoading(false); return; }
     setLoading(true);
     setError('');
-    const timestamp = new Date().getTime();
-    fetch(`${API_URL}/api/health-profiles/?_t=${timestamp}`, { 
-      headers: { Authorization: `Token ${token}` } 
-    })
-      .then(r => r.json().then(data => ({ ok: r.ok, data })))
-      .then(res => {
-        if (!res.ok) throw new Error('Error cargando perfiles');
-        console.log('✅ Perfiles cargados:', res.data.length);
-        setProfiles(res.data);
-      })
-      .catch(err => setError(err.message))
-      .finally(()=>setLoading(false));
+    try {
+      const querySnapshot = await getDocs(collection(db, 'healthProfiles'));
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log('✅ Perfiles cargados:', data.length);
+      setProfiles(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -45,7 +44,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
 
   const filtered = profiles.filter(p => {
     if (!filter) return true;
-    return (p.miembro_nombre || '').toLowerCase().includes(filter.toLowerCase());
+    return (p.memberName || '').toLowerCase().includes(filter.toLowerCase());
   });
 
   return (
@@ -67,8 +66,8 @@ function HealthProfilesAdmin({ refreshTrigger }) {
         {filtered.map(p => (
           <div key={p.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between">
             <div>
-              <p className="text-white font-semibold">{p.miembro_nombre}</p>
-              <p className="text-xs text-slate-400">Actualizado: {new Date(p.actualizado).toLocaleString()}</p>
+              <p className="text-white font-semibold">{p.memberName}</p>
+              <p className="text-xs text-slate-400">Actualizado: {new Date(p.createdAt?.toDate?.() || new Date()).toLocaleString()}</p>
             </div>
             <button
               onClick={()=>setSelected(p)}
@@ -85,33 +84,33 @@ function HealthProfilesAdmin({ refreshTrigger }) {
               onClick={()=>setSelected(null)}
               className="absolute top-3 right-3 text-slate-400 hover:text-white"
             >✕</button>
-            <h2 className="text-xl font-bold text-white mb-4">Ficha Salud: {selected.miembro_nombre}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Ficha Salud: {selected.memberName}</h2>
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Edad</p>
-                  <p className="text-white font-semibold">{selected.edad ?? '—'}</p>
+                  <p className="text-white font-semibold">{selected.age ?? '—'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Condición del Corazón</p>
-                  <p className="text-white font-semibold">{selected.condicion_corazon ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.heart_condition ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Presión Alta</p>
-                  <p className="text-white font-semibold">{selected.presion_alta ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.high_blood_pressure ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Lesiones Físicas Recientes</p>
-                  <p className="text-white font-semibold">{selected.lesiones_recientes ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.recent_injuries ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Medicamentos</p>
-                  <p className="text-white font-semibold">{selected.medicamentos ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.medications ? 'Sí' : 'No'}</p>
                 </div>
               </div>
               <div>
                 <p className="text-slate-400 text-xs mb-2">Información adicional</p>
-                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap">{selected.comentarios || 'Sin información adicional'}</div>
+                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap">{selected.additional_info || 'Sin información adicional'}</div>
               </div>
             </div>
             <div className="mt-6 flex justify-end">

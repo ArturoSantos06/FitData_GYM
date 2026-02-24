@@ -19,7 +19,7 @@ function UserSelectionModal({ onClose }) {
         <div className="space-y-4">
           <button 
             onClick={() => {
-              localStorage.removeItem('token'); 
+              localStorage.removeItem('firebaseUser'); 
               navigate('/admin');
             }}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-purple-500 hover:bg-gray-700 transition-all duration-300"
@@ -803,7 +803,7 @@ function LandingPage() {
 
   // NUEVA LÓGICA DE SEGURIDAD
   useEffect(() => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('firebaseUser');
   }, []);
 
   return (

@@ -15,16 +15,26 @@ export {
   // Users
   createUser,
   getUser,
+  getUserByEmail,
+  getUsers,
   updateUser,
   
   // Members
   getMembers,
   getMemberByUserId,
+  getMemberByEmail,
   createMember,
   
   // Memberships
   getUserMemberships,
   createMembership,
+  assignMembership,
+  
+  // Membership Types
+  getMembershipTypes,
+  createMembershipType,
+  updateMembershipType,
+  deleteMembershipType,
   
   // Products
   getProducts,
@@ -32,13 +42,25 @@ export {
   updateProduct,
   deleteProduct,
   
+  // Inventory
+  getInventoryEntries,
+  createInventoryEntry,
+  
   // Attendance
   createAttendance,
   updateAttendanceCheckout,
+  getMemberByQRCode,
+  checkInMember,
+  checkOutMember,
+  getAttendances,
   
   // Sales
   createSale,
-  getSales
+  getSales,
+  
+  // Health Profiles
+  createHealthProfile,
+  getHealthProfileByMemberId
 } from './firestore';
 
 // Export Storage services

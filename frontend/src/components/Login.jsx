@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, createUser } from '../firebase';
+import { loginUser, getUser, getUserByEmail, createUser, logoutUser } from '../firebase';
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -19,25 +19,52 @@ function Login({ onLogin }) {
 
     try {
       const result = await loginUser(email, password);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
 
-      // Guardar datos del usuario en Firestore si no existen
       const { user } = result;
-      await createUser(user.uid, {
-        email: user.email,
-        displayName: user.displayName || email.split('@')[0],
-        role: 'user'
-      });
+      
+      // Verificar si es admin por UID
+      const userDoc = await getUser(user.uid);
+      const roleFromUid = userDoc.success ? userDoc.data?.role : null;
+
+      // Si no tiene rol por UID, buscar por email
+      if (roleFromUid !== 'admin') {
+        // Si el email es admin@fitdata.gym, crear documento automáticamente
+        if (user.email === 'admin@fitdata.gym') {
+          await createUser(user.uid, {
+            email: user.email,
+            displayName: user.displayName || email.split('@')[0],
+            role: 'admin'
+          });
+        } else {
+          // Buscar por email como fallback para otros usuarios
+          const emailDoc = await getUserByEmail(user.email);
+          const roleFromEmail = emailDoc.success ? emailDoc.data?.role : null;
+
+          if (roleFromEmail === 'admin') {
+            if (!userDoc.success) {
+              await createUser(user.uid, {
+                email: user.email,
+                displayName: user.displayName || email.split('@')[0],
+                role: 'admin'
+              });
+            }
+          } else {
+            await logoutUser();
+            throw new Error('Acceso denegado: solo administradores');
+          }
+        }
+      }
 
       // Guardar token en localStorage (Firebase maneja automáticamente)
       localStorage.setItem('firebaseUser', JSON.stringify({
         uid: user.uid,
         email: user.email
       }));
-      
+
       onLogin();
 
     } catch (err) {
@@ -45,7 +72,7 @@ function Login({ onLogin }) {
         ? 'Usuario o contraseña incorrectos'
         : err.message.includes('auth/invalid-email')
         ? 'Email inválido'
-        : 'Error al iniciar sesión: ' + err.message;
+        : err.message;
       
       setError(errorMessage);
       console.error(err);

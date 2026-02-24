@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { getSales } from '../firebase';
 
 const HistorialVentas = ({ reloadTrigger }) => {
     const [ventas, setVentas] = useState([]);
     const [filtro, setFiltro] = useState('');
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     useEffect(() => {
         const fetchVentas = async () => {
-            const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_URL}/api/ventas/`, {
-                    headers: { 'Authorization': `Token ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setVentas(data.results || data);
+                const result = await getSales();
+                if (result.success) {
+                    setVentas(result.data);
                 }
             } catch (error) {
                 console.error("Error cargando historial:", error);
@@ -26,14 +22,15 @@ const HistorialVentas = ({ reloadTrigger }) => {
     const filasProcesadas = ventas.flatMap(venta => {
         try {
             const productos = JSON.parse(venta.detalle_productos.replace(/'/g, '"'));
+            const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || Date.now());
             
             return productos.map(prod => ({
                 id_unico: `${venta.id}-${prod.id}`,
                 
                 folio: venta.folio || 'PENDIENTE',
-                nombre_completo: venta.cliente_nombre_completo,
+                nombre_completo: venta.cliente_username || 'Cliente anónimo',
                 
-                fecha: new Date(venta.fecha).toLocaleDateString() + ' ' + new Date(venta.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                fecha: fechaObj.toLocaleDateString() + ' ' + fechaObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                 producto_nombre: prod.nombre || 'Producto eliminado',
                 cantidad: prod.cantidad,
                 precio_unitario: prod.precio,

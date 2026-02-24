@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCardClient from './ProductCardClient';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { getProducts, getUser, getSales, getCurrentUser } from '../firebase';
 
 function ClientStore() {
   const [products, setProducts] = useState([]);
@@ -10,53 +9,47 @@ function ClientStore() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const headers = token ? { Authorization: `Token ${token}` } : {};
-    // Cargar productos
-    fetch(`${API_URL}/api/productos/`, { headers })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => {
-        const arr = Array.isArray(data) ? data : (data?.results || []);
-        const mapped = arr.map(p => ({
-          title: p.nombre || 'Producto',
-          price: parseFloat(p.precio || 0),
-          stock: parseInt(p.stock || 0),
-          image: (() => {
-            const img = p.imagen || null;
-            if (!img) return null;
-            if (typeof img === 'string' && img.startsWith('http')) return img;
-            const path = (typeof img === 'string' && img.startsWith('/')) ? img : `/${img}`;
-            return `${API_URL}${path}`;
-          })(),
-        }));
-        setProducts(mapped);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-
-    // Cargar usuario y ventas para historial
-    const cargarHistorial = async () => {
-      if (!token) return;
+    const loadData = async () => {
       try {
-        const meRes = await fetch(`${API_URL}/api/users/me/`, { headers });
-        if (!meRes.ok) throw new Error('me failed');
-        const u = await meRes.json();
-        setUser(u);
-
-        const ventasRes = await fetch(`${API_URL}/api/ventas/`, { headers });
-        if (!ventasRes.ok) throw new Error('ventas failed');
-        const dataVentas = await ventasRes.json();
-        const ventasArr = Array.isArray(dataVentas) ? dataVentas : (dataVentas?.results || []);
-
-        const mySales = ventasArr.filter(s => (s.cliente === u.id) || (s.cliente_username === u.username));
-        const sorted = mySales
-          .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-        setSales(sorted);
-      } catch {
+        // Cargar productos
+        const productsResult = await getProducts();
+        if (productsResult.success) {
+          const mapped = productsResult.data.map(p => ({
+            title: p.nombre || 'Producto',
+            price: parseFloat(p.precio || 0),
+            stock: parseInt(p.stock || 0),
+            image: p.imagen || null, // Firebase Storage URLs already complete
+          }));
+          setProducts(mapped);
+        }
+        
+        // Cargar usuario y ventas para historial
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          const userResult = await getUser(currentUser.uid);
+          if (userResult.success) {
+            setUser(userResult.data);
+            
+            // Cargar ventas del usuario
+            const salesResult = await getSales({ userId: currentUser.uid });
+            if (salesResult.success) {
+              const sorted = salesResult.data.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                return dateB - dateA;
+              });
+              setSales(sorted);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+      } finally {
+        setLoading(false);
       }
     };
-
-    cargarHistorial();
+    
+    loadData();
   }, []);
 
   if (loading) {
@@ -90,7 +83,7 @@ function ClientStore() {
               const parsed = JSON.parse(String(s.detalle_productos || '[]').replace(/'/g, '"'));
               if (Array.isArray(parsed)) items = parsed;
             } catch {}
-            const fechaObj = new Date(s.fecha);
+            const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || Date.now());
             const fechaStr = fechaObj.toLocaleDateString('es-MX');
             const horaStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return items.map((it, idx) => (

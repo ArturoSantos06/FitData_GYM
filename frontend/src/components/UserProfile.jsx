@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { getUser, getMemberByUserId, createHealthProfile, getHealthProfileByMemberId, updateUser } from '../firebase';
 
 function HealthForm() {
     const [formData, setFormData] = useState({
@@ -19,27 +18,22 @@ function HealthForm() {
     });
 
     const [status, setStatus] = useState('idle');
-        useEffect(() => {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-                let currentUser = null;
-                fetch(`${API_URL}/api/users/me/`, { headers: { Authorization: `Token ${token}` } })
-                    .then(res => res.ok ? res.json() : Promise.reject())
-                    .then(userData => {
-                        currentUser = userData;
-                        const nombreCompleto = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username;
-                        setFormData(prev => ({ ...prev, nombre: nombreCompleto }));
-                        return fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } });
-                    })
-                    .then(res => res.ok ? res.json() : Promise.reject())
-                    .then(miembros => {
-                        const m = miembros.find(x => x.user === currentUser.id);
-                        if (m && m.telefono) {
-                            setFormData(prev => ({ ...prev, telefono: m.telefono }));
-                        }
-                    })
-                    .catch(() => {});
-        }, []);
+    useEffect(() => {
+        const loadUserData = async () => {
+            try {
+                const userResult = await getUser();
+                if (userResult.success && userResult.data) {
+                    const userData = userResult.data;
+                    setFormData(prev => ({ ...prev, nombre: userData.nombre || userData.email }));
+                    const memberResult = await getMemberByUserId(userData.uid);
+                    if (memberResult.success && memberResult.data && memberResult.data.telefono) {
+                        setFormData(prev => ({ ...prev, telefono: memberResult.data.telefono }));
+                    }
+                }
+            } catch (err) { console.error(err); }
+        };
+        loadUserData();
+    }, []);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         if (name === 'telefono') return; 
@@ -52,7 +46,7 @@ function HealthForm() {
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.nombre || !formData.telefono || !formData.edad) {
             alert("Por favor, complete Nombre, Edad y Teléfono.");
@@ -64,51 +58,47 @@ function HealthForm() {
         }
 
         setStatus('loading');
-                const token = localStorage.getItem('token');
-                if (!token) { alert('Sesión expirada'); return; }
-                const payload = {
-                    edad: formData.edad ? parseInt(formData.edad,10) : null,
-                    condicion_corazon: formData.condicionCorazon,
-                    presion_alta: formData.presionAlta,
-                    lesiones_recientes: formData.lesionesRecientes,
-                    medicamentos: formData.medicamentos,
-                    comentarios: formData.comentarios
-                };
-                fetch(`${API_URL}/api/health-profiles/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                })
-                .then(r => r.json().then(data => ({ ok: r.ok, data })))
-                .then(res => {
-                    if (!res.ok) throw new Error(res.data.error || 'Error guardando ficha');
-                    setStatus('success');
-                })
-                .catch(err => {
-                    alert(err.message);
-                    setStatus('idle');
-                });
+        try {
+            const result = await createHealthProfile({
+                age: formData.edad ? parseInt(formData.edad, 10) : null,
+                heart_condition: formData.condicionCorazon,
+                high_blood_pressure: formData.presionAlta,
+                recent_injuries: formData.lesionesRecientes,
+                medications: formData.medicamentos,
+                additional_info: formData.comentarios
+            });
+            if (!result.success) throw new Error(result.error || 'Error guardando ficha');
+            setStatus('success');
+        } catch (err) {
+            alert(err.message);
+            setStatus('idle');
+        }
     };
         useEffect(() => {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            fetch(`${API_URL}/api/health-profiles/`, { headers: { Authorization: `Token ${token}` } })
-                .then(r => r.ok ? r.json() : [])
-                .then(data => {
-                    if (Array.isArray(data) && data.length > 0) {
-                        const hp = data[0];
-                        setFormData(prev => ({
-                            ...prev,
-                            edad: hp.edad || '',
-                            condicionCorazon: hp.condicion_corazon,
-                            presionAlta: hp.presion_alta,
-                            lesionesRecientes: hp.lesiones_recientes,
-                            medicamentos: hp.medicamentos,
-                            comentarios: hp.comentarios || ''
-                        }));
+            const loadHealthProfile = async () => {
+                try {
+                    const userResult = await getUser();
+                    if (userResult.success && userResult.data) {
+                        const memberResult = await getMemberByUserId(userResult.data.uid);
+                        if (memberResult.success && memberResult.data && memberResult.data.id) {
+                            const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
+                            if (hpResult.success && hpResult.data) {
+                                const hp = hpResult.data;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    edad: hp.age || '',
+                                    condicionCorazon: hp.heart_condition || false,
+                                    presionAlta: hp.high_blood_pressure || false,
+                                    lesionesRecientes: hp.recent_injuries || false,
+                                    medicamentos: hp.medications || false,
+                                    comentarios: hp.additional_info || ''
+                                }));
+                            }
+                        }
                     }
-                })
-                .catch(()=>{});
+                } catch (err) { console.error(err); }
+            };
+            loadHealthProfile();
         }, []);
 
     const inputClass = "w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-slate-500";
@@ -285,18 +275,6 @@ const ProfileHeader = ({ user, onNavigate }) => {
     setBgColor(val);
     localStorage.setItem(`avatar_bg_color_${user.id}`, val);
     setTimeout(() => setShowColors(false), 150);
-        // Enviar al backend
-        const token = localStorage.getItem('token');
-        if (token) {
-            fetch(`${API_URL}/api/miembros/set_color/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Token ${token}`
-                },
-                body: JSON.stringify({ color: val })
-            }).catch(()=>{});
-        }
   };
 
   return (
@@ -400,16 +378,16 @@ const PersonalData = ({ user, onSave, onBack }) => {
         const [miembroId, setMiembroId] = useState(null);
 
         useEffect(() => {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-                fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } })
-                    .then(r => r.ok ? r.json() : [])
-                    .then(data => {
-                        const m = data.find(x => x.email === editForm.email);
-                        if (m) setMiembroId(m.id);
-                    })
-                    .catch(()=>{});
-        }, []);
+            const loadMiembro = async () => {
+                try {
+                    const memberResult = await getMemberByUserId(editForm.id);
+                    if (memberResult.success && memberResult.data) {
+                        setMiembroId(memberResult.data.id);
+                    }
+                } catch (err) { console.error(err); }
+            };
+            if (editForm.id) loadMiembro();
+        }, [editForm.id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -426,30 +404,9 @@ const PersonalData = ({ user, onSave, onBack }) => {
         setErrorMsg(''); setSuccessMsg('');
         setSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('Sesión expirada');
-            const userRes = await fetch(`${API_URL}/api/users/${editForm.id}/`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: editForm.email, username: editForm.username })
-            });
-            const userData = await userRes.json();
-            if (!userRes.ok) {
-                if (userData.email_error) throw new Error(userData.email_error[0]);
-                if (userData.username) throw new Error(userData.username[0]);
-                throw new Error(userData.detail || 'Error actualizando usuario');
-            }
-            if (miembroId) {
-                const miembroRes = await fetch(`${API_URL}/api/miembros/${miembroId}/`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telefono: editForm.telefono })
-                });
-                if (!miembroRes.ok) {
-                    throw new Error('Error actualizando teléfono');
-                }
-            }
-            onSave(editForm); 
+            const result = await updateUser({ email: editForm.email, telefono: editForm.telefono });
+            if (!result.success) throw new Error(result.error);
+            onSave(editForm);
             setSuccessMsg('Datos actualizados');
         } catch (err) {
             setErrorMsg(err.message);
@@ -563,51 +520,30 @@ function UserProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const token = localStorage.getItem('token');
-                if (!token) {
+                const userResult = await getUser();
+                if (!userResult.success) {
                     setError('No hay sesión activa');
                     setLoading(false);
                     return;
                 }
 
-                const userResponse = await fetch(`${API_URL}/api/users/me/`, {
-                    headers: {
-                        'Authorization': `Token ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!userResponse.ok) {
-                    throw new Error('Error al cargar datos del usuario');
-                }
-
-                const userData = await userResponse.json();
+                const userData = userResult.data;
                 setUser({
-                    id: userData.id,
-                    nombre: `${userData.first_name} ${userData.last_name}`.trim() || userData.username,
+                    id: userData.uid,
+                    nombre: userData.nombre || userData.email,
                     email: userData.email,
                     telefono: userData.phone || '',
-                    username: userData.username
+                    username: userData.email.split('@')[0]
                 });
 
                 try {
-                    const miembrosResponse = await fetch(`${API_URL}/api/miembros/`, {
-                        headers: {
-                            'Authorization': `Token ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (miembrosResponse.ok) {
-                        const miembrosData = await miembrosResponse.json();
-                        const miembroEncontrado = miembrosData.find(m => m.email === userData.email);
-                        if (miembroEncontrado) {
-                            setMiembro(miembroEncontrado);
-                            setUser(prev => ({
-                                ...prev,
-                                telefono: miembroEncontrado.telefono || prev.telefono
-                            }));
-                        }
+                    const memberResult = await getMemberByUserId(userData.uid);
+                    if (memberResult.success && memberResult.data) {
+                        setMiembro(memberResult.data);
+                        setUser(prev => ({
+                            ...prev,
+                            telefono: memberResult.data.telefono || prev.telefono
+                        }));
                     }
                 } catch (err) {
                     console.log('No se encontró perfil de miembro:', err);
@@ -626,27 +562,8 @@ function UserProfile() {
 
     const handleUpdateUser = async (updatedData) => {
         try {
-            const token = localStorage.getItem('token');
-            
-            if (miembro) {
-                const response = await fetch(`${API_URL}/api/miembros/${miembro.id}/`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        telefono: updatedData.telefono
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Error al actualizar datos');
-                }
-
-                const updatedMiembro = await response.json();
-                setMiembro(updatedMiembro);
-            }
+            const result = await updateUser({ email: updatedData.email, telefono: updatedData.telefono });
+            if (!result.success) throw new Error(result.error);
 
             setUser(updatedData);
             alert("¡Datos actualizados correctamente!");
@@ -741,26 +658,18 @@ function ChangePassword({ onBack }) {
         }
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/api/change-password/`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data?.error || 'No se pudo actualizar');
+            const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
+            const { auth } = await import('../firebase/config');
+            const user = auth.currentUser;
+            if (user) {
+                const credential = EmailAuthProvider.credential(user.email, currentPassword);
+                await reauthenticateWithCredential(user, credential);
+                await updatePassword(user, newPassword);
+                setSuccess('Contraseña actualizada correctamente');
+                setCurrentPassword(''); setNewPassword(''); setConfirm('');
             }
-            if (data?.token) {
-                localStorage.setItem('token', data.token);
-            }
-            setSuccess('Contraseña actualizada correctamente');
-            setCurrentPassword(''); setNewPassword(''); setConfirm('');
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'Error al cambiar contraseña');
         } finally {
             setLoading(false);
         }

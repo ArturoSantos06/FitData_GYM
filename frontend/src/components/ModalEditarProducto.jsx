@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import SuccessModal from './SuccessModal';
+import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCurrentUser } from '../firebase';
 
 const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado }) => {
     const [datos, setDatos] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (producto) setDatos({ nombre: producto.nombre, precio: producto.precio, stock: producto.stock, imagen: null });
@@ -17,43 +18,57 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.append('nombre', datos.nombre);
-        formData.append('precio', datos.precio);
-        formData.append('stock', datos.stock);
-        if (datos.imagen) formData.append('imagen', datos.imagen);
-
-        const token = localStorage.getItem('token');
-
+        setIsLoading(true);
+        
         try {
-            const response = await fetch(`${API_URL}/api/productos/${producto.id}/`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Token ${token}` },
-                body: formData
-            });
-            if (response.ok) {
-                const diferencia = parseInt(datos.stock) - parseInt(producto.stock);
-                
-                if (diferencia !== 0) {
-                    try {
-                        await fetch(`${API_URL}/api/inventario-entradas/`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-                            body: JSON.stringify({
-                                producto: producto.id,
-                                cantidad: Math.abs(diferencia)
-                            })
-                        });
-                    } catch (inventoryError) {
-                        console.error('Error registrando entrada de inventario:', inventoryError);
-                    }
+            // 1. Actualizar datos del producto
+            const updateData = {
+                nombre: datos.nombre,
+                precio: parseFloat(datos.precio),
+                stock: parseInt(datos.stock)
+            };
+            
+            // 2. Si hay imagen, subirla
+            if (datos.imagen) {
+                const uploadResult = await uploadProductImage(datos.imagen, producto.id);
+                if (uploadResult.success) {
+                    updateData.imagen = uploadResult.url;
                 }
-                
-                onProductoActualizado();
-                onClose(); 
-                setShowSuccess(true); 
-            } else { alert("Error al actualizar"); }
-        } catch (error) { console.error(error); }
+            }
+            
+            // 3. Actualizar producto
+            const updateResult = await updateProduct(producto.id, updateData);
+            if (!updateResult.success) {
+                throw new Error(updateResult.error || 'Error al actualizar producto');
+            }
+            
+            // 4. Registrar cambio de stock en inventario
+            const diferencia = parseInt(datos.stock) - parseInt(producto.stock);
+            
+            if (diferencia !== 0) {
+                try {
+                    const currentUser = getCurrentUser();
+                    const userResult = await getUser(currentUser.uid);
+                    const userName = userResult.success ? (userResult.data.username || userResult.data.email) : 'Sistema';
+                    
+                    await createInventoryEntry({
+                        productoId: producto.id,
+                        cantidad: Math.abs(diferencia),
+                        usuarioNombre: userName
+                    });
+                } catch (inventoryError) {
+                    console.error('Error registrando entrada de inventario:', inventoryError);
+                }
+            }
+            
+            onProductoActualizado();
+            onClose(); 
+            setShowSuccess(true);
+            setIsLoading(false);
+        } catch (error) { 
+            alert('Error: ' + error.message);
+            setIsLoading(false);
+        }
     };
 
     // Estilos

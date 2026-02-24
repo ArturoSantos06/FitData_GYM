@@ -32,15 +32,15 @@ function AdminArea() {
   }, [refreshHealthProfiles]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setIsAuthenticated(true);
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
     setIsLoading(false);
   }, []);
 
   const handleLogin = () => setIsAuthenticated(true);
   
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('firebaseUser');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
     window.location.href = "/"; 

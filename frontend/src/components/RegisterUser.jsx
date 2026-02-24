@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
-import SuccessModal from './SuccessModal'; 
+import SuccessModal from './SuccessModal';
+import { registerUser, createUser, createMember, createMembership, getProducts, getMemberByEmail, createHealthProfile } from '../firebase';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config'; 
 
 // Formulario rápido para ficha médica inicial administrada
 function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
@@ -17,20 +20,17 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     comentarios: ''
   });
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   useEffect(() => {
     if (!miembroEmail) return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    fetch(`${API_URL}/api/miembros/?search=${encodeURIComponent(miembroEmail)}`, { headers: { Authorization: `Token ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(list => {
-        const arr = Array.isArray(list.results) ? list.results : list;
-        const found = arr.find(m => m.email.toLowerCase() === miembroEmail.toLowerCase());
-        if (found) setMiembroId(found.id);
-      })
-      .catch(()=>{});
+    
+    const fetchMember = async () => {
+      const result = await getMemberByEmail(miembroEmail);
+      if (result.success) {
+        setMiembroId(result.data.id);
+      }
+    };
+    
+    fetchMember();
   }, [miembroEmail]);
 
   const handleChange = (e) => {
@@ -42,7 +42,7 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!miembroId) {
@@ -54,26 +54,33 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
       return;
     }
     setLoading(true);
-    const token = localStorage.getItem('token');
-    fetch(`${API_URL}/api/health-profiles/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
-      body: JSON.stringify({ miembro_id: miembroId, ...data, edad: parseInt(data.edad,10) })
-    })
-      .then(r => r.json().then(d => ({ ok: r.ok, d })))
-      .then(res => {
-        if (!res.ok) throw new Error(res.d.error || 'Error guardando ficha');
-        console.log('✅ Ficha médica guardada exitosamente');
-        setSaved(true);
-        if (typeof onSaved === 'function') {
-          console.log('🔄 [LOG] AdminHealthForm: Llamando onSaved para refrescar Fichas Médicas');
-          onSaved();
-        } else {
-          console.log('⚠️ [LOG] AdminHealthForm: onSaved no es función');
-        }
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    
+    const healthData = {
+      memberId: miembroId,
+      edad: parseInt(data.edad, 10),
+      condicion_corazon: data.condicion_corazon,
+      presion_alta: data.presion_alta,
+      lesiones_recientes: data.lesiones_recientes,
+      medicamentos: data.medicamentos,
+      comentarios: data.comentarios
+    };
+    
+    const result = await createHealthProfile(healthData);
+    
+    if (result.success) {
+      console.log('✅ Ficha médica guardada exitosamente');
+      setSaved(true);
+      if (typeof onSaved === 'function') {
+        console.log('🔄 [LOG] AdminHealthForm: Llamando onSaved para refrescar Fichas Médicas');
+        onSaved();
+      } else {
+        console.log('⚠️ [LOG] AdminHealthForm: onSaved no es función');
+      }
+    } else {
+      setError(result.error || 'Error guardando ficha');
+    }
+    
+    setLoading(false);
   };
 
   if (saved) {
@@ -169,17 +176,20 @@ function RegisterUser({ onUserRegistered }) {
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/memberships/`);
-        if (response.ok) {
-          const data = await response.json();
-          setMemberships(data.results || data);
-        }
-      } catch (err) { console.error(err); }
+        // Obtener tipos de membresía de Firestore
+        const q = query(collection(db, 'membershipTypes'));
+        const querySnapshot = await getDocs(q);
+        const types = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setMemberships(types);
+      } catch (err) {
+        console.error('Error cargando membresías:', err);
+      }
     };
     fetchMemberships();
   }, []);
@@ -201,8 +211,6 @@ function RegisterUser({ onUserRegistered }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const token = localStorage.getItem('token');
-
     if (!formData.membership_id) {
         setErrorTitle('Faltan Datos');
         setErrorMessage('Por favor selecciona una membresía.');
@@ -219,73 +227,106 @@ function RegisterUser({ onUserRegistered }) {
     }
 
     setIsLoading(true);
-    const payload = {
-        ...formData,
-        monto_recibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice
-    };
 
     try {
-      const response = await fetch(`${API_URL}/api/users/register-with-membership/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        let titulo = 'Error de Registro';
-        let mensaje = 'Ocurrió un problema.';
-
-        if (data.username) {
-            titulo = 'Usuario No Disponible';
-            mensaje = `El usuario "${formData.username}" ya existe.`;
-        } else if (data.email_error) {
-            titulo = 'Correo Duplicado';
-            mensaje = data.email_error[0];
-        } else if (data.fullname_error) {
-            titulo = 'Cliente Ya Registrado';
-            mensaje = data.fullname_error[0];
-        } else if (data.detail) {
-            mensaje = data.detail;
-        } else if (data.error) {
-            mensaje = data.error;
+      // 1. Registrar usuario en Firebase Auth
+      const displayName = `${formData.first_name} ${formData.last_name}`.trim();
+      const authResult = await registerUser(formData.email, formData.password, displayName);
+      
+      if (!authResult.success) {
+        let mensaje = 'Error al crear usuario';
+        if (authResult.error.includes('email-already-in-use')) {
+          mensaje = 'Este correo ya está registrado';
+        } else if (authResult.error.includes('weak-password')) {
+          mensaje = 'La contraseña debe tener al menos 6 caracteres';
+        } else if (authResult.error.includes('invalid-email')) {
+          mensaje = 'El correo electrónico no es válido';
         }
-
-        setErrorTitle(titulo);
+        
+        setErrorTitle('Error de Registro');
         setErrorMessage(mensaje);
         setShowErrorModal(true);
         return;
       }
 
+      const { user } = authResult;
+
+      // 2. Guardar datos del usuario en Firestore
+      await createUser(user.uid, {
+        email: formData.email,
+        username: formData.username,
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        role: 'client',
+        isStaff: false,
+        isSuperuser: false,
+        isActive: true
+      });
+
+      // 3. Crear perfil de miembro
+      const memberResult = await createMember({
+        userId: user.uid,
+        nombre: formData.first_name,
+        apellido: formData.last_name,
+        email: formData.email,
+        telefono: '',
+        qrCode: `FD-${user.uid.substring(0, 12).toUpperCase()}`,
+        avatarColor: '#6366f1',
+        active: true
+      });
+
+      // 4. Obtener datos de la membresía seleccionada
+      const selectedMembership = memberships.find(m => m.id === formData.membership_id);
+      
+      // Calcular fechas
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + (selectedMembership.durationDays || 30));
+
+      // 5. Crear membresía del usuario
+      await createMembership({
+        userId: user.uid,
+        membershipTypeId: formData.membership_id,
+        membershipName: selectedMembership.name,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        price: selectedMembership.price,
+        active: true,
+        paymentMethod: formData.payment_method,
+        montoRecibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedMembership.price,
+        cambio: formData.payment_method === 'EFECTIVO' ? cambio : 0
+      });
+
       // --- ÉXITO ---
       setSuccessMessage('¡Cliente Registrado Exitosamente!');
       
-      const ticketInfo = '📧 Comprobante enviado al correo';
+      const ticketInfo = '📧 Usuario creado en Firebase';
       const cambioInfo = formData.payment_method === 'EFECTIVO'
         ? ` • 💰 Cambio: $${cambio.toFixed(2)}`
         : '';
       setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
       setShowSuccessModal(true);
 
-        // Guardar email para ficha y mostrar formulario salud
-        setRecentEmail(formData.email);
-        setShowHealthForm(true);
+      // Guardar email para ficha y mostrar formulario salud
+      setRecentEmail(formData.email);
+      setShowHealthForm(true);
 
-        // Limpieza
+      // Limpieza
       setFormData({ 
           username: '', email: '', password: '', first_name: '', last_name: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
       
+      // Notificar al componente padre si existe
+      if (onUserRegistered) {
+        onUserRegistered();
+      }
 
     } catch (err) {
-      console.error(err);
-      setErrorTitle('Error de Conexión');
-      setErrorMessage('No se pudo conectar con el servidor.');
+      console.error('Error en registro:', err);
+      setErrorTitle('Error de Registro');
+      setErrorMessage(err.message || 'No se pudo completar el registro.');
       setShowErrorModal(true);
     } finally {
       setIsLoading(false);

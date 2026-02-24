@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import ConfirmModal from './ConfirmModal';
+import { createProduct, uploadProductImage } from '../firebase';
 
 const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState('');
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
 
@@ -19,32 +20,49 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.append('nombre', nuevoProd.nombre);
-        formData.append('precio', nuevoProd.precio);
-        formData.append('stock', nuevoProd.stock);
-        if (nuevoProd.imagen) formData.append('imagen', nuevoProd.imagen);
-
-        const token = localStorage.getItem('token');
-
+        setIsLoading(true);
+        setShowError('');
+        
         try {
-            const response = await fetch(`${API_URL}/api/productos/`, {
-                method: 'POST',
-                headers: { 'Authorization': `Token ${token}` }, 
-                body: formData
+            // 1. Crear producto primero
+            const productResult = await createProduct({
+                nombre: nuevoProd.nombre,
+                precio: parseFloat(nuevoProd.precio),
+                stock: parseInt(nuevoProd.stock),
+                imagen: null // Temporalmente null, luego se actualiza
             });
-            if (response.ok) {
-                setShowSuccess(true);
-                onProductoCreado();
-                setNuevoProd({ nombre: '', precio: '', stock: '', imagen: null });
-                setTimeout(() => {
-                  setShowSuccess(false);
-                  onClose();
-                }, 1800);
-            } else {
-                setShowError('Error al crear producto');
+            
+            if (!productResult.success) {
+                throw new Error(productResult.error || 'Error al crear producto');
             }
-        } catch (error) { console.error(error); }
+            
+            // 2. Si hay imagen, subirla
+            let imagenUrl = null;
+            if (nuevoProd.imagen) {
+                const uploadResult = await uploadProductImage(nuevoProd.imagen, productResult.id);
+                if (uploadResult.success) {
+                    imagenUrl = uploadResult.url;
+                }
+            }
+            
+            // 3. Actualizar producto con URL de imagen si fue subida
+            if (imagenUrl) {
+                const { updateProduct } = await import('../firebase');
+                await updateProduct(productResult.id, { imagen: imagenUrl });
+            }
+            
+            setShowSuccess(true);
+            onProductoCreado();
+            setNuevoProd({ nombre: '', precio: '', stock: '', imagen: null });
+            setTimeout(() => {
+                setShowSuccess(false);
+                onClose();
+                setIsLoading(false);
+            }, 1800);
+        } catch (error) { 
+            setShowError(error.message || 'Error al crear producto');
+            setIsLoading(false);
+        }
     };
 
     // Estilos oscuros

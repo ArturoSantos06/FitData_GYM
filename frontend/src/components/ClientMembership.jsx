@@ -1,20 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
-const resolveImageUrl = (url) => {
-  try {
-    if (!url) return null;
-    if (typeof url !== 'string') return null;
-    if (url.startsWith('http')) return url;
-    const path = url.startsWith('/') ? url : `/${url}`;
-    return `${API_URL}${path}`;
-  } catch {
-    return url;
-  }
-};
+import { auth, getUser, getMemberByUserId, getUserMemberships } from '../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -148,33 +135,95 @@ function ClientMembership() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { setLoading(false); return; }
+    const loadMembershipData = async () => {
+      try {
+        // Verificar usuario autenticado de Firebase
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          setLoading(false);
+          return;
+        }
 
-    let currentUser = null;
-    fetch(`${API_URL}/api/users/me/`, { headers: { Authorization: `Token ${token}` } })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(userData => {
-        currentUser = userData;
-        setUser(userData);
-        // Buscar el miembro asociado al usuario
-        return fetch(`${API_URL}/api/miembros/`, { headers: { Authorization: `Token ${token}` } });
-      })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(miembrosData => {
-        const miembroUser = miembrosData.find(m => m.user === currentUser?.id);
-        if (miembroUser) setMiembro(miembroUser);
-        return fetch(`${API_URL}/api/user-memberships/`, { headers: { Authorization: `Token ${token}` } });
-      })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => {
-        const userMemberships = Array.isArray(data) ? data.filter(m => m.user === currentUser?.id) : [];
-        const sorted = userMemberships.sort((a,b) => new Date(b.start_date || b.created_at || 0) - new Date(a.start_date || a.created_at || 0));
-        setMembership(sorted[0] || null);
+        // Obtener datos del usuario de Firestore
+        const userResult = await getUser(currentUser.uid);
+        if (userResult.success) {
+          const userData = {
+            id: currentUser.uid,
+            email: currentUser.email,
+            first_name: userResult.data.firstName || currentUser.displayName?.split(' ')[0] || '',
+            last_name: userResult.data.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            username: userResult.data.username || currentUser.email?.split('@')[0]
+          };
+          setUser(userData);
+        }
+
+        // Obtener miembro asociado
+        const memberResult = await getMemberByUserId(currentUser.uid);
+        if (memberResult.success) {
+          setMiembro(memberResult.data);
+        }
+
+        // Obtener membresías del usuario
+        const membershipsResult = await getUserMemberships(currentUser.uid);
+        if (membershipsResult.success && membershipsResult.data.length > 0) {
+          // Ordenar por fecha de inicio (más reciente primero)
+          const sorted = membershipsResult.data.sort((a, b) => {
+            const dateA = a.startDate ? new Date(a.startDate) : new Date(0);
+            const dateB = b.startDate ? new Date(b.startDate) : new Date(0);
+            return dateB - dateA;
+          });
+          
+          // Adaptar formato a la estructura esperada por el componente
+          const membership = sorted[0];
+          setMembership({
+            user: currentUser.uid,
+            tipo: {
+              name: membership.membershipName,
+              duration_days: membership.durationDays
+            },
+            start_date: membership.startDate,
+            end_date: membership.endDate,
+            time_remaining: calculateTimeRemaining(membership.endDate),
+            membership_name: membership.membershipName
+          });
+        } else {
+          setMembership(null);
+        }
+
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        setLoading(false);
+      }
+    };
+
+    // Esperar a que Firebase Auth esté listo
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadMembershipData();
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const calculateTimeRemaining = (endDateStr) => {
+    if (!endDateStr) return 'Sin fecha';
+    const endDate = new Date(endDateStr);
+    const now = new Date();
+    const diff = endDate - now;
+    
+    if (diff < 0) return 'Vencida';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
+    return 'Menos de 1 hora';
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 60000);
@@ -291,7 +340,7 @@ function ClientMembership() {
               {membership.tipo?.image ? (
                 <>
                   <img 
-                    src={resolveImageUrl(membership.tipo.image)} 
+                    src={membership.tipo.image}
                     alt={membershipType}
                     className="absolute inset-0 w-full h-full object-contain"
                     onLoad={(e) => {

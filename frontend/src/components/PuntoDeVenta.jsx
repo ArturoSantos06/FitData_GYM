@@ -5,7 +5,8 @@ import ModalEditarProducto from './ModalEditarProducto';
 import HistorialVentas from './HistorialVentas';
 import ConfirmModal from './ConfirmModal';
 import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal'; 
+import ErrorModal from './ErrorModal';
+import { getProducts, getUsers, deleteProduct, createSale } from '../firebase'; 
 
 function PuntoDeVenta() {
     const [listaProductos, setListaProductos] = useState([]);
@@ -44,8 +45,6 @@ function PuntoDeVenta() {
     const [mostrarDropdown, setMostrarDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
     useEffect(() => {
         cargarDatos();
         document.addEventListener("mousedown", handleClickOutside);
@@ -69,15 +68,23 @@ function PuntoDeVenta() {
     }, [montoRecibido, carrito]);
 
     const cargarDatos = async () => {
-        const token = localStorage.getItem('token');
         try {
-            const resProd = await fetch(`${API_URL}/api/productos/`, { headers: { 'Authorization': `Token ${token}` } });
-            const resCli = await fetch(`${API_URL}/api/users/`, { headers: { 'Authorization': `Token ${token}` } });
-
-            if (resProd.ok && resCli.ok) {
-                setListaProductos(await resProd.json());
-                const usersData = await resCli.json();
-                setListaClientes(usersData.results || usersData);
+            const productsResult = await getProducts();
+            if (productsResult.success) {
+                setListaProductos(productsResult.data);
+            }
+            
+            const usersResult = await getUsers();
+            if (usersResult.success) {
+                // Convertir a formato compatible con el componente actual
+                const usersFormatted = usersResult.data.map(u => ({
+                    id: u.id,
+                    username: u.username || u.email,
+                    email: u.email,
+                    first_name: u.first_name || '',
+                    last_name: u.last_name || ''
+                }));
+                setListaClientes(usersFormatted);
             }
         } catch (error) { console.error("Error cargando datos", error); }
     };
@@ -90,14 +97,14 @@ function PuntoDeVenta() {
     
     const ejecutarEliminacionDB = async () => {
         if (!productToDeleteDB) return;
-        const token = localStorage.getItem('token');
         try {
-            await fetch(`${API_URL}/api/productos/${productToDeleteDB}/`, { 
-                method: 'DELETE', 
-                headers: { 'Authorization': `Token ${token}` } 
-            });
-            cargarDatos();
-            setShowDeleteProductModal(false);
+            const result = await deleteProduct(productToDeleteDB);
+            if (result.success) {
+                cargarDatos();
+                setShowDeleteProductModal(false);
+            } else {
+                alert("Error al eliminar: " + result.error);
+            }
         } catch (error) { alert("Error al eliminar"); }
     };
 
@@ -168,7 +175,6 @@ function PuntoDeVenta() {
         }
 
         setIsLoading(true);
-        const token = localStorage.getItem('token');
         const data = {
             cliente_id: clienteSeleccionado || null,
             metodo_pago: metodoPago,
@@ -178,12 +184,8 @@ function PuntoDeVenta() {
         };
 
         try {
-            const res = await fetch(`${API_URL}/api/crear-venta/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-                body: JSON.stringify(data)
-            });
-            if (res.ok) {
+            const result = await createSale(data);
+            if (result.success) {
                 let mensajeExtra = clienteSeleccionado ? "\n📧 Ticket enviado." : "";
                 
                 if (metodoPago === 'EFECTIVO') {
@@ -191,7 +193,7 @@ function PuntoDeVenta() {
                     setSuccessSubMessage(`💰 Cambio: $${cambio.toFixed(2)}`);
                 } else {
                     setSuccessMessage("¡Venta registrada correctamente!" + mensajeExtra);
-                    setSuccessSubMessage("");
+                    setSuccessSubMessage(`Folio: ${result.folio}`);
                 }
                 setShowSuccessModal(true);
 
@@ -202,9 +204,8 @@ function PuntoDeVenta() {
                 cargarDatos();
                 setRecargarHistorial(prev => prev + 1);
             } else { 
-                const err = await res.json();
                 setErrorTitle("Error");
-                setErrorMessage(err.error || "Error desconocido al procesar venta.");
+                setErrorMessage(result.error || "Error desconocido al procesar venta.");
                 setShowErrorModal(true);
             }
         } catch (e) { 
