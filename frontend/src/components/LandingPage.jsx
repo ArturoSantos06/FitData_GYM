@@ -41,6 +41,17 @@ function UserSelectionModal({ onClose }) {
             </div>
             <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">💪</span>
           </button>
+
+          <button
+            onClick={() => navigate('/entrenador')}
+            className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-blue-500 hover:bg-gray-700 transition-all duration-300"
+          >
+            <div className="text-left">
+              <h4 className="font-bold text-white group-hover:text-blue-400 transition-colors">Entrenador</h4>
+              <p className="text-xs text-gray-500">Alumnos asignados</p>
+            </div>
+            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🏋️</span>
+          </button>
         </div>
       </div>
     </div>
@@ -595,7 +606,7 @@ function ContactSection() {
       } else {
         setMessage('Hubo un error al enviar el mensaje. Por favor intenta de nuevo.');
       }
-    } catch (error) {
+    } catch {
       setMessage('Error de conexión. Por favor intenta más tarde.');
     } finally {
       setSending(false);

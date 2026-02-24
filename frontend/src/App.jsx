@@ -18,24 +18,18 @@ import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
+import VistaEntrenador from './components/VistaEntrenador';
 
-// --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('token')));
+  const [isLoading] = useState(false);
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
-  
+
   useEffect(() => {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
 
   const handleLogin = () => setIsAuthenticated(true);
   
@@ -112,6 +106,7 @@ function App() {
         {/* Rutas de Cliente */}
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+        <Route path="/entrenador" element={<VistaEntrenador />} />
 
         {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}
         <Route path="/admin/*" element={<AdminArea />} />
