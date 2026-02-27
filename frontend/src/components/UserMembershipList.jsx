@@ -9,6 +9,23 @@ function UserMembershipList({ refreshTrigger }) {
   
   const [sortBy, setSortBy] = useState('recent');
 
+  const isMembershipActive = (item) => {
+    if (!item?.endDate) {
+      return false;
+    }
+
+    const endDate = new Date(item.endDate);
+    if (Number.isNaN(endDate.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    return endDate >= today;
+  };
+
   const fetchAssignments = async () => {
     try {
       const [membershipsSnapshot, usersSnapshot] = await Promise.all([
@@ -40,7 +57,8 @@ function UserMembershipList({ refreshTrigger }) {
 
   const filteredAssignments = assignments.filter(item => {
     const search = searchTerm.toLowerCase();
-    const estado = item.isActive ? 'activo' : 'vencido';
+    const active = isMembershipActive(item);
+    const estado = active ? 'activo' : 'vencido';
     const userData = usersById[item.userId] || {};
     const nombre = (item.userName || userData.username || '').toLowerCase();
     const nombreCompleto = (item.userFullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim()).toLowerCase();
@@ -153,15 +171,20 @@ function UserMembershipList({ refreshTrigger }) {
                   {new Date(item.endDate).toLocaleDateString()}
                 </td>
                 <td className="py-3 px-6 text-center">
+                  {(() => {
+                    const active = isMembershipActive(item);
+                    return (
                   <span
                     className={`py-1 px-3 rounded-full text-xs font-bold ${
-                      item.isActive
+                      active
                         ? 'bg-green-700 text-green-100 border border-green-500'
                         : 'bg-red-700 text-red-100 border border-red-500'
                     }`}
                   >
-                    {item.isActive ? 'ACTIVO' : 'VENCIDO'}
+                    {active ? 'ACTIVO' : 'VENCIDO'}
                   </span>
+                    );
+                  })()}
                 </td>
               </tr>
             ))}

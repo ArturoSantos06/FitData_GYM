@@ -90,13 +90,16 @@ function AssignMembership({ onSuccess }) {
 
   // Lógica de filtrado de clientes
   const clientesFiltrados = users.filter(user => {
-      const nombreCompleto = `${user.first_name} ${user.last_name} ${user.username}`.toLowerCase();
+      const nombreCompleto = `${user.firstName || ''} ${user.lastName || ''} ${user.displayName || ''} ${user.username || ''}`.toLowerCase();
       return nombreCompleto.includes(busquedaCliente.toLowerCase());
   });
 
   const seleccionarCliente = (user) => {
       setSelectedUser(user.id);
-      setBusquedaCliente(`${user.username} (${user.first_name} ${user.last_name})`);
+      const firstName = user.firstName || '';
+      const lastName = user.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim() || user.displayName || '';
+      setBusquedaCliente(`${user.username}${fullName ? ` (${fullName})` : ''}`);
       setMostrarDropdown(false);
   };
 
@@ -215,7 +218,14 @@ function AssignMembership({ onSuccess }) {
                             className="p-3 hover:bg-slate-700 cursor-pointer text-white border-b border-slate-700 last:border-0"
                         >
                             <div className="font-bold text-cyan-400">{user.username}</div>
-                            <div className="text-xs text-gray-400">{user.first_name} {user.last_name}</div>
+                            <div className="text-xs text-gray-400">
+                              {(() => {
+                                const firstName = user.firstName || '';
+                                const lastName = user.lastName || '';
+                                const fullName = `${firstName} ${lastName}`.trim();
+                                return fullName || user.displayName || 'Sin nombre registrado';
+                              })()}
+                            </div>
                         </li>
                     ))}
                     {clientesFiltrados.length === 0 && (
