@@ -287,10 +287,36 @@ export const assignMembership = async (assignmentData) => {
 export const getProducts = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, "productos"));
-    const products = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const products = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Normalizar el campo de imagen (puede ser 'imagen' o 'image')
+      const imageUrl = data.imagen || data.image;
+      
+      // Log para diagnóstico
+      if (!imageUrl || imageUrl.trim() === '') {
+        console.warn(`⚠️ Producto "${data.nombre}" sin imagen URL`);
+      } else if (!imageUrl.startsWith('http')) {
+        console.warn(`⚠️ Producto "${data.nombre}" URL inválida: ${imageUrl}`);
+      }
+      
+      return {
+        id: doc.id,
+        ...data,
+        imagen: imageUrl, // Garantizar que el campo se llame 'imagen'
+        image: imageUrl   // También disponible como 'image' para compatibilidad
+      };
+    });
+    
+    const summary = {
+      total: products.length,
+      conImagen: products.filter(p => p.imagen && p.imagen.trim() !== '' && p.imagen.startsWith('http')).length,
+      sinImagen: products.filter(p => !p.imagen || p.imagen.trim() === '').length,
+      urlInvalida: products.filter(p => p.imagen && !p.imagen.startsWith('http') && p.imagen.trim() !== '').length
+    };
+    
+    console.log('%c📊 ESTADO DE IMÁGENES', 'color: #00ff00; font-weight: bold; font-size: 14px;');
+    console.table(summary);
+    
     return { success: true, data: products };
   } catch (error) {
     return { success: false, error: error.message };
@@ -771,3 +797,58 @@ export const getMemberByEmail = async (email) => {
     return { success: false, error: error.message };
   }
 };
+
+// DIAGNÓSTICO DE IMÁGENES
+export const getProductsWithoutImages = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "productos"));
+    const productsWithoutImages = querySnapshot.docs
+      .filter(doc => {
+        const data = doc.data();
+        const image = data.imagen || data.image;
+        return !image || (typeof image === 'string' && image.trim() === '');
+      })
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    return { success: true, data: productsWithoutImages, count: productsWithoutImages.length };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Función para diagnosticar estado de imágenes
+export const diagnosisImages = async () => {
+  try {
+    const allProducts = await getProducts();
+    if (!allProducts.success) throw new Error(allProducts.error);
+    
+    const withImages = allProducts.data.filter(p => {
+      const img = p.imagen || p.image;
+      return img && typeof img === 'string' && img.trim() !== '';
+    });
+    
+    const withoutImages = allProducts.data.filter(p => {
+      const img = p.imagen || p.image;
+      return !img || (typeof img === 'string' && img.trim() === '');
+    });
+    
+    console.log('=== DIAGNÓSTICO DE IMÁGENES ===');
+    console.log(`Total de productos: ${allProducts.data.length}`);
+    console.log(`Con imágenes: ${withImages.length}`);
+    console.log(`Sin imágenes: ${withoutImages.length}`);
+    console.log('Productos sin imágenes:', withoutImages.map(p => ({ id: p.id, nombre: p.nombre })));
+    
+    return {
+      success: true,
+      total: allProducts.data.length,
+      withImages: withImages.length,
+      withoutImages: withoutImages.length,
+      productsWithoutImages: withoutImages
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+

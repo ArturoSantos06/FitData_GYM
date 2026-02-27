@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Función helper para verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Función helper para verificar si el usuario es admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Permitir lectura pública de todas las imágenes
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Productos - solo admin puede escribir
+    match /productos/{productId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Membresías - solo admin puede escribir
+    match /memberships/{membershipId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Avatares - el usuario o admin pueden escribir
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+  }
+}

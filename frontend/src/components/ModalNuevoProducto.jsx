@@ -39,16 +39,24 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
             // 2. Si hay imagen, subirla
             let imagenUrl = null;
             if (nuevoProd.imagen) {
+                console.log('📷 Subiendo imagen:', nuevoProd.imagen.name);
                 const uploadResult = await uploadProductImage(nuevoProd.imagen, productResult.id);
-                if (uploadResult.success) {
-                    imagenUrl = uploadResult.url;
+                
+                if (!uploadResult.success) {
+                    throw new Error(`Error al subir imagen: ${uploadResult.error}`);
                 }
+                
+                imagenUrl = uploadResult.url;
+                console.log('✅ Imagen subida correctamente');
             }
             
             // 3. Actualizar producto con URL de imagen si fue subida
             if (imagenUrl) {
                 const { updateProduct } = await import('../firebase');
-                await updateProduct(productResult.id, { imagen: imagenUrl });
+                await updateProduct(productResult.id, { 
+                    imagen: imagenUrl,
+                    image: imagenUrl // Ambos campos para compatibilidad
+                });
             }
             
             setShowSuccess(true);

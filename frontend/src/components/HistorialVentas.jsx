@@ -21,15 +21,27 @@ const HistorialVentas = ({ reloadTrigger }) => {
 
     const filasProcesadas = ventas.flatMap(venta => {
         try {
-            const productos = JSON.parse(venta.detalle_productos.replace(/'/g, '"'));
+            let productos = [];
+            
+            if (typeof venta.detalle_productos === 'string') {
+                try {
+                    productos = JSON.parse(venta.detalle_productos);
+                } catch (jsonError) {
+                    const jsonFijo = venta.detalle_productos.replace(/'/g, '"');
+                    productos = JSON.parse(jsonFijo);
+                }
+            } else if (Array.isArray(venta.detalle_productos)) {
+                productos = venta.detalle_productos;
+            } else {
+                return [];
+            }
+            
             const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || Date.now());
             
             return productos.map(prod => ({
                 id_unico: `${venta.id}-${prod.id}`,
-                
                 folio: venta.folio || 'PENDIENTE',
                 nombre_completo: venta.cliente_username || 'Cliente anónimo',
-                
                 fecha: fechaObj.toLocaleDateString() + ' ' + fechaObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                 producto_nombre: prod.nombre || 'Producto eliminado',
                 cantidad: prod.cantidad,

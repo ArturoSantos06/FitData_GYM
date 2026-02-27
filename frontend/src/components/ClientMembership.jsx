@@ -127,10 +127,9 @@ function ClientMembership() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        console.log('✅ Descarga completada');
       }, 'image/png');
     } catch (error) {
-      console.error('❌ Error al descargar:', error);
+      console.error('Error al descargar:', error);
     }
   };
 

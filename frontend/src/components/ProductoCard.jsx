@@ -4,15 +4,19 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const [cantidad, setCantidad] = useState(1);
 
     const getInitialUrl = (img) => {
-        if (!img) return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
+        // Soportar ambos nombres de campo (imagen e image)
+        const imageUrl = img || producto.image;
+        
+        if (!imageUrl) return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
+        if (typeof imageUrl !== 'string' || imageUrl.trim() === '') return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
         // URLs de Firebase Storage ya son completas
-        if (img.startsWith('http')) return img;
+        if (imageUrl.startsWith('http')) return imageUrl;
         // Fallback para imágenes locales
-        return img;
+        return imageUrl;
     };
 
-    const [imgSrc, setImgSrc] = useState(getInitialUrl(producto.imagen));
-    useEffect(() => { setImgSrc(getInitialUrl(producto.imagen)); }, [producto.imagen]);
+    const [imgSrc, setImgSrc] = useState(getInitialUrl(producto.imagen || producto.image));
+    useEffect(() => { setImgSrc(getInitialUrl(producto.imagen || producto.image)); }, [producto.imagen, producto.image]);
 
     const incrementar = () => { if (cantidad < producto.stock) setCantidad(cantidad + 1); };
     const decrementar = () => { if (cantidad > 1) setCantidad(cantidad - 1); };

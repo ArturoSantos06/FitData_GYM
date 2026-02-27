@@ -72,6 +72,26 @@ function PuntoDeVenta() {
             const productsResult = await getProducts();
             if (productsResult.success) {
                 setListaProductos(productsResult.data);
+                
+                // Diagnóstico de imágenes
+                const withImages = productsResult.data.filter(p => {
+                    const img = p.imagen || p.image;
+                    return img && typeof img === 'string' && img.trim() !== '';
+                });
+                const withoutImages = productsResult.data.filter(p => {
+                    const img = p.imagen || p.image;
+                    return !img || (typeof img === 'string' && img.trim() === '');
+                });
+                
+                console.log('%c=== DIAGNÓSTICO DE IMÁGENES ===', 'color: cyan; font-weight: bold;');
+                console.log(`Total de productos: ${productsResult.data.length}`);
+                console.log(`Con imágenes: ${withImages.length}`);
+                console.log(`Sin imágenes: ${withoutImages.length}`);
+                console.log('Productos:', productsResult.data.map(p => ({
+                    nombre: p.nombre,
+                    imagen: p.imagen || p.image || 'VACÍO',
+                    tipo: typeof (p.imagen || p.image)
+                })));
             }
             
             const usersResult = await getUsers();

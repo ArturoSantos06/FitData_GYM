@@ -8,7 +8,16 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (producto) setDatos({ nombre: producto.nombre, precio: producto.precio, stock: producto.stock, imagen: null });
+        if (producto) {
+            const imagenActual = producto.imagen || producto.image;
+            setDatos({ 
+                nombre: producto.nombre, 
+                precio: producto.precio, 
+                stock: producto.stock, 
+                imagen: null,
+                imagenActual: imagenActual 
+            });
+        }
     }, [producto]);
 
     if (!isOpen && !showSuccess) return null; 
@@ -28,12 +37,18 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
                 stock: parseInt(datos.stock)
             };
             
-            // 2. Si hay imagen, subirla
+            // 2. Si hay imagen nueva, subirla
             if (datos.imagen) {
+                console.log('📷 Subiendo nueva imagen:', datos.imagen.name);
                 const uploadResult = await uploadProductImage(datos.imagen, producto.id);
-                if (uploadResult.success) {
-                    updateData.imagen = uploadResult.url;
+                
+                if (!uploadResult.success) {
+                    throw new Error(`Error al subir imagen: ${uploadResult.error}`);
                 }
+                
+                updateData.imagen = uploadResult.url;
+                updateData.image = uploadResult.url; 
+                console.log('✅ Imagen subida correctamente');
             }
             
             // 3. Actualizar producto
@@ -83,7 +98,6 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
 
     return (
         <>
-            {/* Renderizar formulario SOLO si está abierto */}
             {isOpen && (
                 <div style={styles.overlay}>
                     <div style={styles.modal}>

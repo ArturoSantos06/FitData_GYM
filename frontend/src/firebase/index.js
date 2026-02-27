@@ -41,6 +41,8 @@ export {
   createProduct,
   updateProduct,
   deleteProduct,
+  getProductsWithoutImages,
+  diagnosisImages,
   
   // Inventory
   getInventoryEntries,

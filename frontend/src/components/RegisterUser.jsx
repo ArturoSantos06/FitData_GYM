@@ -68,13 +68,9 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     const result = await createHealthProfile(healthData);
     
     if (result.success) {
-      console.log('✅ Ficha médica guardada exitosamente');
       setSaved(true);
       if (typeof onSaved === 'function') {
-        console.log('🔄 [LOG] AdminHealthForm: Llamando onSaved para refrescar Fichas Médicas');
         onSaved();
-      } else {
-        console.log('⚠️ [LOG] AdminHealthForm: onSaved no es función');
       }
     } else {
       setError(result.error || 'Error guardando ficha');
@@ -362,7 +358,7 @@ function RegisterUser({ onUserRegistered }) {
                   console.log('🚀 [LOG] RegisterUser: Ejecutando onUserRegistered para refrescar Fichas Médicas');
                   onUserRegistered();
                 } else {
-                  console.log('⚠️ [LOG] RegisterUser: onUserRegistered no existe');
+                  // onUserRegistered no es una función
                 }
               }}
             />

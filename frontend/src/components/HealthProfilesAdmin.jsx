@@ -20,7 +20,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
         id: doc.id,
         ...doc.data()
       }));
-      console.log('✅ Perfiles cargados:', data.length);
+
       setProfiles(data);
     } catch (err) {
       setError(err.message);
