@@ -5,6 +5,8 @@ export { auth, db, storage } from './config';
 export {
   loginUser,
   registerUser,
+  createUserWithoutSessionChange,
+  registerClientByAdmin,
   logoutUser,
   onAuthChanged,
   getCurrentUser
@@ -41,8 +43,6 @@ export {
   createProduct,
   updateProduct,
   deleteProduct,
-  getProductsWithoutImages,
-  diagnosisImages,
   
   // Inventory
   getInventoryEntries,

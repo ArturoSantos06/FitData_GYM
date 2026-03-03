@@ -1,5 +1,6 @@
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onCall} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -345,7 +346,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
 
   const subject = `¡Bienvenido a FitData GYM, ${nombre}! - Folio: ${folio}`;
   const message = [
-    `Hola ${nombre}, ¡bienvenido a FitData GYM!`,
+    `Hola ${nombre}, ¡Bienvenido a FitData GYM!`,
     "",
     "Gracias por registrarte. Te compartimos los detalles de tu membresía inicial.",
     "",
@@ -374,7 +375,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
     "",
     "PRÓXIMOS PASOS:",
     "1. Completa tu perfil de salud en la app",
-    "2. Descarga la app FitData GYM",
+    "2. Abre tu portal cliente FitData GYM",
     "3. ¡Comienza a entrenar!",
     "",
     "========================================",
@@ -420,5 +421,220 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
       email: recipient,
       error: String(error.message || error),
     });
+  }
+});
+
+// Cloud Function para crear usuarios sin cambiar la sesión del admin
+exports.createUserAccount = onCall(async (request) => {
+  // Verificar que el usuario que llama está autenticado
+  if (!request.auth) {
+    throw new Error("No autenticado");
+  }
+
+  const {email, password, displayName} = request.data;
+
+  if (!email || !password) {
+    throw new Error("Email y contraseña son requeridos");
+  }
+
+  try {
+    // Crear usuario con Admin SDK (no afecta la sesión del frontend)
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: displayName || null,
+    });
+
+    logger.info("Usuario creado exitosamente", {
+      uid: userRecord.uid,
+      email: userRecord.email,
+      createdBy: request.auth.uid,
+    });
+
+    return {
+      success: true,
+      uid: userRecord.uid,
+      email: userRecord.email,
+    };
+  } catch (error) {
+    logger.error("Error creando usuario", {
+      email,
+      error: String(error.message || error),
+    });
+
+    throw new Error(error.message || "Error creando usuario");
+  }
+});
+
+exports.registerClientByAdmin = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("No autenticado");
+  }
+
+  const {
+    username,
+    email,
+    password,
+    firstName,
+    lastName,
+    membershipTypeId,
+    paymentMethod,
+    montoRecibido,
+  } = request.data || {};
+
+  if (!username || !email || !password || !firstName || !lastName || !membershipTypeId) {
+    throw new Error("Faltan campos requeridos para el registro");
+  }
+
+  const db = admin.firestore();
+
+  try {
+    const adminUserDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== "admin") {
+      throw new Error("No tienes permisos de administrador");
+    }
+
+    const membershipTypeDoc = await db.collection("membershipTypes").doc(String(membershipTypeId)).get();
+    if (!membershipTypeDoc.exists) {
+      throw new Error("Tipo de membresía no encontrado");
+    }
+    const membershipType = membershipTypeDoc.data() || {};
+
+    const authUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: `${firstName} ${lastName}`.trim(),
+    });
+
+    const today = new Date();
+    const durationDays = Number(membershipType.duration_days || membershipType.durationDays || 30);
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + durationDays);
+    const startDateIso = today.toISOString().split("T")[0];
+    const endDateIso = endDate.toISOString().split("T")[0];
+
+    const counterRef = db.collection("_meta").doc("counters");
+
+    const registration = await db.runTransaction(async (tx) => {
+      const counterSnap = await tx.get(counterRef);
+
+      let nextId = 1;
+
+      if (counterSnap.exists && Number.isFinite(Number(counterSnap.data()?.lastNumericId))) {
+        nextId = Number(counterSnap.data().lastNumericId) + 1;
+      } else {
+        const [usersSnap, membersSnap, membershipsSnap] = await Promise.all([
+          db.collection("users").get(),
+          db.collection("miembros").get(),
+          db.collection("memberships").get(),
+        ]);
+
+        let maxId = 0;
+        [usersSnap, membersSnap, membershipsSnap].forEach((snap) => {
+          snap.docs.forEach((docSnap) => {
+            const parsed = Number(docSnap.id);
+            if (Number.isInteger(parsed) && String(parsed) === docSnap.id && parsed > maxId) {
+              maxId = parsed;
+            }
+          });
+        });
+
+        nextId = maxId + 1;
+      }
+
+      const newId = String(nextId);
+      const timestamp = admin.firestore.FieldValue.serverTimestamp();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const membershipPrice = Number(membershipType.price || 0);
+      const received = Number(montoRecibido || 0);
+      const payMethod = paymentMethod || "EFECTIVO";
+
+      tx.set(db.collection("users").doc(newId), {
+        email,
+        username,
+        firstName,
+        lastName,
+        displayName: fullName,
+        role: "client",
+        isStaff: false,
+        isSuperuser: false,
+        isActive: true,
+        authUid: authUser.uid,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      tx.set(db.collection("miembros").doc(newId), {
+        userId: newId,
+        authUid: authUser.uid,
+        nombre: firstName,
+        apellido: lastName,
+        email,
+        telefono: "",
+        qr_code: `FD-USER${newId}`,
+        qrCode: `FD-USER${newId}`,
+        avatar_color: "#6366f1",
+        avatarColor: "#6366f1",
+        active: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      tx.set(db.collection("memberships").doc(newId), {
+        userId: newId,
+        authUid: authUser.uid,
+        userName: username,
+        userEmail: email,
+        userFullName: fullName,
+        membershipTypeId: String(membershipTypeId),
+        membershipTypeName: membershipType.name || "",
+        membershipName: membershipType.name || "",
+        membershipPrice,
+        price: membershipPrice,
+        durationDays,
+        startDate: startDateIso,
+        endDate: endDateIso,
+        active: true,
+        paymentMethod: payMethod,
+        montoRecibido: payMethod === "EFECTIVO" ? received : membershipPrice,
+        cambio: payMethod === "EFECTIVO" ? received - membershipPrice : 0,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      tx.set(counterRef, {
+        lastNumericId: nextId,
+        updatedAt: timestamp,
+      }, {merge: true});
+
+      return {
+        id: newId,
+        authUid: authUser.uid,
+        membershipTypeName: membershipType.name || "",
+        membershipPrice,
+      };
+    });
+
+    logger.info("Registro de cliente completado", {
+      byAdmin: request.auth.uid,
+      id: registration.id,
+      authUid: registration.authUid,
+      email,
+    });
+
+    return {
+      success: true,
+      id: registration.id,
+      authUid: registration.authUid,
+      email,
+      membershipTypeName: registration.membershipTypeName,
+      membershipPrice: registration.membershipPrice,
+    };
+  } catch (error) {
+    logger.error("Error en registerClientByAdmin", {
+      email,
+      error: String(error.message || error),
+    });
+    throw new Error(error.message || "No se pudo registrar el cliente");
   }
 });

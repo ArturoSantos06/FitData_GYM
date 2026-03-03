@@ -99,8 +99,17 @@ export const getMemberByUserId = async (userId) => {
     const q = query(collection(db, "miembros"), where("userId", "==", userId));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { success: true, data: { id: doc.id, ...doc.data() } };
+      const docSnap = querySnapshot.docs[0];
+      const data = docSnap.data();
+      return {
+        success: true,
+        data: {
+          id: docSnap.id,
+          ...data,
+          qr_code: data.qr_code || data.qrCode || "",
+          avatar_color: data.avatar_color || data.avatarColor || "#6366f1"
+        }
+      };
     }
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
@@ -110,8 +119,21 @@ export const getMemberByUserId = async (userId) => {
 
 export const createMember = async (memberData) => {
   try {
+    const normalizedMemberData = {
+      userId: memberData.userId,
+      nombre: memberData.nombre || memberData.firstName || "",
+      apellido: memberData.apellido || memberData.lastName || "",
+      email: memberData.email || "",
+      telefono: memberData.telefono || "",
+      qr_code: memberData.qr_code || memberData.qrCode || "",
+      qrCode: memberData.qr_code || memberData.qrCode || "",
+      avatar_color: memberData.avatar_color || memberData.avatarColor || "#6366f1",
+      avatarColor: memberData.avatar_color || memberData.avatarColor || "#6366f1",
+      active: memberData.active ?? true
+    };
+
     const docRef = await addDoc(collection(db, "miembros"), {
-      ...memberData,
+      ...normalizedMemberData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
@@ -178,12 +200,28 @@ export const getUserMemberships = async (userId) => {
 
 export const createMembership = async (membershipData) => {
   try {
-    const docRef = await addDoc(collection(db, "memberships"), {
+    // Obtener todos los documentos de memberships para encontrar el número máximo
+    const querySnapshot = await getDocs(collection(db, "memberships"));
+    let maxId = 0;
+    
+    querySnapshot.docs.forEach(doc => {
+      const id = parseInt(doc.id, 10);
+      if (!isNaN(id) && id > maxId) {
+        maxId = id;
+      }
+    });
+    
+    // Generar el siguiente ID
+    const newId = (maxId + 1).toString();
+    
+    // Crear el documento con ID numérico
+    await setDoc(doc(db, "memberships", newId), {
       ...membershipData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
-    return { success: true, id: docRef.id };
+    
+    return { success: true, id: newId };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -294,7 +332,7 @@ export const assignMembership = async (assignmentData) => {
     }
     const endDateStr = endDate.toISOString().split('T')[0];
     
-    // 4. Crear membresía
+    // 4. Crear o actualizar membresía existente del usuario
     const membershipData = {
       user: userId,
       membershipType: membershipTypeId,
@@ -311,15 +349,40 @@ export const assignMembership = async (assignmentData) => {
       durationDays: durationDays,
       paymentMethod: paymentMethod,
       montoRecibido: montoRecibido,
-      createdAt: serverTimestamp()
+      updatedAt: serverTimestamp()
     };
-    
-    const docRef = await addDoc(collection(db, "memberships"), membershipData);
-    
+    const membershipByUserQuery = query(
+      collection(db, "memberships"),
+      where("userId", "==", userId),
+      limit(1)
+    );
+    const membershipByUserSnapshot = await getDocs(membershipByUserQuery);
+
+    const legacyMembershipQuery = query(
+      collection(db, "memberships"),
+      where("user", "==", userId),
+      limit(1)
+    );
+    const legacyMembershipSnapshot = await getDocs(legacyMembershipQuery);
+
+    const membershipDoc = membershipByUserSnapshot.docs[0] || legacyMembershipSnapshot.docs[0] || null;
+
+    let membershipId;
+    if (membershipDoc) {
+      await updateDoc(doc(db, "memberships", membershipDoc.id), membershipData);
+      membershipId = membershipDoc.id;
+    } else {
+      const docRef = await addDoc(collection(db, "memberships"), {
+        ...membershipData,
+        createdAt: serverTimestamp()
+      });
+      membershipId = docRef.id;
+    }
+
     return { 
       success: true, 
       message: "Membresía asignada correctamente",
-      id: docRef.id,
+      id: membershipId,
       membershipData
     };
   } catch (error) {
@@ -481,12 +544,68 @@ export const updateAttendanceCheckout = async (attendanceId) => {
 
 export const getMemberByQRCode = async (qrCode) => {
   try {
-    const q = query(collection(db, "miembros"), where("qr_code", "==", qrCode));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { success: true, data: { id: doc.id, ...doc.data() } };
+    const normalizedQr = String(qrCode || "").trim();
+    if (!normalizedQr) {
+      return { success: false, error: "Miembro no encontrado" };
     }
+
+    const qrCandidates = [normalizedQr, normalizedQr.toUpperCase()];
+    for (const candidate of qrCandidates) {
+      const bySnakeCase = query(collection(db, "miembros"), where("qr_code", "==", candidate));
+      const bySnakeCaseSnapshot = await getDocs(bySnakeCase);
+      if (!bySnakeCaseSnapshot.empty) {
+        const docSnap = bySnakeCaseSnapshot.docs[0];
+        const data = docSnap.data();
+        return {
+          success: true,
+          data: {
+            id: docSnap.id,
+            ...data,
+            qr_code: data.qr_code || data.qrCode || "",
+            avatar_color: data.avatar_color || data.avatarColor || "#6366f1"
+          }
+        };
+      }
+
+      const byCamelCase = query(collection(db, "miembros"), where("qrCode", "==", candidate));
+      const byCamelCaseSnapshot = await getDocs(byCamelCase);
+      if (!byCamelCaseSnapshot.empty) {
+        const docSnap = byCamelCaseSnapshot.docs[0];
+        const data = docSnap.data();
+        return {
+          success: true,
+          data: {
+            id: docSnap.id,
+            ...data,
+            qr_code: data.qr_code || data.qrCode || "",
+            avatar_color: data.avatar_color || data.avatarColor || "#6366f1"
+          }
+        };
+      }
+    }
+
+    const legacyPrefix = "FD-USER";
+    if (normalizedQr.toUpperCase().startsWith(legacyPrefix)) {
+      const legacyUserId = normalizedQr.slice(legacyPrefix.length);
+      if (legacyUserId) {
+        const byUserId = query(collection(db, "miembros"), where("userId", "==", legacyUserId));
+        const byUserIdSnapshot = await getDocs(byUserId);
+        if (!byUserIdSnapshot.empty) {
+          const docSnap = byUserIdSnapshot.docs[0];
+          const data = docSnap.data();
+          return {
+            success: true,
+            data: {
+              id: docSnap.id,
+              ...data,
+              qr_code: data.qr_code || data.qrCode || "",
+              avatar_color: data.avatar_color || data.avatarColor || "#6366f1"
+            }
+          };
+        }
+      }
+    }
+
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
     return { success: false, error: error.message };
@@ -503,18 +622,26 @@ export const checkInMember = async (qrCode) => {
     
     const member = memberResult.data;
     
-    // 2. Verificar si ya tiene check-in activo hoy
+    // 2. Verificar si ya tiene check-in activo hoy (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const q = query(
       collection(db, "asistencias"),
-      where("memberId", "==", member.id),
-      where("fecha_hora_entrada", ">=", today)
+      where("memberId", "==", member.id)
     );
-    
+
     const existingAttendance = await getDocs(q);
-    const activeCheckIn = existingAttendance.docs.find(doc => !doc.data().fecha_hora_salida);
+    const activeCheckIn = existingAttendance.docs.find(docSnap => {
+      const data = docSnap.data();
+      if (data.fecha_hora_salida) return false;
+
+      const rawEntry = data.fecha_hora_entrada || data.checkInTime?.toDate?.() || data.createdAt?.toDate?.();
+      const entryDate = rawEntry instanceof Date ? rawEntry : new Date(rawEntry);
+      if (Number.isNaN(entryDate.getTime())) return false;
+
+      return entryDate >= today;
+    });
     
     if (activeCheckIn) {
       return { 
@@ -583,18 +710,26 @@ export const checkOutMember = async (qrCode) => {
     
     const member = memberResult.data;
     
-    // 2. Buscar check-in activo del día
+    // 2. Buscar check-in activo del día (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const q = query(
       collection(db, "asistencias"),
-      where("memberId", "==", member.id),
-      where("fecha_hora_entrada", ">=", today.toISOString())
+      where("memberId", "==", member.id)
     );
-    
+
     const attendanceSnapshot = await getDocs(q);
-    const activeCheckIn = attendanceSnapshot.docs.find(doc => !doc.data().fecha_hora_salida);
+    const activeCheckIn = attendanceSnapshot.docs.find(docSnap => {
+      const data = docSnap.data();
+      if (data.fecha_hora_salida) return false;
+
+      const rawEntry = data.fecha_hora_entrada || data.checkInTime?.toDate?.() || data.createdAt?.toDate?.();
+      const entryDate = rawEntry instanceof Date ? rawEntry : new Date(rawEntry);
+      if (Number.isNaN(entryDate.getTime())) return false;
+
+      return entryDate >= today;
+    });
     
     if (!activeCheckIn) {
       return { 
@@ -677,13 +812,13 @@ export const getAttendances = async (filters = {}) => {
 
     // Filtro por fecha (client-side, compatible con ambos formatos)
     if (filters.fecha) {
-      const startDate = new Date(filters.fecha);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(filters.fecha);
-      endDate.setHours(23, 59, 59, 999);
+      const [year, month, day] = String(filters.fecha).split("-").map(Number);
+      const startDate = new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
+      const endDate = new Date(year, (month || 1) - 1, day || 1, 23, 59, 59, 999);
       attendances = attendances.filter(att => {
         if (!att.fecha_hora_entrada) return false;
         const checkIn = new Date(att.fecha_hora_entrada);
+        if (Number.isNaN(checkIn.getTime())) return false;
         return checkIn >= startDate && checkIn <= endDate;
       });
     }
@@ -860,40 +995,46 @@ export const createHealthProfile = async (healthData) => {
       }
     }
 
-    let existingProfile = null;
-    
-    if (completedData.memberId) {
-      const qMember = query(collection(db, "healthProfiles"), where("memberId", "==", completedData.memberId));
-      const memberSnapshot = await getDocs(qMember);
-      if (!memberSnapshot.empty) {
-        existingProfile = { id: memberSnapshot.docs[0].id, ...memberSnapshot.docs[0].data() };
-      }
+    const canonicalId = String(completedData.memberId || completedData.userId || "").trim();
+    if (!canonicalId) {
+      return { success: false, error: "No se pudo determinar el ID canónico de la ficha" };
     }
-    
-    if (!existingProfile && completedData.userId) {
-      const qUser = query(collection(db, "healthProfiles"), where("userId", "==", completedData.userId));
-      const userSnapshot = await getDocs(qUser);
-      if (!userSnapshot.empty) {
-        existingProfile = { id: userSnapshot.docs[0].id, ...userSnapshot.docs[0].data() };
-      }
-    }
-    
-    // Si ya existe, actualizar
-    if (existingProfile) {
-      await updateDoc(doc(db, "healthProfiles", existingProfile.id), {
-        ...completedData,
+
+    const profileRef = doc(db, "healthProfiles", canonicalId);
+    const existingCanonical = await getDoc(profileRef);
+
+    const normalizedPayload = {
+      ...completedData,
+      memberId: String(completedData.memberId || canonicalId),
+      userId: String(completedData.userId || canonicalId),
+      userIdDisplay: String(completedData.userIdDisplay || canonicalId)
+    };
+
+    if (existingCanonical.exists()) {
+      await updateDoc(profileRef, {
+        ...normalizedPayload,
         updatedAt: serverTimestamp()
       });
-      return { success: true, id: existingProfile.id, updated: true };
+      return { success: true, id: canonicalId, updated: true };
     }
-    
-    // Si no existe, crear nueva
-    const docRef = await addDoc(collection(db, "healthProfiles"), {
-      ...completedData,
-      createdAt: serverTimestamp(),
+
+    const qMember = query(collection(db, "healthProfiles"), where("memberId", "==", normalizedPayload.memberId));
+    const memberSnapshot = await getDocs(qMember);
+    const qUser = query(collection(db, "healthProfiles"), where("userId", "==", normalizedPayload.userId));
+    const userSnapshot = await getDocs(qUser);
+    const legacyProfileDoc = memberSnapshot.docs[0] || userSnapshot.docs[0] || null;
+
+    await setDoc(profileRef, {
+      ...normalizedPayload,
+      createdAt: legacyProfileDoc ? (legacyProfileDoc.data().createdAt || serverTimestamp()) : serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
-    return { success: true, id: docRef.id, updated: false };
+    }, { merge: true });
+
+    if (legacyProfileDoc && legacyProfileDoc.id !== canonicalId) {
+      await deleteDoc(doc(db, "healthProfiles", legacyProfileDoc.id));
+    }
+
+    return { success: true, id: canonicalId, updated: Boolean(legacyProfileDoc) };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -901,11 +1042,17 @@ export const createHealthProfile = async (healthData) => {
 
 export const getHealthProfileByMemberId = async (memberId) => {
   try {
+    const canonicalRef = doc(db, "healthProfiles", String(memberId));
+    const canonicalSnap = await getDoc(canonicalRef);
+    if (canonicalSnap.exists()) {
+      return { success: true, data: { id: canonicalSnap.id, ...canonicalSnap.data() } };
+    }
+
     const q = query(collection(db, "healthProfiles"), where("memberId", "==", memberId));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { success: true, data: { id: doc.id, ...doc.data() } };
+      const profileDoc = querySnapshot.docs[0];
+      return { success: true, data: { id: profileDoc.id, ...profileDoc.data() } };
     }
     return { success: false, error: "Perfil de salud no encontrado" };
   } catch (error) {
@@ -922,60 +1069,6 @@ export const getMemberByEmail = async (email) => {
       return { success: true, data: { id: doc.id, ...doc.data() } };
     }
     return { success: false, error: "Miembro no encontrado" };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-// DIAGNÓSTICO DE IMÁGENES
-export const getProductsWithoutImages = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, "productos"));
-    const productsWithoutImages = querySnapshot.docs
-      .filter(doc => {
-        const data = doc.data();
-        const image = data.imagen || data.image;
-        return !image || (typeof image === 'string' && image.trim() === '');
-      })
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    return { success: true, data: productsWithoutImages, count: productsWithoutImages.length };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-// Función para diagnosticar estado de imágenes
-export const diagnosisImages = async () => {
-  try {
-    const allProducts = await getProducts();
-    if (!allProducts.success) throw new Error(allProducts.error);
-    
-    const withImages = allProducts.data.filter(p => {
-      const img = p.imagen || p.image;
-      return img && typeof img === 'string' && img.trim() !== '';
-    });
-    
-    const withoutImages = allProducts.data.filter(p => {
-      const img = p.imagen || p.image;
-      return !img || (typeof img === 'string' && img.trim() === '');
-    });
-    
-    console.log('=== DIAGNÓSTICO DE IMÁGENES ===');
-    console.log(`Total de productos: ${allProducts.data.length}`);
-    console.log(`Con imágenes: ${withImages.length}`);
-    console.log(`Sin imágenes: ${withoutImages.length}`);
-    console.log('Productos sin imágenes:', withoutImages.map(p => ({ id: p.id, nombre: p.nombre })));
-    
-    return {
-      success: true,
-      total: allProducts.data.length,
-      withImages: withImages.length,
-      withoutImages: withoutImages.length,
-      productsWithoutImages: withoutImages
-    };
   } catch (error) {
     return { success: false, error: error.message };
   }

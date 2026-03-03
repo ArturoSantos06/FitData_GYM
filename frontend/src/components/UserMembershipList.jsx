@@ -33,10 +33,43 @@ function UserMembershipList({ refreshTrigger }) {
         getDocs(collection(db, 'users'))
       ]);
 
-      const data = membershipsSnapshot.docs.map(doc => ({
+      const rawData = membershipsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+
+      const dataByUser = rawData.reduce((acc, current) => {
+        const key = current.userId || current.user || current.id;
+        const previous = acc[key];
+
+        if (!previous) {
+          acc[key] = current;
+          return acc;
+        }
+
+        // Comparar por fecha de inicio, creación, o última actualización
+        const currentDate = new Date(
+          current.startDate || 
+          current.updatedAt?.toDate?.() || 
+          current.createdAt?.toDate?.() || 
+          0
+        ).getTime();
+        
+        const previousDate = new Date(
+          previous.startDate || 
+          previous.updatedAt?.toDate?.() || 
+          previous.createdAt?.toDate?.() || 
+          0
+        ).getTime();
+
+        if (currentDate > previousDate) {
+          acc[key] = current;
+        }
+
+        return acc;
+      }, {});
+
+      const data = Object.values(dataByUser);
 
       const usersMap = {};
       usersSnapshot.docs.forEach(docSnap => {
@@ -76,7 +109,9 @@ function UserMembershipList({ refreshTrigger }) {
 
   const sortedAssignments = [...filteredAssignments].sort((a, b) => {
     if (sortBy === 'name') {
-      return (a.userName || '').localeCompare(b.userName || '');
+      const usernameA = (a.userName || usersById[a.userId]?.username || '').trim();
+      const usernameB = (b.userName || usersById[b.userId]?.username || '').trim();
+      return usernameA.localeCompare(usernameB, 'es', { sensitivity: 'base' });
     } 
     if (sortBy === 'expiration') {
       return new Date(a.endDate) - new Date(b.endDate);
@@ -142,7 +177,7 @@ function UserMembershipList({ refreshTrigger }) {
             {sortedAssignments.map((item) => (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
                 <td className="py-3 px-6">
-                  <span className="font-mono text-teal-400 font-semibold">{item.userId}</span>
+                  <span className="font-mono text-teal-400 font-semibold">{item.id}</span>
                 </td>
                 <td className="py-3 px-6 text-left">
                   <div className="flex flex-col">

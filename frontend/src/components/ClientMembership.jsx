@@ -209,7 +209,6 @@ function ClientMembership() {
             return dateB - dateA;
           });
           
-          // Adaptar formato a la estructura esperada por el componente
           const membership = sorted[0];
           const fallbackType = {
             name: membership.membershipName || membership.membershipTypeName || 'Membresía',
@@ -324,7 +323,7 @@ function ClientMembership() {
   const membershipType = membership.tipo?.name || membership.membership_name || 'Full Data Anual';
   const isDayPassMembership = (membership?.tipo?.duration_days === 1) || (membershipType.toLowerCase().includes('day'));
   const dayPassBaseDate = membership?.start_date || membership?.end_date;
-  const qrCode = miembro?.qr_code || `FD-USER${userId}`;
+  const qrCode = miembro?.qr_code || miembro?.qrCode || `FD-USER${userId}`;
 
   let vigente = true;
   if (membership.end_date) {

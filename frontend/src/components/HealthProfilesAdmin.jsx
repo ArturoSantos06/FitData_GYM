@@ -83,7 +83,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
                   <p className="text-white font-semibold">{p.memberName || 'Sin nombre'}</p>
                   {p.userIdDisplay && (
                     <span className="text-xs font-mono bg-slate-700 text-cyan-400 px-2 py-0.5 rounded border border-slate-600">
-                      ID: {p.userIdDisplay.substring(0, 8)}
+                      ID: {p.userIdDisplay}
                     </span>
                   )}
                 </div>

@@ -73,7 +73,6 @@ function PuntoDeVenta() {
             if (productsResult.success) {
                 setListaProductos(productsResult.data);
                 
-                // Diagnóstico de imágenes
                 const withImages = productsResult.data.filter(p => {
                     const img = p.imagen || p.image;
                     return img && typeof img === 'string' && img.trim() !== '';
@@ -96,7 +95,6 @@ function PuntoDeVenta() {
             
             const usersResult = await getUsers();
             if (usersResult.success) {
-                // Convertir a formato compatible con el componente actual
                 const usersFormatted = usersResult.data.map(u => ({
                     id: u.id,
                     username: u.username || u.email,
@@ -381,7 +379,6 @@ function PuntoDeVenta() {
                                     <div><span className="font-bold text-white mr-2">{i.cantidad}x</span> <span className="text-slate-300 text-sm">{i.nombre}</span></div>
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold text-emerald-400">${(i.precio * i.cantidad).toFixed(2)}</span>
-                                        {/* Usamos pedirConfirmacionCarrito en lugar de borrar directo */}
                                         <button onClick={() => pedirConfirmacionCarrito(i.id)} className="text-red-400 hover:text-red-200 font-bold">✕</button>
                                     </div>
                                 </div>

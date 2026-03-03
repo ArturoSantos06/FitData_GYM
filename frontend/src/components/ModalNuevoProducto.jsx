@@ -29,7 +29,7 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
                 nombre: nuevoProd.nombre,
                 precio: parseFloat(nuevoProd.precio),
                 stock: parseInt(nuevoProd.stock),
-                imagen: null // Temporalmente null, luego se actualiza
+                imagen: null 
             });
             
             if (!productResult.success) {
@@ -55,7 +55,7 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
                 const { updateProduct } = await import('../firebase');
                 await updateProduct(productResult.id, { 
                     imagen: imagenUrl,
-                    image: imagenUrl // Ambos campos para compatibilidad
+                    image: imagenUrl 
                 });
             }
             

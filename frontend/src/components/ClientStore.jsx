@@ -11,7 +11,6 @@ function ClientStore() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Cargar productos
         const productsResult = await getProducts();
         if (productsResult.success) {
           const mapped = productsResult.data.map(p => ({

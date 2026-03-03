@@ -4,14 +4,11 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const [cantidad, setCantidad] = useState(1);
 
     const getInitialUrl = (img) => {
-        // Soportar ambos nombres de campo (imagen e image)
         const imageUrl = img || producto.image;
         
         if (!imageUrl) return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
         if (typeof imageUrl !== 'string' || imageUrl.trim() === '') return "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
-        // URLs de Firebase Storage ya son completas
         if (imageUrl.startsWith('http')) return imageUrl;
-        // Fallback para imágenes locales
         return imageUrl;
     };
 

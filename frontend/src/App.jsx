@@ -27,6 +27,11 @@ function AdminArea() {
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
   
+  const handleUserRegistered = () => {
+    setRefreshHealthProfiles(prev => prev + 1);
+    setRefreshList(prev => prev + 1);
+  };
+  
   useEffect(() => {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
@@ -67,7 +72,7 @@ function AdminArea() {
           <Route path="/" element={<Home />} />
           
           {/* 2. Registrar Clientes Nuevos */}
-          <Route path="registrar" element={<RegisterUser onUserRegistered={() => setRefreshHealthProfiles(prev => prev + 1)} />} />
+          <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
           
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
@@ -103,20 +108,15 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta Pública: Landing Page (Inicio) */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Ruta Pública: Acerca del Equipo */}
         <Route path="/equipo" element={<AboutTeam />} />
 
-        {/* Rutas de Cliente */}
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
 
-        {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}
         <Route path="/admin/*" element={<AdminArea />} />
 
-        {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

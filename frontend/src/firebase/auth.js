@@ -5,7 +5,8 @@ import {
   onAuthStateChanged,
   updateProfile
 } from "firebase/auth";
-import { auth } from "./config";
+import { httpsCallable } from "firebase/functions";
+import { auth, functions } from "./config";
 
 // Login con email y contraseña
 export const loginUser = async (email, password) => {
@@ -17,7 +18,7 @@ export const loginUser = async (email, password) => {
   }
 };
 
-// Registrar nuevo usuario
+// Registrar nuevo usuario 
 export const registerUser = async (email, password, displayName) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -27,8 +28,42 @@ export const registerUser = async (email, password, displayName) => {
       await updateProfile(userCredential.user, { displayName });
     }
     
-    return { success: true, user: userCredential.user };
+    const newUser = userCredential.user;
+    
+    
+    return { success: true, user: newUser };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+
+export const createUserWithoutSessionChange = async (email, password, displayName) => {
+  try {
+    const createUserFn = httpsCallable(functions, 'createUserAccount');
+    const result = await createUserFn({ email, password, displayName });
+    
+    return { 
+      success: true, 
+      user: { 
+        uid: result.data.uid,
+        email: result.data.email,
+        displayName: displayName || null
+      } 
+    };
+  } catch (error) {
+    console.error('Error en createUserWithoutSessionChange:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const registerClientByAdmin = async (payload) => {
+  try {
+    const registerFn = httpsCallable(functions, 'registerClientByAdmin');
+    const result = await registerFn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en registerClientByAdmin:', error);
     return { success: false, error: error.message };
   }
 };

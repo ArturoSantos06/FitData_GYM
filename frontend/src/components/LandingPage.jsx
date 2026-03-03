@@ -410,9 +410,9 @@ function ServicesSection() {
                   <h3 className="text-lg font-bold text-cyan-400 uppercase tracking-wider mb-4">
                     {service.title}
                   </h3>
-                  <p className="text-gray-200 text-sm leading-relaxed">
+                  <div className="text-gray-200 text-sm leading-relaxed">
                     {service.description}
-                  </p>
+                  </div>
                   <p className="text-xs text-gray-400 mt-4">
                     Click para regresar
                   </p>

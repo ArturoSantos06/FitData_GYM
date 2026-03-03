@@ -110,7 +110,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         isOwner(resource.data.userId) || ownsMember(resource.data.memberId) || isAdmin()
       );
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
       allow update: if isAdmin() || (
         isAuthenticated() && (
           resource.data.userId == request.auth.uid ||
