@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import { auth, getUser, getMemberByUserId, getUserMemberships } from '../firebase';
+import { auth, getUser, getMemberByUserId, getUserMemberships, getMembershipTypes } from '../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -20,9 +20,47 @@ function ClientMembership() {
   const [loading, setLoading] = useState(true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardRatio, setCardRatio] = useState(1.58);
-  const [tick, setTick] = useState(0);
+  const [_tick, setTick] = useState(0);
   const qrRef = useRef(null);
   const cardBackRef = useRef(null);
+
+  const parseLocalDate = (dateStr, h = 0, m = 0, s = 0, ms = 0) => {
+    try {
+      const [y, mo, d] = String(dateStr).split('-').map(Number);
+      return new Date(y, (mo || 1) - 1, d, h, m, s, ms);
+    } catch {
+      return new Date(dateStr);
+    }
+  };
+
+  const getGymHoursForDate = (dateObj) => {
+    const day = dateObj.getDay();
+    if (day >= 1 && day <= 5) return { openHour: 6, closeHour: 22 }; 
+    if (day === 6) return { openHour: 6, closeHour: 14 };
+    return null; 
+  };
+
+  const getGymWindowForDateStr = (dateStr) => {
+    const base = parseLocalDate(dateStr, 0, 0, 0, 0);
+    const hours = getGymHoursForDate(base);
+    if (!hours) return null;
+    return {
+      start: parseLocalDate(dateStr, hours.openHour, 0, 0, 0),
+      end: parseLocalDate(dateStr, hours.closeHour, 0, 0, 0)
+    };
+  };
+
+  const formatRemaining = (diffMs) => {
+    const safe = Math.max(0, diffMs);
+    const totalMinutes = Math.floor(safe / (1000 * 60));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) return `${days} día${days > 1 ? 's' : ''} ${hours}h`;
+    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''} ${minutes} min`;
+    return `${minutes} min`;
+  };
 
   const downloadQR = async () => {
     try {
@@ -64,7 +102,6 @@ function ClientMembership() {
         });
       }
       
-      // Línea separadora con gradiente de colores FitData (cyan a púrpura)
       const lineY = 650;
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
@@ -75,8 +112,8 @@ function ClientMembership() {
       
       // Sección inferior con fondo degradado suave
       const bgGradient = ctx.createLinearGradient(0, lineY + 20, 0, canvas.height - 50);
-      bgGradient.addColorStop(0, '#f0f9ff'); // cyan muy claro
-      bgGradient.addColorStop(1, '#faf5ff'); // púrpura muy claro
+      bgGradient.addColorStop(0, '#f0f9ff'); 
+      bgGradient.addColorStop(1, '#faf5ff'); 
       ctx.fillStyle = bgGradient;
       ctx.fillRect(50, lineY + 20, canvas.width - 100, canvas.height - lineY - 70);
       
@@ -174,16 +211,34 @@ function ClientMembership() {
           
           // Adaptar formato a la estructura esperada por el componente
           const membership = sorted[0];
+          const fallbackType = {
+            name: membership.membershipName || membership.membershipTypeName || 'Membresía',
+            duration_days: membership.durationDays ?? membership.duration_days ?? null,
+            image: membership.membershipImage || membership.membershipTypeImage || membership.image || null
+          };
+
+          if ((!fallbackType.image || !fallbackType.duration_days) && membership.membershipType) {
+            const typeResult = await getMembershipTypes();
+            if (typeResult.success) {
+              const currentType = typeResult.data.find((type) => type.id === membership.membershipType);
+              if (currentType) {
+                fallbackType.name = fallbackType.name || currentType.name || 'Membresía';
+                fallbackType.duration_days = fallbackType.duration_days ?? currentType.duration_days ?? null;
+                fallbackType.image = fallbackType.image || currentType.image || null;
+              }
+            }
+          }
+
+          const startDate = membership.startDate || membership.start_date;
+          const endDate = membership.endDate || membership.end_date;
+
           setMembership({
             user: currentUser.uid,
-            tipo: {
-              name: membership.membershipName,
-              duration_days: membership.durationDays
-            },
-            start_date: membership.startDate,
-            end_date: membership.endDate,
-            time_remaining: calculateTimeRemaining(membership.endDate),
-            membership_name: membership.membershipName
+            tipo: fallbackType,
+            start_date: startDate,
+            end_date: endDate,
+            time_remaining: calculateTimeRemaining(endDate),
+            membership_name: fallbackType.name
           });
         } else {
           setMembership(null);
@@ -208,20 +263,42 @@ function ClientMembership() {
     return () => unsubscribe();
   }, []);
 
-  const calculateTimeRemaining = (endDateStr) => {
+  const calculateTimeRemaining = (endDateStr, options = {}) => {
     if (!endDateStr) return 'Sin fecha';
-    const endDate = new Date(endDateStr);
+
+    const { isDayPass = false, dayPassBaseDate = null } = options;
     const now = new Date();
-    const diff = endDate - now;
+
+    if (isDayPass) {
+      const baseDateStr = dayPassBaseDate || endDateStr;
+      const todayWindow = getGymWindowForDateStr(baseDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      if (now <= todayWindow.start) return formatRemaining(todayWindow.end - todayWindow.start);
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
+
+    if (
+      now.getFullYear() === endDate.getFullYear() &&
+      now.getMonth() === endDate.getMonth() &&
+      now.getDate() === endDate.getDate()
+    ) {
+      const todayWindow = getGymWindowForDateStr(endDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    if (now < endDate) {
+      const endDayWindow = getGymWindowForDateStr(endDateStr);
+      if (!endDayWindow) return 'Vigente';
+      if (now >= endDayWindow.end) return 'Vencida';
+      return formatRemaining(endDayWindow.end - now);
+    }
     
-    if (diff < 0) return 'Vencida';
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
-    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
-    return 'Menos de 1 hora';
+    return 'Vencida';
   };
 
   useEffect(() => {
@@ -242,47 +319,46 @@ function ClientMembership() {
     );
   }
 
-  const parseLocalDate = (dateStr, h = 0, m = 0, s = 0, ms = 0) => {
-    try {
-      const [y, mo, d] = dateStr.split('-').map(Number);
-      return new Date(y, (mo || 1) - 1, d, h, m, s, ms);
-    } catch {
-      return new Date(dateStr);
-    }
-  };
-
-  let vigente = true;
-  if (membership.end_date) {
-    const endLocal = parseLocalDate(membership.end_date);
-    const now = new Date();
-    const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);
-    if (now < parseLocalDate(membership.end_date, 0, 0, 0, 0)) {
-      vigente = true;
-    } else if (
-      now.getFullYear() === endLocal.getFullYear() &&
-      now.getMonth() === endLocal.getMonth() &&
-      now.getDate() === endLocal.getDate()
-    ) {
-      vigente = now <= endCutoff;
-    } else {
-      vigente = false;
-    }
-  }
   const userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user?.nombre || user?.username || 'Miembro');
   const userId = user?.id || membership.user || 'FIT-0000';
   const membershipType = membership.tipo?.name || membership.membership_name || 'Full Data Anual';
+  const isDayPassMembership = (membership?.tipo?.duration_days === 1) || (membershipType.toLowerCase().includes('day'));
+  const dayPassBaseDate = membership?.start_date || membership?.end_date;
   const qrCode = miembro?.qr_code || `FD-USER${userId}`;
+
+  let vigente = true;
+  if (membership.end_date) {
+    const now = new Date();
+    if (isDayPassMembership) {
+      const dayWindow = getGymWindowForDateStr(dayPassBaseDate);
+      vigente = !!dayWindow && now <= dayWindow.end;
+    } else {
+      const endLocal = parseLocalDate(membership.end_date);
+      const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);
+      if (now < parseLocalDate(membership.end_date, 0, 0, 0, 0)) {
+        vigente = true;
+      } else if (
+        now.getFullYear() === endLocal.getFullYear() &&
+        now.getMonth() === endLocal.getMonth() &&
+        now.getDate() === endLocal.getDate()
+      ) {
+        vigente = now <= endCutoff;
+      } else {
+        vigente = false;
+      }
+    }
+  }
 
 
   // Función de cálculo de porcentaje restante
   const computeProgress = () => {
     if (!membership?.end_date) return 0;
     const now = new Date();
-    const endLocal = parseLocalDate(membership.end_date);
-    const isDayPass = (membership?.tipo?.duration_days === 1) || (membershipType.toLowerCase().includes('day'));
-    if (isDayPass) {
-      const startVirtual = parseLocalDate(membership.end_date, 6, 0, 0, 0);
-      const endVirtual = parseLocalDate(membership.end_date, 22, 0, 0, 0);
+    if (isDayPassMembership) {
+      const todayWindow = getGymWindowForDateStr(dayPassBaseDate);
+      if (!todayWindow) return 0;
+      const startVirtual = todayWindow.start;
+      const endVirtual = todayWindow.end;
       const total = endVirtual - startVirtual;
       if (total <= 0) return 0;
       let remaining = endVirtual - now;
@@ -294,8 +370,10 @@ function ClientMembership() {
       return pct;
     } else {
       if (!membership.start_date) return 0;
-      const startLocal = parseLocalDate(membership.start_date, 6, 0, 0, 0); 
-      const endCutoff = parseLocalDate(membership.end_date, 22, 0, 0, 0);  
+      const startWindow = getGymWindowForDateStr(membership.start_date);
+      const endWindow = getGymWindowForDateStr(membership.end_date);
+      const startLocal = startWindow?.start || parseLocalDate(membership.start_date, 6, 0, 0, 0);
+      const endCutoff = endWindow?.end || parseLocalDate(membership.end_date, 22, 0, 0, 0);
       const total = endCutoff - startLocal;
       if (total <= 0) return 0;
       const remaining = Math.max(0, endCutoff - now);
@@ -306,7 +384,10 @@ function ClientMembership() {
   };
 
   let progressPct = computeProgress();
-  const timeRemainingText = membership.time_remaining || '';
+  const timeRemainingText = calculateTimeRemaining(membership.end_date, {
+    isDayPass: isDayPassMembership,
+    dayPassBaseDate
+  });
   const isExpired = timeRemainingText.toLowerCase().includes('vencid');
   if (progressPct === 0 && !isExpired) {
     progressPct = 5; 
@@ -437,7 +518,7 @@ function ClientMembership() {
           <div className="flex items-center gap-2">
             <span className="text-slate-400 text-sm uppercase">Tiempo restante</span>
             <span className="text-3xl font-extrabold text-blue-400 drop-shadow-[0_2px_6px_rgba(56,189,248,0.35)]">
-              {membership.time_remaining || 'Cargando...'}
+              {timeRemainingText || 'Cargando...'}
             </span>
           </div>
         </div>

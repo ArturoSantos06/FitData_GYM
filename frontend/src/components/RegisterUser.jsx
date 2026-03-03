@@ -5,12 +5,13 @@ import { registerUser, createUser, createMember, createMembership, getProducts, 
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
-// Formulario rápido para ficha médica inicial administrada
 function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [miembroId, setMiembroId] = useState(null);
+  const [miembroUserId, setMiembroUserId] = useState(null);
+  const [miembroNombre, setMiembroNombre] = useState('');
   const [data, setData] = useState({
     edad: '',
     condicion_corazon: false,
@@ -27,6 +28,12 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
       const result = await getMemberByEmail(miembroEmail);
       if (result.success) {
         setMiembroId(result.data.id);
+        setMiembroUserId(result.data.userId || null);
+        const fullName = [result.data.nombre, result.data.apellido].filter(Boolean).join(' ') || 
+                        result.data.miembro_nombre || 
+                        result.data.email || 
+                        'Sin nombre';
+        setMiembroNombre(fullName);
       }
     };
     
@@ -57,12 +64,15 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     
     const healthData = {
       memberId: miembroId,
-      edad: parseInt(data.edad, 10),
-      condicion_corazon: data.condicion_corazon,
-      presion_alta: data.presion_alta,
-      lesiones_recientes: data.lesiones_recientes,
-      medicamentos: data.medicamentos,
-      comentarios: data.comentarios
+      userId: miembroUserId,
+      memberName: miembroNombre,
+      userIdDisplay: miembroId,
+      age: parseInt(data.edad, 10),
+      heart_condition: data.condicion_corazon,
+      high_blood_pressure: data.presion_alta,
+      recent_injuries: data.lesiones_recientes,
+      medications: data.medicamentos,
+      additional_info: data.comentarios
     };
     
     const result = await createHealthProfile(healthData);

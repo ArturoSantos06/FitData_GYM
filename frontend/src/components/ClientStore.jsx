@@ -18,7 +18,7 @@ function ClientStore() {
             title: p.nombre || 'Producto',
             price: parseFloat(p.precio || 0),
             stock: parseInt(p.stock || 0),
-            image: p.imagen || null, // Firebase Storage URLs already complete
+            image: p.imagen || null, 
           }));
           setProducts(mapped);
         }
@@ -31,7 +31,11 @@ function ClientStore() {
             setUser(userResult.data);
             
             // Cargar ventas del usuario
-            const salesResult = await getSales({ userId: currentUser.uid });
+            const salesResult = await getSales({
+              userId: currentUser.uid,
+              userEmail: userResult.data?.email || currentUser.email || null,
+              username: userResult.data?.username || null
+            });
             if (salesResult.success) {
               const sorted = salesResult.data.sort((a, b) => {
                 const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);

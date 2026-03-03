@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-import { getUser, getMemberByUserId, createHealthProfile, getHealthProfileByMemberId, updateUser } from '../firebase';
+import { auth, getUser, getMemberByUserId, createHealthProfile, getHealthProfileByMemberId, updateUser, getCurrentUser } from '../firebase';
 
 function HealthForm() {
     const [formData, setFormData] = useState({
@@ -21,11 +21,19 @@ function HealthForm() {
     useEffect(() => {
         const loadUserData = async () => {
             try {
-                const userResult = await getUser();
+                const currentUser = getCurrentUser();
+                if (!currentUser) return;
+                
+                const userResult = await getUser(currentUser.uid);
                 if (userResult.success && userResult.data) {
                     const userData = userResult.data;
-                    setFormData(prev => ({ ...prev, nombre: userData.nombre || userData.email }));
-                    const memberResult = await getMemberByUserId(userData.uid);
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        nombre: userData.firstName && userData.lastName 
+                            ? `${userData.firstName} ${userData.lastName}` 
+                            : userData.username || userData.email 
+                    }));
+                    const memberResult = await getMemberByUserId(currentUser.uid);
                     if (memberResult.success && memberResult.data && memberResult.data.telefono) {
                         setFormData(prev => ({ ...prev, telefono: memberResult.data.telefono }));
                     }
@@ -59,7 +67,41 @@ function HealthForm() {
 
         setStatus('loading');
         try {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                throw new Error('No hay sesión activa');
+            }
+
+            const userResult = await getUser(currentUser.uid);
+            let memberName = formData.nombre;
+            let memberId = null;
+            let userIdDisplay = currentUser.uid;
+
+            if (userResult.success && userResult.data) {
+                // Construir nombre completo desde userData
+                const userData = userResult.data;
+                if (userData.firstName || userData.lastName) {
+                    memberName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
+                }
+                
+            const memberResult = await getMemberByUserId(currentUser.uid);
+            if (memberResult.success && memberResult.data) {
+              memberId = memberResult.data.id;
+              userIdDisplay = memberResult.data.id;
+              // Construir nombre completo desde nombre + apellido
+              if (memberResult.data.nombre || memberResult.data.apellido) {
+                memberName = [memberResult.data.nombre, memberResult.data.apellido].filter(Boolean).join(' ');
+              } else if (memberResult.data.miembro_nombre) {
+                memberName = memberResult.data.miembro_nombre;
+              }
+            }
+            }
+
             const result = await createHealthProfile({
+                userId: currentUser.uid,
+                memberId: memberId,
+                memberName: memberName,
+                userIdDisplay: userIdDisplay,
                 age: formData.edad ? parseInt(formData.edad, 10) : null,
                 heart_condition: formData.condicionCorazon,
                 high_blood_pressure: formData.presionAlta,
@@ -68,6 +110,8 @@ function HealthForm() {
                 additional_info: formData.comentarios
             });
             if (!result.success) throw new Error(result.error || 'Error guardando ficha');
+            const mensaje = result.updated ? 'Ficha médica actualizada correctamente' : 'Ficha médica creada correctamente';
+            alert(mensaje);
             setStatus('success');
         } catch (err) {
             alert(err.message);
@@ -77,9 +121,12 @@ function HealthForm() {
         useEffect(() => {
             const loadHealthProfile = async () => {
                 try {
-                    const userResult = await getUser();
+                    const currentUser = getCurrentUser();
+                    if (!currentUser) return;
+                    
+                    const userResult = await getUser(currentUser.uid);
                     if (userResult.success && userResult.data) {
-                        const memberResult = await getMemberByUserId(userResult.data.uid);
+                        const memberResult = await getMemberByUserId(currentUser.uid);
                         if (memberResult.success && memberResult.data && memberResult.data.id) {
                             const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
                             if (hpResult.success && hpResult.data) {
@@ -143,7 +190,7 @@ function HealthForm() {
                         </div>
                     </div>
                     <div className="flex justify-end">
-                        <button onClick={() => setStatus('idle')} className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Editar Ficha</button>
+                        <button onClick={() => setStatus('form')} className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Editar Ficha</button>
                     </div>
                 </div>
             );
@@ -520,24 +567,35 @@ function UserProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const userResult = await getUser();
-                if (!userResult.success) {
+                // Primero obtener el usuario autenticado de Firebase
+                const currentUser = getCurrentUser();
+                if (!currentUser) {
                     setError('No hay sesión activa');
+                    setLoading(false);
+                    return;
+                }
+
+                // Ahora obtener los datos del usuario de Firestore
+                const userResult = await getUser(currentUser.uid);
+                if (!userResult.success) {
+                    setError('No se pudieron cargar los datos del usuario');
                     setLoading(false);
                     return;
                 }
 
                 const userData = userResult.data;
                 setUser({
-                    id: userData.uid,
-                    nombre: userData.nombre || userData.email,
-                    email: userData.email,
+                    id: userData.id || currentUser.uid,
+                    nombre: userData.firstName && userData.lastName 
+                        ? `${userData.firstName} ${userData.lastName}` 
+                        : userData.username || currentUser.displayName || currentUser.email,
+                    email: userData.email || currentUser.email,
                     telefono: userData.phone || '',
-                    username: userData.email.split('@')[0]
+                    username: userData.username || currentUser.email.split('@')[0]
                 });
 
                 try {
-                    const memberResult = await getMemberByUserId(userData.uid);
+                    const memberResult = await getMemberByUserId(currentUser.uid);
                     if (memberResult.success && memberResult.data) {
                         setMiembro(memberResult.data);
                         setUser(prev => ({

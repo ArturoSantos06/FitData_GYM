@@ -124,16 +124,52 @@ export const createMember = async (memberData) => {
 // MEMBRESÍAS
 export const getUserMemberships = async (userId) => {
   try {
-    const q = query(
+    const toDateOnly = (value) => {
+      if (!value) return null;
+      if (typeof value === "string") {
+        return value.includes("T") ? value.split("T")[0] : value;
+      }
+      const parsed = value?.toDate?.() || new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().split("T")[0];
+    };
+
+    const normalizeMembership = (docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data,
+        userId: data.userId || data.user || userId,
+        membershipName: data.membershipName || data.membershipTypeName || data.tipo_nombre || "",
+        durationDays: data.durationDays ?? data.duration_days ?? null,
+        startDate: toDateOnly(data.startDate || data.start_date),
+        endDate: toDateOnly(data.endDate || data.end_date)
+      };
+    };
+
+    const byUserIdQuery = query(
       collection(db, "memberships"),
-      where("userId", "==", userId),
-      orderBy("startDate", "desc")
+      where("userId", "==", userId)
     );
-    const querySnapshot = await getDocs(q);
-    const memberships = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const byUserIdSnapshot = await getDocs(byUserIdQuery);
+
+    let docs = byUserIdSnapshot.docs;
+    if (!docs.length) {
+      const byUserLegacyQuery = query(
+        collection(db, "memberships"),
+        where("user", "==", userId)
+      );
+      const byUserLegacySnapshot = await getDocs(byUserLegacyQuery);
+      docs = byUserLegacySnapshot.docs;
+    }
+
+    const memberships = docs
+      .map(normalizeMembership)
+      .sort((a, b) => {
+        const dateA = new Date(a.startDate || a.endDate || 0).getTime();
+        const dateB = new Date(b.startDate || b.endDate || 0).getTime();
+        return dateB - dateA;
+      });
+
     return { success: true, data: memberships };
   } catch (error) {
     return { success: false, error: error.message };
@@ -215,16 +251,18 @@ export const assignMembership = async (assignmentData) => {
     const existingMemberships = await getUserMemberships(userId);
     if (existingMemberships.success && existingMemberships.data.length > 0) {
       const activeMembership = existingMemberships.data.find(m => {
-        const endDate = m.end_date?.toDate?.() || new Date(m.end_date);
+        const rawEndDate = m.endDate || m.end_date;
+        const endDate = rawEndDate?.toDate?.() || new Date(rawEndDate);
         return endDate >= new Date();
       });
       
       if (activeMembership && !forceRenew) {
+        const activeMembershipEndDate = activeMembership.endDate || activeMembership.end_date;
         return { 
           success: false, 
           conflict: true,
           message: "El cliente ya tiene una membresía activa",
-          detail: `La membresía actual vence el ${new Date(activeMembership.end_date).toLocaleDateString('es-MX')}`,
+          detail: `La membresía actual vence el ${new Date(activeMembershipEndDate).toLocaleDateString('es-MX')}`,
           existingMembership: activeMembership
         };
       }
@@ -248,7 +286,12 @@ export const assignMembership = async (assignmentData) => {
     const now = new Date();
     const startDate = now.toISOString().split('T')[0];
     const endDate = new Date(now);
-    endDate.setDate(endDate.getDate() + membershipType.duration_days);
+    const durationDays = Number(membershipType.duration_days || 0);
+    if (durationDays <= 1) {
+      endDate.setHours(0, 0, 0, 0);
+    } else {
+      endDate.setDate(endDate.getDate() + durationDays);
+    }
     const endDateStr = endDate.toISOString().split('T')[0];
     
     // 4. Crear membresía
@@ -261,10 +304,11 @@ export const assignMembership = async (assignmentData) => {
       userEmail: userData.email || "",
       membershipName: membershipType.name,
       membershipTypeName: membershipType.name,
+      membershipImage: membershipType.image || null,
       membershipPrice: membershipType.price,
       startDate: startDate,
       endDate: endDateStr,
-      durationDays: membershipType.duration_days,
+      durationDays: durationDays,
       paymentMethod: paymentMethod,
       montoRecibido: montoRecibido,
       createdAt: serverTimestamp()
@@ -489,7 +533,8 @@ export const checkInMember = async (qrCode) => {
     const membershipsSnapshot = await getDocs(membershipsQuery);
     const activeMembership = membershipsSnapshot.docs.find(doc => {
       const data = doc.data();
-      const endDate = data.end_date?.toDate() || new Date(data.end_date);
+      const rawEndDate = data.endDate || data.end_date;
+      const endDate = rawEndDate?.toDate?.() || new Date(rawEndDate);
       return endDate >= new Date();
     });
     
@@ -733,23 +778,66 @@ export const createSale = async (saleData) => {
 
 export const getSales = async (filters = {}) => {
   try {
-    const constraints = [];
-    
-    // Filtro por userId
-    if (filters.userId) {
-      constraints.push(where("cliente", "==", filters.userId));
-    }
-    
-    // Ordenar por fecha descendente
-    constraints.push(orderBy("createdAt", "desc"));
-    constraints.push(limit(filters.limit || 100));
-    
-    const q = query(collection(db, "ventas"), ...constraints);
-    const querySnapshot = await getDocs(q);
-    const sales = querySnapshot.docs.map(doc => ({
+    const limitValue = filters.limit || 100;
+
+    const mapDocs = (querySnapshot) => querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    let sales = [];
+
+    if (filters.userId || filters.userEmail || filters.username) {
+      const fieldQueries = [];
+
+      if (filters.userId) {
+        fieldQueries.push(
+          query(collection(db, "ventas"), where("cliente", "==", filters.userId), limit(limitValue)),
+          query(collection(db, "ventas"), where("cliente_id", "==", filters.userId), limit(limitValue)),
+          query(collection(db, "ventas"), where("userId", "==", filters.userId), limit(limitValue))
+        );
+      }
+
+      if (filters.userEmail) {
+        fieldQueries.push(
+          query(collection(db, "ventas"), where("cliente_email", "==", filters.userEmail), limit(limitValue)),
+          query(collection(db, "ventas"), where("email", "==", filters.userEmail), limit(limitValue))
+        );
+      }
+
+      if (filters.username) {
+        fieldQueries.push(
+          query(collection(db, "ventas"), where("cliente_username", "==", filters.username), limit(limitValue)),
+          query(collection(db, "ventas"), where("cliente", "==", filters.username), limit(limitValue))
+        );
+      }
+
+      const snapshots = await Promise.allSettled(fieldQueries.map(q => getDocs(q)));
+      const mergedById = new Map();
+
+      snapshots.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const docs = mapDocs(result.value);
+          docs.forEach((sale) => {
+            mergedById.set(sale.id, sale);
+          });
+        }
+      });
+
+      sales = Array.from(mergedById.values());
+      
+      sales.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      sales = sales.slice(0, limitValue);
+    } else {
+      const q = query(collection(db, "ventas"), orderBy("createdAt", "desc"), limit(limitValue));
+      const querySnapshot = await getDocs(q);
+      sales = mapDocs(querySnapshot);
+    }
+
     return { success: true, data: sales };
   } catch (error) {
     return { success: false, error: error.message };
@@ -759,12 +847,53 @@ export const getSales = async (filters = {}) => {
 // HEALTH PROFILES
 export const createHealthProfile = async (healthData) => {
   try {
+    let completedData = { ...healthData };
+    
+    if (healthData.memberId && !healthData.userId) {
+      try {
+        const memberDoc = await getDoc(doc(db, "miembros", healthData.memberId));
+        if (memberDoc.exists() && memberDoc.data().userId) {
+          completedData.userId = memberDoc.data().userId;
+        }
+      } catch (err) {
+        console.warn('No se pudo obtener userId del miembro:', err);
+      }
+    }
+
+    let existingProfile = null;
+    
+    if (completedData.memberId) {
+      const qMember = query(collection(db, "healthProfiles"), where("memberId", "==", completedData.memberId));
+      const memberSnapshot = await getDocs(qMember);
+      if (!memberSnapshot.empty) {
+        existingProfile = { id: memberSnapshot.docs[0].id, ...memberSnapshot.docs[0].data() };
+      }
+    }
+    
+    if (!existingProfile && completedData.userId) {
+      const qUser = query(collection(db, "healthProfiles"), where("userId", "==", completedData.userId));
+      const userSnapshot = await getDocs(qUser);
+      if (!userSnapshot.empty) {
+        existingProfile = { id: userSnapshot.docs[0].id, ...userSnapshot.docs[0].data() };
+      }
+    }
+    
+    // Si ya existe, actualizar
+    if (existingProfile) {
+      await updateDoc(doc(db, "healthProfiles", existingProfile.id), {
+        ...completedData,
+        updatedAt: serverTimestamp()
+      });
+      return { success: true, id: existingProfile.id, updated: true };
+    }
+    
+    // Si no existe, crear nueva
     const docRef = await addDoc(collection(db, "healthProfiles"), {
-      ...healthData,
+      ...completedData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
-    return { success: true, id: docRef.id };
+    return { success: true, id: docRef.id, updated: false };
   } catch (error) {
     return { success: false, error: error.message };
   }
