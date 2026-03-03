@@ -94,6 +94,9 @@ export const getMembers = async () => {
   }
 };
 
+// Alias para compatibilidad
+export const getAllMembers = getMembers;
+
 export const getMemberByUserId = async (userId) => {
   try {
     const q = query(collection(db, "miembros"), where("userId", "==", userId));
@@ -1069,6 +1072,75 @@ export const getMemberByEmail = async (email) => {
       return { success: true, data: { id: doc.id, ...doc.data() } };
     }
     return { success: false, error: "Miembro no encontrado" };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// NOTAS PRIVADAS DEL ENTRENADOR
+
+export const createTrainerNote = async (noteData) => {
+  try {
+    const docRef = await addDoc(collection(db, "trainerNotes"), {
+      ...noteData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTrainerNotesByMember = async (memberId) => {
+  try {
+    const q = query(
+      collection(db, "trainerNotes"), 
+      where("memberId", "==", memberId),
+      orderBy("updatedAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    const notes = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: notes };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAllTrainerNotes = async () => {
+  try {
+    const q = query(collection(db, "trainerNotes"), orderBy("updatedAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    const notes = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: notes };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateTrainerNote = async (noteId, noteData) => {
+  try {
+    const noteRef = doc(db, "trainerNotes", noteId);
+    await updateDoc(noteRef, {
+      ...noteData,
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTrainerNote = async (noteId) => {
+  try {
+    await deleteDoc(doc(db, "trainerNotes", noteId));
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }

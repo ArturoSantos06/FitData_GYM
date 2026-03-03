@@ -121,6 +121,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Trainer Notes - Private notes only accessible by admin/trainers
+    match /trainerNotes/{noteId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;

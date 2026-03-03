@@ -23,6 +23,7 @@ export {
   
   // Members
   getMembers,
+  getAllMembers,
   getMemberByUserId,
   getMemberByEmail,
   createMember,
@@ -62,7 +63,14 @@ export {
   
   // Health Profiles
   createHealthProfile,
-  getHealthProfileByMemberId
+  getHealthProfileByMemberId,
+  
+  // Trainer Notes
+  createTrainerNote,
+  getTrainerNotesByMember,
+  getAllTrainerNotes,
+  updateTrainerNote,
+  deleteTrainerNote
 } from './firestore';
 
 // Export Storage services

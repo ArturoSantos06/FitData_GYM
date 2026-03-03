@@ -13,6 +13,7 @@ import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
+import BitacoraEntrenador from './components/BitacoraEntrenador';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -95,6 +96,9 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
+          
+          {/* 8. Bitácora de Notas Privadas del Entrenador */}
+          <Route path="bitacora" element={<BitacoraEntrenador />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
