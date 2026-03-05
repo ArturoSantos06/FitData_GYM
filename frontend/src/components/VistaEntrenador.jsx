@@ -109,9 +109,18 @@ function VistaEntrenador() {
 
                 return (
                   <div key={member.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                    <p className="text-white font-semibold">{fullName || 'Sin nombre registrado'}</p>
-                    <p className="text-slate-400 text-sm mt-1">Matrícula: {matricula}</p>
-                    {member.email && <p className="text-slate-500 text-xs mt-1">{member.email}</p>}
+                    <p
+                      onDoubleClick={() =>
+                        navigate(`/entrenador/rutina/${member.id}`, {
+                          state: { member }
+                        })
+                      }
+                      className="text-white font-semibold cursor-pointer select-none hover:text-blue-400 transition-colors"
+                      title="Doble clic para abrir rutina"
+                    >
+                      {fullName || 'Sin nombre registrado'}
+                    </p>
+                    <p className="text-slate-500 text-xs mt-1">Doble clic en el nombre para crear rutina</p>
                   </div>
                 );
               })}
