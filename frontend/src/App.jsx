@@ -19,6 +19,9 @@ import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
 
+//Componete para el entrenador//
+import TrainerClientUnlink from './components/TrainerClientUnlink';
+
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -90,7 +93,7 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
-          
+
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </main>
@@ -115,6 +118,9 @@ function App() {
 
         {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}
         <Route path="/admin/*" element={<AdminArea />} />
+
+        {/* Ruta para el entrenador (ejemplo) */}
+        <Route path="/entrenador" element={<TrainerClientUnlink />} />
 
         {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />

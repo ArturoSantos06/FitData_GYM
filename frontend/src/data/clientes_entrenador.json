@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "pagoAlCorriente": true,
+      "estatus": "Activo"
+    },
+    {
+       "id": 2,
+       "name": "Sofia López",
+       "pagoAlCorriente": false,
+       "estatus": "Vencido"
+    }
+  ]
+}
