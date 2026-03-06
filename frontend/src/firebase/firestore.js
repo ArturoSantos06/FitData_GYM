@@ -11,9 +11,28 @@ import {
   where,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from "firebase/firestore";
 import { db } from "./config";
+
+const getLocalMXDate = () => {
+  const now = new Date();
+  const mexicoOffset = -6 * 60; 
+  const localOffset = now.getTimezoneOffset();
+  const diffMinutes = localOffset - mexicoOffset;
+  const mexicoTime = new Date(now.getTime() - (diffMinutes * 60 * 1000));
+  return Timestamp.fromDate(mexicoTime);
+};
+
+const getLocalMXDateISO = () => {
+  const now = new Date();
+  const mexicoOffset = -6 * 60;
+  const localOffset = now.getTimezoneOffset();
+  const diffMinutes = localOffset - mexicoOffset;
+  const mexicoTime = new Date(now.getTime() - (diffMinutes * 60 * 1000));
+  return mexicoTime.toISOString();
+};
 
 // USUARIOS
 export const createUser = async (uid, userData) => {
@@ -415,8 +434,8 @@ export const assignMembership = async (assignmentData) => {
           }
         ]),
         tipo_venta: isRenewal ? "RENOVACION_MEMBRESIA" : "ALTA_MEMBRESIA",
-        createdAt: serverTimestamp(),
-        fecha: new Date().toISOString()
+        createdAt: getLocalMXDate(),
+        fecha: getLocalMXDateISO()
       });
     }
 
@@ -949,8 +968,8 @@ export const createSale = async (saleData) => {
       total: total,
       monto_recibido: monto_recibido || total,
       detalle_productos: JSON.stringify(productos),
-      createdAt: serverTimestamp(),
-      fecha: new Date().toISOString()
+      createdAt: getLocalMXDate(),
+      fecha: getLocalMXDateISO()
     };
     
     const docRef = await addDoc(collection(db, "ventas"), ventaData);
@@ -1020,8 +1039,8 @@ export const createMembershipSale = async (saleData) => {
         }
       ]),
       tipo_venta: tipo_venta,
-      createdAt: serverTimestamp(),
-      fecha: new Date().toISOString()
+      createdAt: getLocalMXDate(),
+      fecha: getLocalMXDateISO()
     });
 
     return { success: true, folio };
@@ -1157,10 +1176,17 @@ export const createHealthProfile = async (healthData) => {
       userIdDisplay: String(completedData.userIdDisplay || canonicalId)
     };
 
+    const getLocalMXDate = () => {
+      const now = new Date();
+      const mexicoOffset = -6 * 60; 
+      const localDate = new Date(now.getTime() + (now.getTimezoneOffset() + mexicoOffset) * 60000);
+      return localDate;
+    };
+
     if (existingCanonical.exists()) {
       await updateDoc(profileRef, {
         ...normalizedPayload,
-        updatedAt: serverTimestamp()
+        updatedAt: getLocalMXDate()
       });
       return { success: true, id: canonicalId, updated: true };
     }
@@ -1173,8 +1199,8 @@ export const createHealthProfile = async (healthData) => {
 
     await setDoc(profileRef, {
       ...normalizedPayload,
-      createdAt: legacyProfileDoc ? (legacyProfileDoc.data().createdAt || serverTimestamp()) : serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: legacyProfileDoc ? (legacyProfileDoc.data().createdAt || getLocalMXDate()) : getLocalMXDate(),
+      updatedAt: getLocalMXDate()
     }, { merge: true });
 
     if (legacyProfileDoc && legacyProfileDoc.id !== canonicalId) {

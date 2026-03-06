@@ -579,7 +579,11 @@ exports.registerClientByAdmin = onCall(async (request) => {
       displayName: `${firstName} ${lastName}`.trim(),
     });
 
-    const today = new Date();
+    const now = new Date();
+    const mexicoOffset = -6 * 60; 
+    const localDate = new Date(now.getTime() + (now.getTimezoneOffset() + mexicoOffset) * 60000);
+    const today = localDate;
+    
     const durationDays = Number(membershipType.duration_days || membershipType.durationDays || 30);
     const endDate = new Date(today);
     endDate.setDate(endDate.getDate() + durationDays);

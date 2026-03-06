@@ -14,6 +14,7 @@ import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
+import GestionEntrenadores from './components/GestionEntrenadores';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -99,6 +100,9 @@ function AdminArea() {
           
           {/* 8. Bitácora de Notas Privadas del Entrenador */}
           <Route path="bitacora" element={<BitacoraEntrenador />} />
+          
+          {/* 9. Gestión de Entrenadores (RF-018) */}
+          <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
