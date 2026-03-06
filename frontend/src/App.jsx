@@ -19,6 +19,16 @@ import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
 import VistaEntrenador from './components/VistaEntrenador';
+import RutinaEntrenador from './components/RutinaEntrenador';
+import EntrenadorLogin from './components/EntrenadorLogin';
+
+function RequireTrainerAuth({ children }) {
+  const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
+  if (!isTrainerAuthenticated) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+  return children;
+}
 
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('token')));
@@ -106,7 +116,23 @@ function App() {
         {/* Rutas de Cliente */}
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
-        <Route path="/entrenador" element={<VistaEntrenador />} />
+        <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+        <Route
+          path="/entrenador"
+          element={
+            <RequireTrainerAuth>
+              <VistaEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/rutina/:memberId"
+          element={
+            <RequireTrainerAuth>
+              <RutinaEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
 
         {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}
         <Route path="/admin/*" element={<AdminArea />} />

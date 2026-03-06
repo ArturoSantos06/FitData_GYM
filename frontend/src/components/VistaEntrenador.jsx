@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, ArrowLeft } from 'lucide-react';
+import { Search, Users, ArrowLeft, LogOut } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -50,14 +50,28 @@ function VistaEntrenador() {
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            Volver
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
+            >
+              <ArrowLeft size={16} />
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('trainer_token');
+                localStorage.removeItem('trainer_username');
+                navigate('/entrenador/login');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:border-red-500 hover:text-red-300 transition-colors"
+            >
+              <LogOut size={16} />
+              Cerrar sesión
+            </button>
+          </div>
 
           <div className="text-right">
             <h1 className="text-2xl md:text-3xl font-bold">Portal de Entrenador</h1>
@@ -120,6 +134,7 @@ function VistaEntrenador() {
                     >
                       {fullName || 'Sin nombre registrado'}
                     </p>
+                    <p className="text-slate-400 text-xs mt-1">Matrícula: {matricula}</p>
                     <p className="text-slate-500 text-xs mt-1">Doble clic en el nombre para crear rutina</p>
                   </div>
                 );
