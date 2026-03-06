@@ -1,62 +1,72 @@
-# Archivos sensibles y credenciales (NUNCA SUBIR)
+# =========================
+# FitData_GYM - .gitignore único
+# =========================
+
+# --- Secretos / credenciales ---
 .env
 *.env
 *.env.local
+*.env.production
+*.local
 client_secret.json
 gmail_tokens.json
 firebase-service-account.json
-/firebase-service-account.json
-**/firebase-service-account.json
-**/*-service-account.json
-**/*service-account*.json
+*-service-account.json
+*service-account*.json
 .firebase/
 
-# Python
-*.pyc
-*.pyo
+# --- Python / Django (fase1) ---
 __pycache__/
-*/__pycache__/
-**/*.pyc
+*.py[cod]
+*.pyo
+*.pyd
 *.so
 *.egg
-*.egg-info
-dist/
-build/
-*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
 
-# Virtual environment
-venv
-env
-ENV
-.venv
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
 
-# Base de datos
-db.sqlite3
+# DB locales
 *.sqlite
+*.sqlite3
 *.db
 
-# Archivos media (imágenes subidas por usuarios)
-media/
-productos/
-memberships/
+# Estáticos / uploads Django
+fase1/media/
+fase1/productos/
+fase1/memberships/
+fase1/static/
+fase1/staticfiles/
 
-# Archivos estáticos compilados
-staticfiles/
-static/
+# --- Node / frontend / functions ---
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+functions/node_modules/
 
-# Node / Frontend
-frontend/node_modules
-frontend/dist
-frontend/.env.local
-functions/node_modules
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # IDE / Editor
-.vscode
-.idea
-*.swp
-*.swo
-}
-*.log
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Sistema operativo
 .DS_Store

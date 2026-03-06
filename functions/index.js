@@ -1,6 +1,6 @@
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {onCall} = require("firebase-functions/v2/https");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -18,6 +18,19 @@ const formatDate = (value) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "N/A";
   return parsed.toLocaleDateString("es-MX");
+};
+
+const normalizeComparableText = (value = "") => String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const generateSaleFolio = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `V-${timestamp}-${random}`;
 };
 
 const nodemailer = require("nodemailer");
@@ -63,6 +76,25 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
     logger.warn("Evento memberships sin data, se omite");
     return;
   }
+
+  try {
+    await event.data.ref.update({
+      renewalEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      renewalEmailStatus: "skipped_initial_registration",
+      renewalEmailProvider: "none",
+    });
+  } catch (error) {
+    logger.warn("No se pudo marcar skip en membership", {
+      membershipId: event.params.membershipId,
+      error: String(error.message || error),
+    });
+  }
+
+  logger.info("Correo de membership omitido para evitar duplicado", {
+    membershipId: event.params.membershipId,
+    reason: "initial_registration",
+  });
+  return;
 
   const eventRef = admin.firestore().collection("_functionEvents").doc(event.id);
   try {
@@ -158,9 +190,9 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
   }
 });
 
-// ========================================
+
 // TRIGGER: Enviar comprobante de venta
-// ========================================
+
 exports.onSaleCreatedSendEmail = onDocumentCreated({
   document: "ventas/{ventaId}",
   secrets: [
@@ -172,6 +204,27 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
   const venta = event.data?.data();
   if (!venta) {
     logger.warn("Evento ventas sin data, se omite");
+    return;
+  }
+
+  if ((venta.tipo_venta || "") === "ALTA_MEMBRESIA") {
+    try {
+      await event.data.ref.update({
+        saleEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        saleEmailStatus: "skipped_initial_registration",
+        saleEmailProvider: "none",
+      });
+    } catch (error) {
+      logger.warn("No se pudo marcar skip en venta", {
+        ventaId: event.params.ventaId,
+        error: String(error.message || error),
+      });
+    }
+
+    logger.info("Comprobante de venta omitido para alta inicial", {
+      ventaId: event.params.ventaId,
+      folio: venta.folio || "S/N",
+    });
     return;
   }
 
@@ -290,9 +343,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
   }
 });
 
-// ========================================
-// TRIGGER: Enviar bienvenida a nuevo cliente
-// ========================================
+
 exports.onMemberCreatedSendEmail = onDocumentCreated({
   document: "miembros/{memberId}",
   secrets: [
@@ -468,7 +519,7 @@ exports.createUserAccount = onCall(async (request) => {
 
 exports.registerClientByAdmin = onCall(async (request) => {
   if (!request.auth) {
-    throw new Error("No autenticado");
+    throw new HttpsError("unauthenticated", "No autenticado");
   }
 
   const {
@@ -483,7 +534,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
   } = request.data || {};
 
   if (!username || !email || !password || !firstName || !lastName || !membershipTypeId) {
-    throw new Error("Faltan campos requeridos para el registro");
+    throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro");
   }
 
   const db = admin.firestore();
@@ -491,12 +542,34 @@ exports.registerClientByAdmin = onCall(async (request) => {
   try {
     const adminUserDoc = await db.collection("users").doc(request.auth.uid).get();
     if (!adminUserDoc.exists || adminUserDoc.data()?.role !== "admin") {
-      throw new Error("No tienes permisos de administrador");
+      throw new HttpsError("permission-denied", "No tienes permisos de administrador");
+    }
+
+    const normalizedLastName = normalizeComparableText(lastName);
+    if (!normalizedLastName) {
+      throw new HttpsError("invalid-argument", "Los apellidos son requeridos");
+    }
+
+    const usersSnapshot = await db.collection("users").get();
+    const duplicatedLastNameDoc = usersSnapshot.docs.find((docSnap) => {
+      const userData = docSnap.data() || {};
+      const userRole = userData.role;
+
+      if (userRole && userRole !== "client") {
+        return false;
+      }
+
+      const existingLastName = userData.lastName || userData.last_name || "";
+      return normalizeComparableText(existingLastName) === normalizedLastName;
+    });
+
+    if (duplicatedLastNameDoc) {
+      throw new HttpsError("already-exists", "Ya existe un cliente registrado con esos apellidos");
     }
 
     const membershipTypeDoc = await db.collection("membershipTypes").doc(String(membershipTypeId)).get();
     if (!membershipTypeDoc.exists) {
-      throw new Error("Tipo de membresía no encontrado");
+      throw new HttpsError("not-found", "Tipo de membresía no encontrado");
     }
     const membershipType = membershipTypeDoc.data() || {};
 
@@ -548,6 +621,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
       const membershipPrice = Number(membershipType.price || 0);
       const received = Number(montoRecibido || 0);
       const payMethod = paymentMethod || "EFECTIVO";
+      const saleFolio = generateSaleFolio();
 
       tx.set(db.collection("users").doc(newId), {
         email,
@@ -564,6 +638,32 @@ exports.registerClientByAdmin = onCall(async (request) => {
         updatedAt: timestamp,
       });
 
+      if (membershipPrice > 0) {
+        const saleRef = db.collection("ventas").doc();
+        tx.set(saleRef, {
+          folio: saleFolio,
+          cliente: newId,
+          cliente_id: newId,
+          cliente_username: username,
+          cliente_email: email,
+          clienteEmail: email,
+          clienteNombre: fullName || username || email,
+          metodo_pago: payMethod,
+          total: membershipPrice,
+          monto_recibido: payMethod === "EFECTIVO" ? (received || membershipPrice) : membershipPrice,
+          detalle_productos: JSON.stringify([
+            {
+              nombre: `Membresía: ${membershipType.name || "Membresía"}`,
+              precio: membershipPrice,
+              cantidad: 1,
+            },
+          ]),
+          tipo_venta: "ALTA_MEMBRESIA",
+          fecha: timestamp,
+          createdAt: timestamp,
+        });
+      }
+
       tx.set(db.collection("miembros").doc(newId), {
         userId: newId,
         authUid: authUser.uid,
@@ -576,6 +676,12 @@ exports.registerClientByAdmin = onCall(async (request) => {
         avatar_color: "#6366f1",
         avatarColor: "#6366f1",
         active: true,
+        membershipTypeName: membershipType.name || "",
+        membershipName: membershipType.name || "",
+        membershipPrice,
+        paymentMethod: payMethod,
+        montoRecibido: payMethod === "EFECTIVO" ? (received || membershipPrice) : membershipPrice,
+        folio: membershipPrice > 0 ? saleFolio : "N/A",
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -612,6 +718,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
         authUid: authUser.uid,
         membershipTypeName: membershipType.name || "",
         membershipPrice,
+        saleFolio,
       };
     });
 
@@ -629,12 +736,18 @@ exports.registerClientByAdmin = onCall(async (request) => {
       email,
       membershipTypeName: registration.membershipTypeName,
       membershipPrice: registration.membershipPrice,
+      saleFolio: registration.saleFolio,
     };
   } catch (error) {
     logger.error("Error en registerClientByAdmin", {
       email,
       error: String(error.message || error),
     });
-    throw new Error(error.message || "No se pudo registrar el cliente");
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "No se pudo registrar el cliente");
   }
 });

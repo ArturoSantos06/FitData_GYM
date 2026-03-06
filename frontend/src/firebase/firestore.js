@@ -371,9 +371,11 @@ export const assignMembership = async (assignmentData) => {
     const membershipDoc = membershipByUserSnapshot.docs[0] || legacyMembershipSnapshot.docs[0] || null;
 
     let membershipId;
+    let isRenewal = false;
     if (membershipDoc) {
       await updateDoc(doc(db, "memberships", membershipDoc.id), membershipData);
       membershipId = membershipDoc.id;
+      isRenewal = true;
     } else {
       const docRef = await addDoc(collection(db, "memberships"), {
         ...membershipData,
@@ -382,11 +384,48 @@ export const assignMembership = async (assignmentData) => {
       membershipId = docRef.id;
     }
 
+    const membershipPrice = Number(membershipType.price || 0);
+    let saleFolio = null;
+
+    if (membershipPrice > 0) {
+      const payMethod = paymentMethod || "EFECTIVO";
+      const receivedAmount = payMethod === "EFECTIVO"
+        ? (Number(montoRecibido) || membershipPrice)
+        : membershipPrice;
+      const conceptLabel = isRenewal ? "Renovación" : "Membresía";
+
+      saleFolio = generateSaleFolio();
+
+      await addDoc(collection(db, "ventas"), {
+        folio: saleFolio,
+        cliente: userId,
+        cliente_id: userId,
+        cliente_username: userName || userData.username || userData.email || "Cliente anónimo",
+        cliente_email: userData.email || null,
+        clienteEmail: userData.email || null,
+        clienteNombre: userFullName || userName || userData.email || "Cliente",
+        metodo_pago: payMethod,
+        total: membershipPrice,
+        monto_recibido: receivedAmount,
+        detalle_productos: JSON.stringify([
+          {
+            nombre: `${conceptLabel}: ${membershipType.name}`,
+            precio: membershipPrice,
+            cantidad: 1
+          }
+        ]),
+        tipo_venta: isRenewal ? "RENOVACION_MEMBRESIA" : "ALTA_MEMBRESIA",
+        createdAt: serverTimestamp(),
+        fecha: new Date().toISOString()
+      });
+    }
+
     return { 
       success: true, 
       message: "Membresía asignada correctamente",
       id: membershipId,
-      membershipData
+      membershipData,
+      saleFolio
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -848,6 +887,12 @@ export const getAttendances = async (filters = {}) => {
 };
 
 // VENTAS
+const generateSaleFolio = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `V-${timestamp}-${random}`;
+};
+
 export const createSale = async (saleData) => {
   try {
     const { cliente_id, metodo_pago, total, productos, monto_recibido } = saleData;
@@ -872,19 +917,22 @@ export const createSale = async (saleData) => {
     }
     
     // 2. Generar folio único (timestamp + random)
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
-    const folio = `V-${timestamp}-${random}`;
+    const folio = generateSaleFolio();
     
     // 3. Obtener información del cliente si existe
     let cliente_username = null;
     let cliente_email = null;
+    let clienteNombre = null;
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", cliente_id));
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const nombre = userData.firstName || userData.first_name || "";
+        const apellido = userData.lastName || userData.last_name || "";
+        const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
+        clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
     
@@ -892,8 +940,11 @@ export const createSale = async (saleData) => {
     const ventaData = {
       folio: folio,
       cliente: cliente_id || null,
+      cliente_id: cliente_id || null,
       cliente_username: cliente_username,
       cliente_email: cliente_email,
+      clienteEmail: cliente_email,
+      clienteNombre: clienteNombre,
       metodo_pago: metodo_pago,
       total: total,
       monto_recibido: monto_recibido || total,
@@ -911,6 +962,99 @@ export const createSale = async (saleData) => {
     };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+};
+
+export const createMembershipSale = async (saleData) => {
+  try {
+    const {
+      cliente_id,
+      metodo_pago,
+      total,
+      membership_name,
+      monto_recibido,
+      tipo_venta = "ALTA_MEMBRESIA"
+    } = saleData;
+
+    const folio = generateSaleFolio();
+
+    let cliente_username = null;
+    let cliente_email = null;
+    let clienteNombre = null;
+
+    if (cliente_id) {
+      const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const nombre = userData.firstName || userData.first_name || "";
+        const apellido = userData.lastName || userData.last_name || "";
+        const nombreCompleto = `${nombre} ${apellido}`.trim();
+        cliente_username = userData.username || userData.email;
+        cliente_email = userData.email;
+        clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+      }
+    }
+
+    const totalNumber = Number(total || 0);
+    const payMethod = metodo_pago || "EFECTIVO";
+    const receivedAmount = payMethod === "EFECTIVO"
+      ? (Number(monto_recibido) || totalNumber)
+      : totalNumber;
+
+    await addDoc(collection(db, "ventas"), {
+      folio,
+      cliente: cliente_id || null,
+      cliente_id: cliente_id || null,
+      cliente_username,
+      cliente_email,
+      clienteEmail: cliente_email,
+      clienteNombre,
+      metodo_pago: payMethod,
+      total: totalNumber,
+      monto_recibido: receivedAmount,
+      detalle_productos: JSON.stringify([
+        {
+          nombre: `Membresía: ${membership_name || "Membresía"}`,
+          precio: totalNumber,
+          cantidad: 1
+        }
+      ]),
+      tipo_venta: tipo_venta,
+      createdAt: serverTimestamp(),
+      fecha: new Date().toISOString()
+    });
+
+    return { success: true, folio };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getSaleByFolio = async (folio) => {
+  try {
+    if (!folio) {
+      return { success: false, exists: false, error: "Folio requerido" };
+    }
+
+    const salesQuery = query(
+      collection(db, "ventas"),
+      where("folio", "==", String(folio)),
+      limit(1)
+    );
+
+    const snapshot = await getDocs(salesQuery);
+    if (snapshot.empty) {
+      return { success: true, exists: false };
+    }
+
+    const docSnap = snapshot.docs[0];
+    return {
+      success: true,
+      exists: true,
+      data: { id: docSnap.id, ...docSnap.data() }
+    };
+  } catch (error) {
+    return { success: false, exists: false, error: error.message };
   }
 };
 

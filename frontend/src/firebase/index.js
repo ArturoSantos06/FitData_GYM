@@ -59,6 +59,8 @@ export {
   
   // Sales
   createSale,
+  createMembershipSale,
+  getSaleByFolio,
   getSales,
   
   // Health Profiles

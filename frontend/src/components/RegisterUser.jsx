@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, getProducts, getMemberByEmail, createHealthProfile } from '../firebase';
+import { registerClientByAdmin, getProducts, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
@@ -265,6 +265,44 @@ function RegisterUser({ onUserRegistered }) {
         setErrorMessage(mensaje);
         setShowErrorModal(true);
         return;
+      }
+
+      const registeredUserId = registerResult?.data?.id || null;
+      const saleFolio = registerResult?.data?.saleFolio || null;
+      const selectedMembership = memberships.find(m => m.id.toString() === formData.membership_id);
+      const shouldValidateSale = Number(selectedPrice) > 0;
+
+      if (shouldValidateSale && saleFolio) {
+        const saleCheck = await getSaleByFolio(saleFolio);
+        if (!saleCheck.success || !saleCheck.exists) {
+          const fallbackSaleByFolio = await createMembershipSale({
+            cliente_id: String(registeredUserId || ''),
+            metodo_pago: formData.payment_method,
+            total: Number(selectedPrice),
+            membership_name: selectedMembership?.name || 'Membresía',
+            monto_recibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : Number(selectedPrice),
+            tipo_venta: 'ALTA_MEMBRESIA'
+          });
+
+          if (!fallbackSaleByFolio.success) {
+            throw new Error('Cliente creado, pero la venta no se guardó en base de datos. Intenta nuevamente.');
+          }
+        }
+      }
+
+      if (shouldValidateSale && !saleFolio && registeredUserId) {
+        const fallbackSale = await createMembershipSale({
+          cliente_id: String(registeredUserId),
+          metodo_pago: formData.payment_method,
+          total: Number(selectedPrice),
+          membership_name: selectedMembership?.name || 'Membresía',
+          monto_recibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : Number(selectedPrice),
+          tipo_venta: 'ALTA_MEMBRESIA'
+        });
+
+        if (!fallbackSale.success) {
+          throw new Error('Cliente creado, pero la venta no se guardó en base de datos. Intenta nuevamente.');
+        }
       }
 
       // --- ÉXITO ---

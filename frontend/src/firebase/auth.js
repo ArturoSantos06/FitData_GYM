@@ -64,7 +64,17 @@ export const registerClientByAdmin = async (payload) => {
     return { success: true, data: result.data };
   } catch (error) {
     console.error('Error en registerClientByAdmin:', error);
-    return { success: false, error: error.message };
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo completar el registro';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null
+    };
   }
 };
 
