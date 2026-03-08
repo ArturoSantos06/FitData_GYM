@@ -21,6 +21,7 @@ import AboutTeam from './components/AboutTeam';
 
 //Componete para el entrenador//
 import TrainerClientUnlink from './components/TrainerClientUnlink';
+import TrainerPortal from './components/TrainerPortal';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
@@ -121,6 +122,8 @@ function App() {
 
         {/* Ruta para el entrenador (ejemplo) */}
         <Route path="/entrenador" element={<TrainerClientUnlink />} />
+
+        <Route path="/portal" element={<TrainerPortal />} />
 
         {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />

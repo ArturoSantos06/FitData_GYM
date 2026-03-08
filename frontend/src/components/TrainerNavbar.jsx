@@ -1,8 +1,7 @@
 import React from 'react';
-import { Home, Calendar, Users, User, LogOut } from 'Lucide-react';
+import { Home, Calendar, Users, User, LogOut } from 'lucide-react';
 
 const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
-    //Orden de las pestañas de entrenador//
     const tabs = [
         { id: 'inicio', label: 'Inicio', icon: Home },
         { id: 'agenda', label: 'Agenda', icon: Calendar },
