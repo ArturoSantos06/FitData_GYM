@@ -1,14 +1,13 @@
 import React from 'react';
-import { Calendar, Dumbbell, ClipboardList, StickyNote, UserMinus, LogOut } from 'Lucide-react';
+import { Home, Calendar, Users, User, LogOut } from 'Lucide-react';
 
 const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     //Orden de las pestañas de entrenador//
     const tabs = [
+        { id: 'inicio', label: 'Inicio', icon: Home },
         { id: 'agenda', label: 'Agenda', icon: Calendar },
-        { id: 'rutinas', label: 'Rutinas', icon: Dumbbell },
-        { id: 'historiañ', laber:'Historial', icon: ClipboardList },
-        {id: 'bitacora', label: 'Notas', icon: StickyNote },
-        {id: 'desvinculacion', label: 'Desvincular', icon: UserMinus },
+        { id: 'gestion', label: 'Gestión', icon: Users },
+        { id: 'perfil', label: 'Perfil', icon: User },
     ];
 
     return (
@@ -50,7 +49,7 @@ const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
           </header>
 
           <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-          <div className="grid grid-cols-6 h-full">
+          <div className="grid grid-cols-5 h-full">
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;
@@ -62,13 +61,13 @@ const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
                     isActive ? 'text-blue-400' : 'text-slate-500'
                 }`}
             >
-                <div className={`w-5 h-5 transition-all ${
+                <div className={`w-6 h-6 transition-all ${
                     isActive ? 'scale-110 drop-shadow-{o_0_8px_rbga(59,130,246,0.5)]' : ''
                 }`}>
-                  <Icon size={20} />
+                  <Icon size={24} />
                 </div>
                 <span className="text-[9px] font-medium truncate w-full px-1 text-center">
-                  {tab.laber}
+                  {tab.label}
                 </span>
               </button>
                 );
@@ -77,10 +76,10 @@ const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
               onClick={onLogOut}
               className="flex flex-col items-center justify-center gap-1 text-red-400"
               >
-                <div className="w-5 h-5">
-                    <LogOut size ={20} />
+                <div className="w-6 h-6">
+                    <LogOut size ={24} />
                 </div>
-                <span className="text-[9px] font-medium">
+                <span className="text-[10px] font-medium">
                   Salir
                 </span>
               </button>
