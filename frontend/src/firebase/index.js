@@ -18,6 +18,7 @@ export {
   createUser,
   getUser,
   getUserByEmail,
+  getUserByAuthUid,
   getUsers,
   updateUser,
   
@@ -25,11 +26,13 @@ export {
   getMembers,
   getAllMembers,
   getMemberByUserId,
+  getMemberByAuthUid,
   getMemberByEmail,
   createMember,
   
   // Memberships
   getUserMemberships,
+  getUserMembershipsByAuthUid,
   createMembership,
   assignMembership,
   

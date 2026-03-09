@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCardClient from './ProductCardClient';
-import { getProducts, getUser, getSales, getCurrentUser } from '../firebase';
+import { getProducts, getUser, getUserByAuthUid, getUserByEmail, getSales, getCurrentUser } from '../firebase';
 
 function ClientStore() {
   const [products, setProducts] = useState([]);
@@ -25,24 +25,45 @@ function ClientStore() {
         // Cargar usuario y ventas para historial
         const currentUser = getCurrentUser();
         if (currentUser) {
-          const userResult = await getUser(currentUser.uid);
-          if (userResult.success) {
-            setUser(userResult.data);
-            
-            // Cargar ventas del usuario
-            const salesResult = await getSales({
-              userId: currentUser.uid,
-              userEmail: userResult.data?.email || currentUser.email || null,
-              username: userResult.data?.username || null
-            });
-            if (salesResult.success) {
-              const sorted = salesResult.data.sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-                return dateB - dateA;
-              });
-              setSales(sorted);
+          let resolvedUser = null;
+          let internalUserId = currentUser.uid;
+
+          const userByUid = await getUser(currentUser.uid);
+          if (userByUid.success && userByUid.data) {
+            resolvedUser = userByUid.data;
+            internalUserId = userByUid.data.id || currentUser.uid;
+          } else {
+            const userByAuthUid = await getUserByAuthUid(currentUser.uid);
+            if (userByAuthUid.success && userByAuthUid.data) {
+              resolvedUser = userByAuthUid.data;
+              internalUserId = userByAuthUid.data.id;
+            } else if (currentUser.email) {
+              const userByEmail = await getUserByEmail(currentUser.email);
+              if (userByEmail.success && userByEmail.data) {
+                resolvedUser = userByEmail.data;
+                internalUserId = userByEmail.data.id;
+              }
             }
+          }
+
+          if (resolvedUser) {
+            setUser(resolvedUser);
+          }
+
+          // Cargar ventas del usuario (incluso si no se pudo resolver user doc)
+          const salesResult = await getSales({
+            userId: internalUserId,
+            userEmail: (resolvedUser?.email || currentUser.email || null),
+            username: (resolvedUser?.username || null)
+          });
+
+          if (salesResult.success) {
+            const sorted = salesResult.data.sort((a, b) => {
+              const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+              const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+              return dateB - dateA;
+            });
+            setSales(sorted);
           }
         }
       } catch (error) {

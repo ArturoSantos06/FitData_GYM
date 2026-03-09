@@ -65,6 +65,20 @@ export const getUserByEmail = async (email) => {
   }
 };
 
+export const getUserByAuthUid = async (authUid) => {
+  try {
+    const q = query(collection(db, "users"), where("authUid", "==", authUid), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+    }
+    return { success: false, error: "Usuario no encontrado" };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const updateUser = async (uid, userData) => {
   try {
     await updateDoc(doc(db, "users", uid), {
@@ -109,7 +123,39 @@ export const getAllMembers = getMembers;
 
 export const getMemberByUserId = async (userId) => {
   try {
-    const q = query(collection(db, "miembros"), where("userId", "==", userId));
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
+
+    const snapshots = await Promise.all(
+      candidates.map((candidate) =>
+        getDocs(query(collection(db, "miembros"), where("userId", "==", candidate)))
+      )
+    );
+
+    const docSnap = snapshots.find((snap) => !snap.empty)?.docs?.[0];
+
+    if (docSnap) {
+      const data = docSnap.data();
+      return {
+        success: true,
+        data: {
+          id: docSnap.id,
+          ...data,
+          qr_code: data.qr_code || data.qrCode || "",
+          avatar_color: data.avatar_color || data.avatarColor || "#6366f1"
+        }
+      };
+    }
+    return { success: false, error: "Miembro no encontrado" };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getMemberByAuthUid = async (authUid) => {
+  try {
+    const q = query(collection(db, "miembros"), where("authUid", "==", authUid), limit(1));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
@@ -181,23 +227,76 @@ export const getUserMemberships = async (userId) => {
       };
     };
 
-    const byUserIdQuery = query(
-      collection(db, "memberships"),
-      where("userId", "==", userId)
-    );
-    const byUserIdSnapshot = await getDocs(byUserIdQuery);
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
 
-    let docs = byUserIdSnapshot.docs;
-    if (!docs.length) {
-      const byUserLegacyQuery = query(
-        collection(db, "memberships"),
-        where("user", "==", userId)
+    const membershipQueries = [];
+    candidates.forEach((candidate) => {
+      membershipQueries.push(
+        query(collection(db, "memberships"), where("userId", "==", candidate)),
+        query(collection(db, "memberships"), where("user", "==", candidate))
       );
-      const byUserLegacySnapshot = await getDocs(byUserLegacyQuery);
-      docs = byUserLegacySnapshot.docs;
-    }
+    });
+
+    const snapshots = await Promise.all(membershipQueries.map((q) => getDocs(q)));
+    const dedupDocs = new Map();
+    snapshots.forEach((snap) => {
+      snap.docs.forEach((d) => dedupDocs.set(d.id, d));
+    });
+
+    const docs = Array.from(dedupDocs.values());
 
     const memberships = docs
+      .map(normalizeMembership)
+      .sort((a, b) => {
+        const dateA = new Date(a.startDate || a.endDate || 0).getTime();
+        const dateB = new Date(b.startDate || b.endDate || 0).getTime();
+        return dateB - dateA;
+      });
+
+    return { success: true, data: memberships };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUserMembershipsByAuthUid = async (authUid, userEmail = null) => {
+  try {
+    const toDateOnly = (value) => {
+      if (!value) return null;
+      if (typeof value === "string") {
+        return value.includes("T") ? value.split("T")[0] : value;
+      }
+      const parsed = value?.toDate?.() || new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().split("T")[0];
+    };
+
+    const normalizeMembership = (docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data,
+        userId: data.userId || data.user || "",
+        membershipName: data.membershipName || data.membershipTypeName || data.tipo_nombre || "",
+        durationDays: data.durationDays ?? data.duration_days ?? null,
+        startDate: toDateOnly(data.startDate || data.start_date),
+        endDate: toDateOnly(data.endDate || data.end_date)
+      };
+    };
+
+    const queries = [query(collection(db, "memberships"), where("authUid", "==", authUid))];
+    if (userEmail) {
+      queries.push(query(collection(db, "memberships"), where("userEmail", "==", userEmail)));
+    }
+
+    const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
+    const dedupDocs = new Map();
+    snapshots.forEach((snap) => {
+      snap.docs.forEach((d) => dedupDocs.set(d.id, d));
+    });
+
+    const memberships = Array.from(dedupDocs.values())
       .map(normalizeMembership)
       .sort((a, b) => {
         const dateA = new Date(a.startDate || a.endDate || 0).getTime();
@@ -1097,16 +1196,23 @@ export const getSales = async (filters = {}) => {
       const fieldQueries = [];
 
       if (filters.userId) {
-        fieldQueries.push(
-          query(collection(db, "ventas"), where("cliente", "==", filters.userId), limit(limitValue)),
-          query(collection(db, "ventas"), where("cliente_id", "==", filters.userId), limit(limitValue)),
-          query(collection(db, "ventas"), where("userId", "==", filters.userId), limit(limitValue))
-        );
+        const userIdCandidates = [filters.userId];
+        const numericUserId = Number(filters.userId);
+        if (!Number.isNaN(numericUserId)) userIdCandidates.push(numericUserId);
+
+        userIdCandidates.forEach((candidate) => {
+          fieldQueries.push(
+            query(collection(db, "ventas"), where("cliente", "==", candidate), limit(limitValue)),
+            query(collection(db, "ventas"), where("cliente_id", "==", candidate), limit(limitValue)),
+            query(collection(db, "ventas"), where("userId", "==", candidate), limit(limitValue))
+          );
+        });
       }
 
       if (filters.userEmail) {
         fieldQueries.push(
           query(collection(db, "ventas"), where("cliente_email", "==", filters.userEmail), limit(limitValue)),
+          query(collection(db, "ventas"), where("clienteEmail", "==", filters.userEmail), limit(limitValue)),
           query(collection(db, "ventas"), where("email", "==", filters.userEmail), limit(limitValue))
         );
       }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-import { auth, getUser, getMemberByUserId, createHealthProfile, getHealthProfileByMemberId, updateUser, getCurrentUser } from '../firebase';
+import { auth, getUser, getUserByAuthUid, getUserByEmail, getMemberByUserId, getMemberByAuthUid, createHealthProfile, getHealthProfileByMemberId, updateUser, getCurrentUser } from '../firebase';
 
 function HealthForm() {
     const [formData, setFormData] = useState({
@@ -23,17 +23,41 @@ function HealthForm() {
             try {
                 const currentUser = getCurrentUser();
                 if (!currentUser) return;
-                
-                const userResult = await getUser(currentUser.uid);
-                if (userResult.success && userResult.data) {
-                    const userData = userResult.data;
+
+                let resolvedUser = null;
+                let internalUserId = currentUser.uid;
+
+                const userByUid = await getUser(currentUser.uid);
+                if (userByUid.success && userByUid.data) {
+                    resolvedUser = userByUid.data;
+                    internalUserId = userByUid.data.id || currentUser.uid;
+                } else {
+                    const userByAuthUid = await getUserByAuthUid(currentUser.uid);
+                    if (userByAuthUid.success && userByAuthUid.data) {
+                        resolvedUser = userByAuthUid.data;
+                        internalUserId = userByAuthUid.data.id;
+                    } else if (currentUser.email) {
+                        const userByEmail = await getUserByEmail(currentUser.email);
+                        if (userByEmail.success && userByEmail.data) {
+                            resolvedUser = userByEmail.data;
+                            internalUserId = userByEmail.data.id;
+                        }
+                    }
+                }
+
+                if (resolvedUser) {
+                    const userData = resolvedUser;
                     setFormData(prev => ({ 
                         ...prev, 
                         nombre: userData.firstName && userData.lastName 
                             ? `${userData.firstName} ${userData.lastName}` 
                             : userData.username || userData.email 
                     }));
-                    const memberResult = await getMemberByUserId(currentUser.uid);
+
+                    let memberResult = await getMemberByUserId(internalUserId);
+                    if (!memberResult.success) {
+                        memberResult = await getMemberByAuthUid(currentUser.uid);
+                    }
                     if (memberResult.success && memberResult.data && memberResult.data.telefono) {
                         setFormData(prev => ({ ...prev, telefono: memberResult.data.telefono }));
                     }
@@ -72,33 +96,55 @@ function HealthForm() {
                 throw new Error('No hay sesión activa');
             }
 
-            const userResult = await getUser(currentUser.uid);
+            let resolvedUser = null;
+            let internalUserId = currentUser.uid;
+            const userByUid = await getUser(currentUser.uid);
+            if (userByUid.success && userByUid.data) {
+                resolvedUser = userByUid.data;
+                internalUserId = userByUid.data.id || currentUser.uid;
+            } else {
+                const userByAuthUid = await getUserByAuthUid(currentUser.uid);
+                if (userByAuthUid.success && userByAuthUid.data) {
+                    resolvedUser = userByAuthUid.data;
+                    internalUserId = userByAuthUid.data.id;
+                } else if (currentUser.email) {
+                    const userByEmail = await getUserByEmail(currentUser.email);
+                    if (userByEmail.success && userByEmail.data) {
+                        resolvedUser = userByEmail.data;
+                        internalUserId = userByEmail.data.id;
+                    }
+                }
+            }
+
             let memberName = formData.nombre;
             let memberId = null;
-            let userIdDisplay = currentUser.uid;
+            let userIdDisplay = internalUserId;
 
-            if (userResult.success && userResult.data) {
+            if (resolvedUser) {
                 // Construir nombre completo desde userData
-                const userData = userResult.data;
+                const userData = resolvedUser;
                 if (userData.firstName || userData.lastName) {
                     memberName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
                 }
                 
-            const memberResult = await getMemberByUserId(currentUser.uid);
-            if (memberResult.success && memberResult.data) {
-              memberId = memberResult.data.id;
-              userIdDisplay = memberResult.data.id;
-              // Construir nombre completo desde nombre + apellido
-              if (memberResult.data.nombre || memberResult.data.apellido) {
-                memberName = [memberResult.data.nombre, memberResult.data.apellido].filter(Boolean).join(' ');
-              } else if (memberResult.data.miembro_nombre) {
-                memberName = memberResult.data.miembro_nombre;
-              }
-            }
+                let memberResult = await getMemberByUserId(internalUserId);
+                if (!memberResult.success) {
+                    memberResult = await getMemberByAuthUid(currentUser.uid);
+                }
+                if (memberResult.success && memberResult.data) {
+                    memberId = memberResult.data.id;
+                    userIdDisplay = memberResult.data.id;
+                    // Construir nombre completo desde nombre + apellido
+                    if (memberResult.data.nombre || memberResult.data.apellido) {
+                        memberName = [memberResult.data.nombre, memberResult.data.apellido].filter(Boolean).join(' ');
+                    } else if (memberResult.data.miembro_nombre) {
+                        memberName = memberResult.data.miembro_nombre;
+                    }
+                }
             }
 
             const result = await createHealthProfile({
-                userId: currentUser.uid,
+                userId: internalUserId,
                 memberId: memberId,
                 memberName: memberName,
                 userIdDisplay: userIdDisplay,
@@ -123,24 +169,25 @@ function HealthForm() {
                 try {
                     const currentUser = getCurrentUser();
                     if (!currentUser) return;
-                    
-                    const userResult = await getUser(currentUser.uid);
-                    if (userResult.success && userResult.data) {
-                        const memberResult = await getMemberByUserId(currentUser.uid);
-                        if (memberResult.success && memberResult.data && memberResult.data.id) {
-                            const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
-                            if (hpResult.success && hpResult.data) {
-                                const hp = hpResult.data;
-                                setFormData(prev => ({
-                                    ...prev,
-                                    edad: hp.age || '',
-                                    condicionCorazon: hp.heart_condition || false,
-                                    presionAlta: hp.high_blood_pressure || false,
-                                    lesionesRecientes: hp.recent_injuries || false,
-                                    medicamentos: hp.medications || false,
-                                    comentarios: hp.additional_info || ''
-                                }));
-                            }
+
+                    let memberResult = await getMemberByUserId(currentUser.uid);
+                    if (!memberResult.success) {
+                        memberResult = await getMemberByAuthUid(currentUser.uid);
+                    }
+
+                    if (memberResult.success && memberResult.data && memberResult.data.id) {
+                        const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
+                        if (hpResult.success && hpResult.data) {
+                            const hp = hpResult.data;
+                            setFormData(prev => ({
+                                ...prev,
+                                edad: hp.age || '',
+                                condicionCorazon: hp.heart_condition || false,
+                                presionAlta: hp.high_blood_pressure || false,
+                                lesionesRecientes: hp.recent_injuries || false,
+                                medicamentos: hp.medications || false,
+                                comentarios: hp.additional_info || ''
+                            }));
                         }
                     }
                 } catch (err) { console.error(err); }
@@ -567,7 +614,6 @@ function UserProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // Primero obtener el usuario autenticado de Firebase
                 const currentUser = getCurrentUser();
                 if (!currentUser) {
                     setError('No hay sesión activa');
@@ -575,17 +621,36 @@ function UserProfile() {
                     return;
                 }
 
-                // Ahora obtener los datos del usuario de Firestore
-                const userResult = await getUser(currentUser.uid);
-                if (!userResult.success) {
+                let resolvedUser = null;
+                let internalUserId = currentUser.uid;
+
+                const userByUid = await getUser(currentUser.uid);
+                if (userByUid.success && userByUid.data) {
+                    resolvedUser = userByUid.data;
+                    internalUserId = userByUid.data.id || currentUser.uid;
+                } else {
+                    const userByAuthUid = await getUserByAuthUid(currentUser.uid);
+                    if (userByAuthUid.success && userByAuthUid.data) {
+                        resolvedUser = userByAuthUid.data;
+                        internalUserId = userByAuthUid.data.id;
+                    } else if (currentUser.email) {
+                        const userByEmail = await getUserByEmail(currentUser.email);
+                        if (userByEmail.success && userByEmail.data) {
+                            resolvedUser = userByEmail.data;
+                            internalUserId = userByEmail.data.id;
+                        }
+                    }
+                }
+
+                if (!resolvedUser) {
                     setError('No se pudieron cargar los datos del usuario');
                     setLoading(false);
                     return;
                 }
 
-                const userData = userResult.data;
+                const userData = resolvedUser;
                 setUser({
-                    id: userData.id || currentUser.uid,
+                    id: internalUserId,
                     nombre: userData.firstName && userData.lastName 
                         ? `${userData.firstName} ${userData.lastName}` 
                         : userData.username || currentUser.displayName || currentUser.email,
@@ -595,7 +660,10 @@ function UserProfile() {
                 });
 
                 try {
-                    const memberResult = await getMemberByUserId(currentUser.uid);
+                    let memberResult = await getMemberByUserId(internalUserId);
+                    if (!memberResult.success) {
+                        memberResult = await getMemberByAuthUid(currentUser.uid);
+                    }
                     if (memberResult.success && memberResult.data) {
                         setMiembro(memberResult.data);
                         setUser(prev => ({
@@ -620,7 +688,7 @@ function UserProfile() {
 
     const handleUpdateUser = async (updatedData) => {
         try {
-            const result = await updateUser({ email: updatedData.email, telefono: updatedData.telefono });
+            const result = await updateUser(updatedData.id, { email: updatedData.email, telefono: updatedData.telefono });
             if (!result.success) throw new Error(result.error);
 
             setUser(updatedData);

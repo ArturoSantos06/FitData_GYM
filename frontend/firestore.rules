@@ -25,7 +25,12 @@ service cloud.firestore {
 
     // Users Collection - Restrict access to own data or admins
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) ||
+                  (isAuthenticated() && (
+                    resource.data.authUid == request.auth.uid ||
+                    resource.data.email == request.auth.token.email
+                  )) ||
+                  isAdmin();
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
@@ -50,7 +55,10 @@ service cloud.firestore {
     // Memberships - User can see own, admin can see all
     match /memberships/{membershipId} {
       allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) || isAdmin()
+        isOwner(resource.data.userId) ||
+        request.auth.uid == resource.data.authUid ||
+        request.auth.token.email == resource.data.userEmail ||
+        isAdmin()
       );
       allow create: if isAdmin();
       allow update: if isAdmin();

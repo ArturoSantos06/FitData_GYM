@@ -62,7 +62,6 @@ function UserMembershipList({ refreshTrigger }) {
           return acc;
         }
 
-        // Comparar por fecha de inicio, creación, o última actualización
         const currentDate = new Date(
           current.startDate || 
           current.updatedAt?.toDate?.() || 

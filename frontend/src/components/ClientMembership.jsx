@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import { auth, getUser, getMemberByUserId, getUserMemberships, getMembershipTypes } from '../firebase';
+import { auth, getUser, getUserByAuthUid, getMemberByUserId, getMemberByAuthUid, getUserMemberships, getUserMembershipsByAuthUid, getMembershipTypes } from '../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -173,36 +173,54 @@ function ClientMembership() {
   useEffect(() => {
     const loadMembershipData = async () => {
       try {
-        // Verificar usuario autenticado de Firebase
         const currentUser = auth.currentUser;
         if (!currentUser) {
           setLoading(false);
           return;
         }
 
-        // Obtener datos del usuario de Firestore
+        let internalUserId = currentUser.uid;
+        let resolvedUserData = null;
+
         const userResult = await getUser(currentUser.uid);
         if (userResult.success) {
+          resolvedUserData = userResult.data;
+        } else {
+          const authUidUserResult = await getUserByAuthUid(currentUser.uid);
+          if (authUidUserResult.success) {
+            internalUserId = authUidUserResult.data.id;
+            resolvedUserData = authUidUserResult.data;
+          }
+        }
+
+        if (resolvedUserData) {
           const userData = {
-            id: currentUser.uid,
+            id: internalUserId,
             email: currentUser.email,
-            first_name: userResult.data.firstName || currentUser.displayName?.split(' ')[0] || '',
-            last_name: userResult.data.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
-            username: userResult.data.username || currentUser.email?.split('@')[0]
+            first_name: resolvedUserData.firstName || currentUser.displayName?.split(' ')[0] || '',
+            last_name: resolvedUserData.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            username: resolvedUserData.username || currentUser.email?.split('@')[0]
           };
           setUser(userData);
         }
 
         // Obtener miembro asociado
-        const memberResult = await getMemberByUserId(currentUser.uid);
+        const memberResult = await getMemberByUserId(internalUserId);
         if (memberResult.success) {
           setMiembro(memberResult.data);
+        } else {
+          const memberByAuthUidResult = await getMemberByAuthUid(currentUser.uid);
+          if (memberByAuthUidResult.success) {
+            setMiembro(memberByAuthUidResult.data);
+          }
         }
 
-        // Obtener membresías del usuario
-        const membershipsResult = await getUserMemberships(currentUser.uid);
+        let membershipsResult = await getUserMemberships(internalUserId);
+        if (!membershipsResult.success || membershipsResult.data.length === 0) {
+          membershipsResult = await getUserMembershipsByAuthUid(currentUser.uid, currentUser.email || null);
+        }
+
         if (membershipsResult.success && membershipsResult.data.length > 0) {
-          // Ordenar por fecha de inicio (más reciente primero)
           const sorted = membershipsResult.data.sort((a, b) => {
             const dateA = a.startDate ? new Date(a.startDate) : new Date(0);
             const dateB = b.startDate ? new Date(b.startDate) : new Date(0);
@@ -232,7 +250,7 @@ function ClientMembership() {
           const endDate = membership.endDate || membership.end_date;
 
           setMembership({
-            user: currentUser.uid,
+            user: internalUserId,
             tipo: fallbackType,
             start_date: startDate,
             end_date: endDate,
@@ -250,7 +268,6 @@ function ClientMembership() {
       }
     };
 
-    // Esperar a que Firebase Auth esté listo
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         loadMembershipData();
