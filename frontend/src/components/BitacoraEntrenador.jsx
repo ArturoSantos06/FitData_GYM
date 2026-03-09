@@ -145,7 +145,6 @@ function BitacoraEntrenador() {
   return (
     <div className="w-full min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-2">
             📝 Bitácora de Notas
@@ -153,7 +152,6 @@ function BitacoraEntrenador() {
           <p className="text-slate-400">Sistema de seguimiento técnico - Uso exclusivo de entrenadores</p>
         </div>
 
-        {/* Mensajes */}
         {message.text && (
           <div className={`mb-4 p-4 rounded-lg border ${
             message.type === 'success' 
@@ -165,7 +163,6 @@ function BitacoraEntrenador() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Panel Izquierdo - Lista de Clientes */}
           <div className="lg:col-span-1">
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
               <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
@@ -200,11 +197,9 @@ function BitacoraEntrenador() {
             </div>
           </div>
 
-          {/* Panel Derecho - Notas */}
           <div className="lg:col-span-2">
             {selectedMember ? (
               <div className="space-y-6">
-                {/* Info del Cliente Seleccionado */}
                 <div className="bg-linear-to-r from-purple-900/50 to-blue-900/50 backdrop-blur-sm border border-purple-500/30 rounded-xl p-6 shadow-xl">
                   <div className="flex items-center justify-between">
                     <div>
@@ -221,7 +216,6 @@ function BitacoraEntrenador() {
                   </div>
                 </div>
 
-                {/* Formulario de Nueva Nota / Editar */}
                 <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
                   <form onSubmit={handleSaveNote}>
                     <div className="flex items-center justify-between mb-4">

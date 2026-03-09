@@ -106,14 +106,14 @@ function GestionEntrenadores() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-gray-900 to-slate-900 p-8 flex items-center justify-center">
         <div className="text-white text-xl">Cargando datos...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 p-4 md:p-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-gray-900 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
@@ -128,7 +128,7 @@ function GestionEntrenadores() {
 
         {/* Estadísticas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 p-6 rounded-xl border border-blue-700/50 shadow-xl">
+          <div className="bg-linear-to-br from-blue-900/50 to-blue-800/30 p-6 rounded-xl border border-blue-700/50 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-300 text-sm font-medium mb-1">Clientes con Servicio</p>
@@ -138,7 +138,7 @@ function GestionEntrenadores() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 p-6 rounded-xl border border-green-700/50 shadow-xl">
+          <div className="bg-linear-to-br from-green-900/50 to-green-800/30 p-6 rounded-xl border border-green-700/50 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-300 text-sm font-medium mb-1">Servicios Activos</p>
@@ -148,7 +148,7 @@ function GestionEntrenadores() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 p-6 rounded-xl border border-purple-700/50 shadow-xl">
+          <div className="bg-linear-to-br from-purple-900/50 to-purple-800/30 p-6 rounded-xl border border-purple-700/50 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-300 text-sm font-medium mb-1">Total Entrenadores</p>
