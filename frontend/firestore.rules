@@ -86,7 +86,20 @@ service cloud.firestore {
     // Sales Records - Own records + admin
     match /ventas/{saleId} {
       allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) || isAdmin()
+        request.auth.uid == resource.data.cliente_auth_uid ||
+        request.auth.uid == resource.data.cliente ||
+        request.auth.uid == resource.data.cliente_id ||
+        request.auth.uid == resource.data.userId ||
+        (resource.data.cliente_id != null &&
+         exists(/databases/$(database)/documents/users/$(resource.data.cliente_id)) &&
+         get(/databases/$(database)/documents/users/$(resource.data.cliente_id)).data.authUid == request.auth.uid) ||
+        (resource.data.cliente != null &&
+         exists(/databases/$(database)/documents/users/$(resource.data.cliente)) &&
+         get(/databases/$(database)/documents/users/$(resource.data.cliente)).data.authUid == request.auth.uid) ||
+        request.auth.token.email == resource.data.cliente_email ||
+        request.auth.token.email == resource.data.clienteEmail ||
+        request.auth.token.email == resource.data.email ||
+        isAdmin()
       );
       allow create: if isAdmin() || isAuthenticated();
       allow update: if isAdmin();

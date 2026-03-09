@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCardClient from './ProductCardClient';
-import { getProducts, getUser, getUserByAuthUid, getUserByEmail, getSales, getCurrentUser } from '../firebase';
+import { getProducts, getUser, getUserByAuthUid, getUserByEmail, getSales, onAuthChanged } from '../firebase';
 
 function ClientStore() {
   const [products, setProducts] = useState([]);
@@ -9,10 +9,12 @@ function ClientStore() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
+    let isMounted = true;
+
+    const loadProducts = async () => {
       try {
         const productsResult = await getProducts();
-        if (productsResult.success) {
+        if (isMounted && productsResult.success) {
           const mapped = productsResult.data.map(p => ({
             title: p.nombre || 'Producto',
             price: parseFloat(p.precio || 0),
@@ -21,10 +23,23 @@ function ClientStore() {
           }));
           setProducts(mapped);
         }
-        
-        // Cargar usuario y ventas para historial
-        const currentUser = getCurrentUser();
-        if (currentUser) {
+      } catch (error) {
+        console.error('Error cargando productos:', error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    const loadSalesForUser = async (currentUser) => {
+      try {
+        if (!currentUser) {
+          if (isMounted) {
+            setUser(null);
+            setSales([]);
+          }
+          return;
+        }
+
           let resolvedUser = null;
           let internalUserId = currentUser.uid;
 
@@ -46,18 +61,18 @@ function ClientStore() {
             }
           }
 
-          if (resolvedUser) {
+          if (isMounted && resolvedUser) {
             setUser(resolvedUser);
           }
 
-          // Cargar ventas del usuario (incluso si no se pudo resolver user doc)
           const salesResult = await getSales({
+            authUid: currentUser.uid,
             userId: internalUserId,
             userEmail: (resolvedUser?.email || currentUser.email || null),
             username: (resolvedUser?.username || null)
           });
 
-          if (salesResult.success) {
+          if (isMounted && salesResult.success) {
             const sorted = salesResult.data.sort((a, b) => {
               const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
               const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
@@ -65,15 +80,20 @@ function ClientStore() {
             });
             setSales(sorted);
           }
-        }
       } catch (error) {
-        console.error('Error cargando datos:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error cargando ventas del cliente:', error);
       }
     };
-    
-    loadData();
+
+    loadProducts();
+    const unsubscribe = onAuthChanged((firebaseUser) => {
+      loadSalesForUser(firebaseUser);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   if (loading) {

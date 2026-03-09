@@ -526,6 +526,7 @@ export const assignMembership = async (assignmentData) => {
         cliente_username: userName || userData.username || userData.email || "Cliente anónimo",
         cliente_email: userData.email || null,
         clienteEmail: userData.email || null,
+        cliente_auth_uid: userData.authUid || null,
         clienteNombre: userFullName || userName || userData.email || "Cliente",
         metodo_pago: payMethod,
         total: membershipPrice,
@@ -1046,6 +1047,7 @@ export const createSale = async (saleData) => {
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
+    let cliente_auth_uid = null;
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", cliente_id));
       if (userDoc.exists()) {
@@ -1055,6 +1057,7 @@ export const createSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
+        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
@@ -1067,6 +1070,7 @@ export const createSale = async (saleData) => {
       cliente_username: cliente_username,
       cliente_email: cliente_email,
       clienteEmail: cliente_email,
+      cliente_auth_uid: cliente_auth_uid,
       clienteNombre: clienteNombre,
       metodo_pago: metodo_pago,
       total: total,
@@ -1104,6 +1108,7 @@ export const createMembershipSale = async (saleData) => {
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
+    let cliente_auth_uid = null;
 
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
@@ -1114,6 +1119,7 @@ export const createMembershipSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
+        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
@@ -1131,6 +1137,7 @@ export const createMembershipSale = async (saleData) => {
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
+      cliente_auth_uid: cliente_auth_uid,
       clienteNombre,
       metodo_pago: payMethod,
       total: totalNumber,
@@ -1192,8 +1199,15 @@ export const getSales = async (filters = {}) => {
 
     let sales = [];
 
-    if (filters.userId || filters.userEmail || filters.username) {
+    if (filters.userId || filters.userEmail || filters.username || filters.authUid) {
       const fieldQueries = [];
+
+      if (filters.authUid) {
+        fieldQueries.push(
+          query(collection(db, "ventas"), where("cliente_auth_uid", "==", filters.authUid), limit(limitValue)),
+          query(collection(db, "ventas"), where("authUid", "==", filters.authUid), limit(limitValue))
+        );
+      }
 
       if (filters.userId) {
         const userIdCandidates = [filters.userId];
