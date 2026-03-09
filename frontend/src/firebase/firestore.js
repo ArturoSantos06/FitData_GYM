@@ -17,21 +17,12 @@ import {
 import { db } from "./config";
 
 const getLocalMXDate = () => {
-  const now = new Date();
-  const mexicoOffset = -6 * 60; 
-  const localOffset = now.getTimezoneOffset();
-  const diffMinutes = localOffset - mexicoOffset;
-  const mexicoTime = new Date(now.getTime() - (diffMinutes * 60 * 1000));
-  return Timestamp.fromDate(mexicoTime);
+  // Store absolute current timestamp; presentation layer applies Mexico timezone.
+  return Timestamp.now();
 };
 
 const getLocalMXDateISO = () => {
-  const now = new Date();
-  const mexicoOffset = -6 * 60;
-  const localOffset = now.getTimezoneOffset();
-  const diffMinutes = localOffset - mexicoOffset;
-  const mexicoTime = new Date(now.getTime() - (diffMinutes * 60 * 1000));
-  return mexicoTime.toISOString();
+  return new Date().toISOString();
 };
 
 // USUARIOS
@@ -306,14 +297,29 @@ export const deleteMembershipType = async (typeId) => {
 export const assignMembership = async (assignmentData) => {
   try {
     const { userId, membershipTypeId, paymentMethod, montoRecibido, forceRenew } = assignmentData;
+
+    const getMexicoDateOnly = () => {
+      // en-CA returns YYYY-MM-DD and avoids UTC day shifts in Americas
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
+    };
+
+    const parseDateOnly = (dateStr) => {
+      if (!dateStr || typeof dateStr !== "string") return null;
+      const [y, m, d] = dateStr.split("-").map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m - 1, d, 0, 0, 0, 0);
+    };
     
     // 1. Verificar si el usuario ya tiene membresía activa
     const existingMemberships = await getUserMemberships(userId);
     if (existingMemberships.success && existingMemberships.data.length > 0) {
+      const todayLocal = parseDateOnly(getMexicoDateOnly()) || new Date();
       const activeMembership = existingMemberships.data.find(m => {
         const rawEndDate = m.endDate || m.end_date;
-        const endDate = rawEndDate?.toDate?.() || new Date(rawEndDate);
-        return endDate >= new Date();
+        const endDate = parseDateOnly(rawEndDate) || (rawEndDate?.toDate?.() || new Date(rawEndDate));
+        if (!endDate || Number.isNaN(endDate.getTime())) return false;
+        endDate.setHours(0, 0, 0, 0);
+        return endDate >= todayLocal;
       });
       
       if (activeMembership && !forceRenew) {
@@ -343,16 +349,15 @@ export const assignMembership = async (assignmentData) => {
     const userName = userData.username || userFullName || (userData.email ? userData.email.split("@")[0] : "");
     
     // 3. Calcular fechas de vigencia
-    const now = new Date();
-    const startDate = now.toISOString().split('T')[0];
-    const endDate = new Date(now);
+    const startDate = getMexicoDateOnly();
+    const endDate = parseDateOnly(startDate) || new Date();
     const durationDays = Number(membershipType.duration_days || 0);
     if (durationDays <= 1) {
       endDate.setHours(0, 0, 0, 0);
     } else {
       endDate.setDate(endDate.getDate() + durationDays);
     }
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
     
     // 4. Crear o actualizar membresía existente del usuario
     const membershipData = {

@@ -9,12 +9,27 @@ function UserMembershipList({ refreshTrigger }) {
   
   const [sortBy, setSortBy] = useState('recent');
 
+  const parseDateOnly = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const [y, m, d] = value.split('-').map(Number);
+      if (y && m && d) return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDateOnly = (value) => {
+    const date = parseDateOnly(value);
+    return date ? date.toLocaleDateString('es-MX') : 'N/A';
+  };
+
   const isMembershipActive = (item) => {
     if (!item?.endDate) {
       return false;
     }
 
-    const endDate = new Date(item.endDate);
+    const endDate = parseDateOnly(item.endDate);
     if (Number.isNaN(endDate.getTime())) {
       return false;
     }
@@ -114,9 +129,9 @@ function UserMembershipList({ refreshTrigger }) {
       return usernameA.localeCompare(usernameB, 'es', { sensitivity: 'base' });
     } 
     if (sortBy === 'expiration') {
-      return new Date(a.endDate) - new Date(b.endDate);
+      return (parseDateOnly(a.endDate)?.getTime() || 0) - (parseDateOnly(b.endDate)?.getTime() || 0);
     }
-    return new Date(b.startDate) - new Date(a.startDate);
+    return (parseDateOnly(b.startDate)?.getTime() || 0) - (parseDateOnly(a.startDate)?.getTime() || 0);
   });
 
   return (
@@ -200,10 +215,10 @@ function UserMembershipList({ refreshTrigger }) {
                   {item.membershipTypeName || item.membershipName || 'N/A'}
                 </td>
                 <td className="py-3 px-6">
-                  {new Date(item.startDate).toLocaleDateString()}
+                  {formatDateOnly(item.startDate)}
                 </td>
                 <td className="py-3 px-6 font-mono text-slate-300">
-                  {new Date(item.endDate).toLocaleDateString()}
+                  {formatDateOnly(item.endDate)}
                 </td>
                 <td className="py-3 px-6 text-center">
                   {(() => {
