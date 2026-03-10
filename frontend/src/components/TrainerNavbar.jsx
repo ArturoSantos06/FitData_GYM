@@ -7,6 +7,8 @@ const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
         { id: 'agenda', label: 'Agenda', icon: Calendar },
         { id: 'gestion', label: 'Gestión', icon: Users },
         { id: 'perfil', label: 'Perfil', icon: User },
+        { id: 'servicios', label: 'Servicios', icon: User },
+
     ];
 
     return (

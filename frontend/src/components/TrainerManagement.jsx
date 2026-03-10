@@ -53,6 +53,7 @@ function TrainerManagement() {
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 via-blue-400 to-purple-400">Herramientas de Gestión</h2>
           <p className="text-slate-400 font-medium mt-1.5">Selecciona la acción que deseas realizar con tus clientes.</p>
         </div>
+    
 
         <div className="space-y-3">
           

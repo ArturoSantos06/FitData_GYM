@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TrainerNavbar from './TrainerNavbar';
 import TrainerManagement from './TrainerManagement';
+import ClientCoachView from './ClientCoachView';
 
 function TrainerPortal() {
     const navigate = useNavigate();
@@ -31,11 +32,9 @@ function TrainerPortal() {
             <div className="h-20 md:h-24"/>
            
             <div className="max-w-7xl mx-auto pt-2 md:pt-4 pb-20 md:pb-0">
-                {activeTab === 'inicio' && (
-                  <div className="p-8 text-center border border-slate-800 rounded-xl bg-slate-900/50 text-slate-400">
-                    Inicio
-                  </div>
-               )}
+               {activeTab === 'servicios' && (
+                 <ClientCoachView />
+             )}
                {activeTab === 'agenda' &&(
                 <div className="p-8 text-center border border-slate-800 rounded-xl bg-slate-900/50 text-slate-400">
                     Agenda

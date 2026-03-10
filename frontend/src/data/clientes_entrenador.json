@@ -2,15 +2,15 @@
   "users": [
     {
       "id": 1,
-      "name": "John Doe",
+      "name": "Jose Martinez",
       "pagoAlCorriente": true,
-      "estatus": "Activo"
+      "estadoServicio": "Activo"
     },
     {
        "id": 2,
        "name": "Sofia López",
        "pagoAlCorriente": false,
-       "estatus": "Vencido"
+       "estadoServicio": "cancelado"
     }
   ]
 }
