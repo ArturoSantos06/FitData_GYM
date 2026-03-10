@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { loginUser } from '../firebase';
 
 function ClientLogin() {
   const [email, setEmail] = useState('');
@@ -18,26 +17,17 @@ function ClientLogin() {
     setIsLoading(true);
 
     try {
-      // Login de cliente por email (endpoint dedicado)
-      const response = await fetch(`${API_URL}/api/client-login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Email o contraseña incorrectos');
-      }
-
-      const data = await response.json();
-      // Guardar token en localStorage
-      localStorage.setItem('token', data.token);
+      const result = await loginUser(email, password);
       
-      // Redirigir al portal de cliente
-      navigate('/cliente');
-      window.location.reload(); 
+      if (result.success) {
+        // Guardar info del usuario en localStorage (compatible con el resto del código)
+        localStorage.setItem('firebaseUser', JSON.stringify(result.user));
+        
+        // Redirigir al portal de cliente
+        navigate('/cliente');
+      } else {
+        throw new Error(result.error || 'Email o contraseña incorrectos');
+      }
     } catch (err) {
       setError(err.message);
       setIsLoading(false);

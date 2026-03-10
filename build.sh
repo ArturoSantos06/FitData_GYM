@@ -11,16 +11,16 @@ cd ..
 
 # 2. Backend
 echo "Instalando dependencias..."
-pip install -r requirements.txt
+pip install -r fase1/requirements.txt
 
 # 3. Estáticos
 echo "Recolectando estáticos..."
-python manage.py collectstatic --no-input
+python fase1/manage.py collectstatic --no-input
 
 # 4. Migraciones 
 echo "Corriendo migraciones..."
-python manage.py migrate
+python fase1/manage.py migrate
 
 # 5. CARGAR TUS DATOS 
 echo "Cargando respaldo de datos..."
-python manage.py loaddata datos_gym.json
+python fase1/manage.py loaddata fase1/datos_gym.json

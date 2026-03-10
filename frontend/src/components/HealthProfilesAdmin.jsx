@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 function HealthProfilesAdmin({ refreshTrigger }) {
   const [profiles, setProfiles] = useState([]);
@@ -10,25 +10,26 @@ function HealthProfilesAdmin({ refreshTrigger }) {
   const [filter, setFilter] = useState('');
   const [lastTrigger, setLastTrigger] = useState(refreshTrigger);
 
-  const loadProfiles = () => {
+  const loadProfiles = async () => {
     console.log('📋 HealthProfilesAdmin: Cargando perfiles...');
-    const token = localStorage.getItem('token');
-    if (!token) { setError('Sesión no válida'); setLoading(false); return; }
     setLoading(true);
     setError('');
-    const timestamp = new Date().getTime();
-    fetch(`${API_URL}/api/health-profiles/?_t=${timestamp}`, { 
-      headers: { Authorization: `Token ${token}` } 
-    })
-      .then(r => r.json().then(data => ({ ok: r.ok, data })))
-      .then(res => {
-        if (!res.ok) throw new Error('Error cargando perfiles');
-        console.log('✅ Perfiles cargados:', res.data.length);
-        setProfiles(res.data);
-      })
-      .catch(err => setError(err.message))
-      .finally(()=>setLoading(false));
+    try {
+      const querySnapshot = await getDocs(collection(db, 'healthProfiles'));
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setProfiles(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
+
+
 
   useEffect(() => {
     console.log('🔄 Componente montado, cargando perfiles iniciales');
@@ -45,7 +46,7 @@ function HealthProfilesAdmin({ refreshTrigger }) {
 
   const filtered = profiles.filter(p => {
     if (!filter) return true;
-    return (p.miembro_nombre || '').toLowerCase().includes(filter.toLowerCase());
+    return (p.memberName || '').toLowerCase().includes(filter.toLowerCase());
   });
 
   return (
@@ -60,22 +61,41 @@ function HealthProfilesAdmin({ refreshTrigger }) {
           className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
         />
       </div>
+      
       {loading && <p className="text-slate-400">Cargando...</p>}
       {error && <p className="text-red-400 mb-3">{error}</p>}
       {!loading && filtered.length === 0 && <p className="text-slate-500">Sin perfiles.</p>}
       <div className="space-y-2">
-        {filtered.map(p => (
-          <div key={p.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white font-semibold">{p.miembro_nombre}</p>
-              <p className="text-xs text-slate-400">Actualizado: {new Date(p.actualizado).toLocaleString()}</p>
+        {filtered.map(p => {
+          const fecha = p.updatedAt?.toDate?.() || p.createdAt?.toDate?.() || new Date();
+          const fechaStr = fecha.toLocaleDateString('es-MX', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          return (
+            <div key={p.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-semibold">{p.memberName || 'Sin nombre'}</p>
+                  {p.userIdDisplay && (
+                    <span className="text-xs font-mono bg-slate-700 text-cyan-400 px-2 py-0.5 rounded border border-slate-600">
+                      ID: {p.userIdDisplay}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Actualizado: {fechaStr}</p>
+              </div>
+              <button
+                onClick={()=>setSelected(p)}
+                className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium"
+              >Ver Detalle</button>
             </div>
-            <button
-              onClick={()=>setSelected(p)}
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium"
-            >Ver Detalle</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {selected && (
@@ -85,33 +105,38 @@ function HealthProfilesAdmin({ refreshTrigger }) {
               onClick={()=>setSelected(null)}
               className="absolute top-3 right-3 text-slate-400 hover:text-white"
             >✕</button>
-            <h2 className="text-xl font-bold text-white mb-4">Ficha Salud: {selected.miembro_nombre}</h2>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-white">{selected.memberName || 'Sin nombre'}</h2>
+              {selected.userIdDisplay && (
+                <p className="text-sm text-slate-400 mt-1 font-mono">ID: {selected.userIdDisplay}</p>
+              )}
+            </div>
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Edad</p>
-                  <p className="text-white font-semibold">{selected.edad ?? '—'}</p>
+                  <p className="text-white font-semibold">{selected.age ?? '—'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Condición del Corazón</p>
-                  <p className="text-white font-semibold">{selected.condicion_corazon ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.heart_condition ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Presión Alta</p>
-                  <p className="text-white font-semibold">{selected.presion_alta ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.high_blood_pressure ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Lesiones Físicas Recientes</p>
-                  <p className="text-white font-semibold">{selected.lesiones_recientes ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.recent_injuries ? 'Sí' : 'No'}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Medicamentos</p>
-                  <p className="text-white font-semibold">{selected.medicamentos ? 'Sí' : 'No'}</p>
+                  <p className="text-white font-semibold">{selected.medications ? 'Sí' : 'No'}</p>
                 </div>
               </div>
               <div>
                 <p className="text-slate-400 text-xs mb-2">Información adicional</p>
-                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap">{selected.comentarios || 'Sin información adicional'}</div>
+                <div className="bg-purple-950/40 border border-purple-700/40 rounded-lg p-3 text-purple-200 whitespace-pre-wrap">{selected.additional_info || 'Sin información adicional'}</div>
               </div>
             </div>
             <div className="mt-6 flex justify-end">
