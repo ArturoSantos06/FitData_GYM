@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, ClipboardList, StickyNote, Dumbbell, UserMinus, ArrowLeft } from 'lucide-react';
 
-// Aquí importaremos el componente real de Desvinculación en el siguiente paso
-//import TrainerClientUnlink from './TrainerClientUnlink';
+import TrainerClientUnlink from './TrainerClientUnlink';
 
 function TrainerManagement() {
   const [currentView, setCurrentView] = useState('menu');
@@ -16,7 +15,7 @@ function TrainerManagement() {
           className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} /> 
-          <span className="font-medium">Volver a Gestión</span>
+          <span className="font-bold">Volver a Gestión</span>
         </button>
 
         {/* Aquí mostramos el componente según lo que haya elegido */}
@@ -39,10 +38,7 @@ function TrainerManagement() {
         )}
 
         {currentView === 'desvinculacion' && (
-          <div className="p-8 border border-cyan-800 bg-cyan-900/20 text-cyan-400 font-bold rounded-xl text-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
-            {/* <TrainerDesvinculacion /> */}
-            Aquí conectaremos el Semáforo de Pagos y Desvinculación 
-          </div>
+          <TrainerClientUnlink />
         )}
       </div>
     );
@@ -54,8 +50,8 @@ function TrainerManagement() {
       <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden p-8">
         
         <div className="mb-8 text-center md:text-left">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Herramientas de Gestión</h2>
-          <p className="text-slate-400 font-medium">Selecciona la acción que deseas realizar con tus clientes.</p>
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 via-blue-400 to-purple-400">Herramientas de Gestión</h2>
+          <p className="text-slate-400 font-medium mt-1.5">Selecciona la acción que deseas realizar con tus clientes.</p>
         </div>
 
         <div className="space-y-3">

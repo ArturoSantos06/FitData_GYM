@@ -1,10 +1,12 @@
 import React, {useState, useEffect} from 'react';
+import { Search } from 'lucide-react';
 import datosMock from '../data/clientes_entrenador.json';
 
 function TrainerClientUnlink() {
     //Estados a utilizar//
     const [clients, setClients] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [mostrarArchivados, setMostrarArchivados] = useState(false);
 
     useEffect(() => {
 
@@ -18,10 +20,9 @@ function TrainerClientUnlink() {
     //Archivar cliente//
     const handleArchive = (id) => {
         const updated = clients.map(client =>
-            client.id === id ? {...client, archivado: true } : client
+            client.id === id ? {...client, archivado: !client.archivado } : client
         );
         setClients(updated);
-        alert("Cliente archivado.")
     };
     
     //Eliminar cliente//
@@ -32,10 +33,11 @@ function TrainerClientUnlink() {
     };
 
     //Filtrar clientes, solo se muestran los que no están archivados y coincidencias//
-    const activeClients = clients.filter(client =>
-        !client.archivado &&
-        client.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredClients = clients.filter(client => {
+        const coincideBusqueda = client.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const coincideEstado = mostrarArchivados ? client.archivado : !client.archivado;
+        return coincideBusqueda && coincideEstado;
+    });
 
     return (
         <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-teal-500 text-gray-100 font-sans">
@@ -45,10 +47,12 @@ function TrainerClientUnlink() {
             <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
                 Gestión de Clientes
             </h2>
-            <p className="text-xs text-gray-400 mt-1">Monitorización y Desvinculación</p>
+            <p className="text-xs text-gray-400 mt-1.5">Monitorización y Desvinculación</p>
          </div>
 
-         <div className="relative w-full md:w-64">
+         <div className="flex flex-col md:flex-row gap-4 mb-6">
+             {/* Buscador */}
+         <div className="relative w-full md:w-64 mt-1.5">
             <input
               type="text"
               placeholder="Buscar por nombre..."
@@ -56,12 +60,26 @@ function TrainerClientUnlink() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <span className="absolute left-3 top-2.5 text-slate-500">🔎</span>
-         </div>              
+
+            <Search className="absolute left-3 top-2.5 text-slate-500" size={18} />
+         </div>   
+
+        {/* Botón de filtro */}
+        <button
+        onClick={() => setMostrarArchivados(!mostrarArchivados)}
+        className={`px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all ${
+            mostrarArchivados
+            ? 'bg-teal-900/40 text-teal-400 border border-teal-500/50'
+            : 'bg-slate-700 text-gray-300 hover:bg-slate-600 border border-transparent'
+        }`}
+        >
+            {mostrarArchivados ? 'Mostrar Activos' : 'Mostrar Archivados'}
+            </button>
+            </div>            
 
         {/* Tabla */} 
         <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse mt-2">
                 <thead>
                     <tr className="bg-gray-700 text-left text-gray-300 uppercase text-xs tracking-wider">
                         <th className="py-3 px-6">ID</th>
@@ -71,7 +89,7 @@ function TrainerClientUnlink() {
                     </tr>
                 </thead>
                 <tbody className="text-gray-200 text-sm">
-                    {activeClients.map((client) => (
+                    {filteredClients.map((client) => (
                       <tr key={client.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
                         {/* ID */}
                         <td className="py-4 px-6">
@@ -101,22 +119,21 @@ function TrainerClientUnlink() {
                                 <button
                                    onClick={() => handleArchive(client.id)}
                                    className="bg-slate-700 hover:bg-slate-600 text-white text-[10px] uppercase font-bold py-1.5 px-3 rounded transition-all"
-                                   title="Archivar para luego"
-                                   >
-                                    Archivar
-                                   </button>
-                                   <button
+                                >
+                                   {client.archivado ? 'Desarchivar' : 'Archivar'}
+                                </button>
+                                <button
                                      onClick={() => handleDelete(client.id)}
                                      className="bg-red-600 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/50 text-[10px] uppercase font-bold py-1.5 px-3 transition-all"
                                     >
                                     Eliminar
-                                    </button>
+                                </button>
                             </div>
                         </td>
                     </tr>
                     ))}
                     {/* Mensaje si no hay resultado*/}
-                    {activeClients.length === 0 && (
+                    {filteredClients.length === 0 && (
                         <tr>
                             <td colSpan="4" className="py-10 text-center text-gray-500 italic">
                                 No hay clientes activos que mostrar.
