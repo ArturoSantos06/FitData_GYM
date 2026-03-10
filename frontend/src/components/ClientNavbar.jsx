@@ -5,6 +5,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
     { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
+    /* id: 'nutriologos', label: 'Nutriólogos', icon: Users },*/
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
 

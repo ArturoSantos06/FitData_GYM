@@ -4,19 +4,20 @@ import UserProfile from './UserProfile';
 import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
 import ClientNavbar from './ClientNavbar';
+import NutriologosList from './NutriologosList';
 
 function ClientPortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inicio');
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('firebaseUser');
     window.location.href = '/cliente/login';
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (!firebaseUser) {
       navigate('/cliente/login');
     }
   }, [navigate]);
@@ -35,6 +36,8 @@ function ClientPortal() {
         {activeTab === 'catalogo' && (
           <ClientStore />
         )}
+      {/*activeTab === 'nutriologos' && (
+          <NutriologosList />)*/}
         {activeTab === 'perfil' && (
           <UserProfile />
         )}

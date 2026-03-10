@@ -1,22 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ChevronRight, User } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { getCurrentUser, getUser } from '../firebase';
 
 function ClientHome({ onNavigateToProfile }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const loadUser = async () => {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+      
+      const result = await getUser(currentUser.uid);
+      if (result.success) {
+        setUser({ ...result.data, username: result.data.username || result.data.email });
+      }
       setLoading(false);
-      return;
-    }
-    fetch(`${API_URL}/api/users/me/`, { headers: { Authorization: `Token ${token}` } })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => { setUser(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    };
+    
+    loadUser();
   }, []);
 
   if (loading) {

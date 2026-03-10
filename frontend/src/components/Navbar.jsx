@@ -48,6 +48,9 @@ function Navbar({ onLogout }) {
             <Link to="/admin/check-in-out" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/check-in-out')}`}>
               Check In/Out
             </Link>
+            <Link to="/admin/gestion-entrenadores" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/gestion-entrenadores')}`}>
+              Gestión Entrenadores
+            </Link>
           </div>
 
           <div className="hidden md:flex">
@@ -134,6 +137,13 @@ function Navbar({ onLogout }) {
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/fichas-medicas')}`}
           >
             🩺 Fichas Médicas
+          </Link>
+          <Link 
+            to="/admin/gestion-entrenadores" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/gestion-entrenadores')}`}
+          >
+            👥 Gestión Entrenadores
           </Link>
           
           {/* Botón Salir Móvil */}
