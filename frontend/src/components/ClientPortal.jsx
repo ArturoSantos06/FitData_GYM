@@ -10,13 +10,13 @@ function ClientPortal() {
   const [activeTab, setActiveTab] = useState('inicio');
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('firebaseUser');
     window.location.href = '/cliente/login';
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (!firebaseUser) {
       navigate('/cliente/login');
     }
   }, [navigate]);

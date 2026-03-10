@@ -5,7 +5,8 @@ import ModalEditarProducto from './ModalEditarProducto';
 import HistorialVentas from './HistorialVentas';
 import ConfirmModal from './ConfirmModal';
 import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal'; 
+import ErrorModal from './ErrorModal';
+import { getProducts, getUsers, deleteProduct, createSale } from '../firebase'; 
 
 function PuntoDeVenta() {
     const [listaProductos, setListaProductos] = useState([]);
@@ -44,8 +45,6 @@ function PuntoDeVenta() {
     const [mostrarDropdown, setMostrarDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
     useEffect(() => {
         cargarDatos();
         document.addEventListener("mousedown", handleClickOutside);
@@ -69,15 +68,41 @@ function PuntoDeVenta() {
     }, [montoRecibido, carrito]);
 
     const cargarDatos = async () => {
-        const token = localStorage.getItem('token');
         try {
-            const resProd = await fetch(`${API_URL}/api/productos/`, { headers: { 'Authorization': `Token ${token}` } });
-            const resCli = await fetch(`${API_URL}/api/users/`, { headers: { 'Authorization': `Token ${token}` } });
-
-            if (resProd.ok && resCli.ok) {
-                setListaProductos(await resProd.json());
-                const usersData = await resCli.json();
-                setListaClientes(usersData.results || usersData);
+            const productsResult = await getProducts();
+            if (productsResult.success) {
+                setListaProductos(productsResult.data);
+                
+                const withImages = productsResult.data.filter(p => {
+                    const img = p.imagen || p.image;
+                    return img && typeof img === 'string' && img.trim() !== '';
+                });
+                const withoutImages = productsResult.data.filter(p => {
+                    const img = p.imagen || p.image;
+                    return !img || (typeof img === 'string' && img.trim() === '');
+                });
+                
+                console.log('%c=== DIAGNÓSTICO DE IMÁGENES ===', 'color: cyan; font-weight: bold;');
+                console.log(`Total de productos: ${productsResult.data.length}`);
+                console.log(`Con imágenes: ${withImages.length}`);
+                console.log(`Sin imágenes: ${withoutImages.length}`);
+                console.log('Productos:', productsResult.data.map(p => ({
+                    nombre: p.nombre,
+                    imagen: p.imagen || p.image || 'VACÍO',
+                    tipo: typeof (p.imagen || p.image)
+                })));
+            }
+            
+            const usersResult = await getUsers();
+            if (usersResult.success) {
+                const usersFormatted = usersResult.data.map(u => ({
+                    id: u.id,
+                    username: u.username || u.email,
+                    email: u.email,
+                    first_name: u.first_name || '',
+                    last_name: u.last_name || ''
+                }));
+                setListaClientes(usersFormatted);
             }
         } catch (error) { console.error("Error cargando datos", error); }
     };
@@ -90,14 +115,14 @@ function PuntoDeVenta() {
     
     const ejecutarEliminacionDB = async () => {
         if (!productToDeleteDB) return;
-        const token = localStorage.getItem('token');
         try {
-            await fetch(`${API_URL}/api/productos/${productToDeleteDB}/`, { 
-                method: 'DELETE', 
-                headers: { 'Authorization': `Token ${token}` } 
-            });
-            cargarDatos();
-            setShowDeleteProductModal(false);
+            const result = await deleteProduct(productToDeleteDB);
+            if (result.success) {
+                cargarDatos();
+                setShowDeleteProductModal(false);
+            } else {
+                alert("Error al eliminar: " + result.error);
+            }
         } catch (error) { alert("Error al eliminar"); }
     };
 
@@ -156,6 +181,13 @@ function PuntoDeVenta() {
             setShowErrorModal(true);
             return;
         }
+
+        if (!clienteSeleccionado) {
+            setErrorTitle("Cliente Requerido");
+            setErrorMessage("Debes seleccionar un cliente para registrar la venta.");
+            setShowErrorModal(true);
+            return;
+        }
         
         const total = calcularTotal();
         if (metodoPago === 'EFECTIVO') {
@@ -168,9 +200,8 @@ function PuntoDeVenta() {
         }
 
         setIsLoading(true);
-        const token = localStorage.getItem('token');
         const data = {
-            cliente_id: clienteSeleccionado || null,
+            cliente_id: clienteSeleccionado,
             metodo_pago: metodoPago,
             total: total,
             productos: carrito.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre, precio: i.precio })),
@@ -178,12 +209,8 @@ function PuntoDeVenta() {
         };
 
         try {
-            const res = await fetch(`${API_URL}/api/crear-venta/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-                body: JSON.stringify(data)
-            });
-            if (res.ok) {
+            const result = await createSale(data);
+            if (result.success) {
                 let mensajeExtra = clienteSeleccionado ? "\n📧 Ticket enviado." : "";
                 
                 if (metodoPago === 'EFECTIVO') {
@@ -191,7 +218,7 @@ function PuntoDeVenta() {
                     setSuccessSubMessage(`💰 Cambio: $${cambio.toFixed(2)}`);
                 } else {
                     setSuccessMessage("¡Venta registrada correctamente!" + mensajeExtra);
-                    setSuccessSubMessage("");
+                    setSuccessSubMessage(`Folio: ${result.folio}`);
                 }
                 setShowSuccessModal(true);
 
@@ -202,9 +229,8 @@ function PuntoDeVenta() {
                 cargarDatos();
                 setRecargarHistorial(prev => prev + 1);
             } else { 
-                const err = await res.json();
                 setErrorTitle("Error");
-                setErrorMessage(err.error || "Error desconocido al procesar venta.");
+                setErrorMessage(result.error || "Error desconocido al procesar venta.");
                 setShowErrorModal(true);
             }
         } catch (e) { 
@@ -314,7 +340,6 @@ function PuntoDeVenta() {
                             />
                             {mostrarDropdown && (
                                 <ul className="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl">
-                                    <li onClick={() => seleccionarCliente('', '-- Público General --')} className="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 font-bold text-cyan-400">-- Público General --</li>
                                     {clientesFiltrados.map(c => {
                                         const nombreCompleto = c.first_name ? `${c.first_name} ${c.last_name}` : c.username;
                                         return (
@@ -360,7 +385,6 @@ function PuntoDeVenta() {
                                     <div><span className="font-bold text-white mr-2">{i.cantidad}x</span> <span className="text-slate-300 text-sm">{i.nombre}</span></div>
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold text-emerald-400">${(i.precio * i.cantidad).toFixed(2)}</span>
-                                        {/* Usamos pedirConfirmacionCarrito en lugar de borrar directo */}
                                         <button onClick={() => pedirConfirmacionCarrito(i.id)} className="text-red-400 hover:text-red-200 font-bold">✕</button>
                                     </div>
                                 </div>
@@ -375,8 +399,8 @@ function PuntoDeVenta() {
                         <button 
                             style={s.btnPay} 
                             onClick={procesarVenta}
-                            disabled={isLoading}
-                            className={`${isLoading ? 'opacity-70 cursor-not-allowed' : ''} flex justify-center items-center gap-2`}
+                            disabled={isLoading || !clienteSeleccionado}
+                            className={`${isLoading || !clienteSeleccionado ? 'opacity-70 cursor-not-allowed' : ''} flex justify-center items-center gap-2`}
                         >
                             {isLoading ? (
                                 <>
