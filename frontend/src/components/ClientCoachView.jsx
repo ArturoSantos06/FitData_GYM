@@ -13,9 +13,9 @@ const ClientCoachView = () => {
     };
 
     return (
-        <div className = "bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-blue-500 text-gray-100 font-sans max-w-3xl mx-auto">
+        <div className = "bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-purple-400 text-gray-100 font-sans max-w-3xl mx-auto">
             {/* Header */}
-            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-teal-400 mb-6">
+            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-purple-400 to-blue-400 mb-4">
                 Mi entrenador
             </h2>
             {/* Card de información del entrenador */}

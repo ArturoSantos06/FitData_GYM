@@ -42,7 +42,7 @@ function TrainerClientUnlink() {
          
          {/* Header*/}
          <div>
-            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
+            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-teal-400 to-green-400">
                 Gestión de Clientes
             </h2>
             <p className="text-xs text-gray-400 mt-1.5">Monitorización y Desvinculación</p>
