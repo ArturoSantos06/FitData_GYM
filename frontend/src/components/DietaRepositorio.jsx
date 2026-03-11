@@ -19,10 +19,27 @@ import ConfirmModal from './ConfirmModal';
 
 const allowedTypesLabel = 'PDF, JPG o PNG';
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isPermissionDeniedError = (errorMessage = '') => {
+  const msg = String(errorMessage || '').toLowerCase();
+  return msg.includes('missing or insufficient permissions') || msg.includes('permission-denied');
+};
+
+const ensureFirebaseTokenReady = async (user) => {
+  if (!user?.uid) return null;
+  try {
+    await user.getIdToken();
+  } catch {
+    await user.getIdToken(true);
+  }
+  return user;
+};
+
 const waitForFirebaseUser = () => {
   const currentUser = getCurrentUser();
   if (currentUser?.uid && currentUser?.email) {
-    return Promise.resolve(currentUser);
+    return ensureFirebaseTokenReady(currentUser);
   }
 
   return new Promise((resolve) => {
@@ -38,7 +55,9 @@ const waitForFirebaseUser = () => {
 
     const unsubscribe = onAuthChanged((user) => {
       if (user?.uid && user?.email) {
-        finish(user);
+        ensureFirebaseTokenReady(user)
+          .then((readyUser) => finish(readyUser))
+          .catch(() => finish(user));
       }
     });
 
@@ -66,13 +85,25 @@ const ensureAdminMirrorUser = async () => {
   }
 
   const sourceUser = emailUserResult.data;
-  const createResult = await createUser(currentUser.uid, {
+  let createResult = await createUser(currentUser.uid, {
     email: currentUser.email,
     displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentUser.email.split('@')[0],
     username: sourceUser.username || sourceUser.displayName || currentUser.email.split('@')[0],
     role: 'admin',
     authUid: currentUser.uid
   });
+
+  if (!createResult.success && isPermissionDeniedError(createResult.error)) {
+    await ensureFirebaseTokenReady(currentUser);
+    await sleep(350);
+    createResult = await createUser(currentUser.uid, {
+      email: currentUser.email,
+      displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentUser.email.split('@')[0],
+      username: sourceUser.username || sourceUser.displayName || currentUser.email.split('@')[0],
+      role: 'admin',
+      authUid: currentUser.uid
+    });
+  }
 
   if (!createResult.success) {
     return { success: false, error: createResult.error || 'No se pudo habilitar el acceso de administrador para esta sesión.' };
@@ -106,10 +137,22 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    const [membersResult, filesResult] = await Promise.all([
+    let [membersResult, filesResult] = await Promise.all([
       getAllMembers(),
       getAllDietFiles()
     ]);
+
+    if (isPermissionDeniedError(membersResult?.error) || isPermissionDeniedError(filesResult?.error)) {
+      const currentUser = await waitForFirebaseUser();
+      if (currentUser?.uid) {
+        await ensureFirebaseTokenReady(currentUser);
+      }
+      await sleep(350);
+      [membersResult, filesResult] = await Promise.all([
+        getAllMembers(),
+        getAllDietFiles()
+      ]);
+    }
 
     if (!membersResult.success) {
       setErrorModal({ open: true, message: membersResult.error || 'No se pudieron cargar los pacientes' });

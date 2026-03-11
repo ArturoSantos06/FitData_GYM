@@ -11,7 +11,7 @@ service firebase.storage {
     // Función helper para verificar si el usuario es admin
     function isAdmin() {
       return isAuthenticated() && 
-             get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     // Permitir lectura pública de todas las imágenes
