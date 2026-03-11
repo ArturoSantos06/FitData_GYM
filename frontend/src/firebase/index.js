@@ -7,6 +7,7 @@ export {
   registerUser,
   createUserWithoutSessionChange,
   registerClientByAdmin,
+  updateClientEmailInAuth,
   logoutUser,
   onAuthChanged,
   getCurrentUser
@@ -29,6 +30,9 @@ export {
   getMemberByAuthUid,
   getMemberByEmail,
   createMember,
+  updateMemberPhoneByUserId,
+  updateMemberEmailByUserId,
+  updateMembershipEmailByUserId,
   
   // Memberships
   getUserMemberships,

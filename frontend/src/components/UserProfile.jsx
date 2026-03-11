@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-import { auth, getUser, getUserByAuthUid, getUserByEmail, getMemberByUserId, getMemberByAuthUid, createHealthProfile, getHealthProfileByMemberId, updateUser, getCurrentUser } from '../firebase';
+import { auth, getUser, getUserByAuthUid, getUserByEmail, getMemberByUserId, getMemberByAuthUid, createHealthProfile, getHealthProfileByMemberId, updateUser, updateMemberPhoneByUserId, updateMemberEmailByUserId, updateMembershipEmailByUserId, updateClientEmailInAuth, getCurrentUser } from '../firebase';
+import SuccessModal from './SuccessModal';
+import ErrorModal from './ErrorModal';
 
 function HealthForm() {
     const [formData, setFormData] = useState({
@@ -18,6 +20,7 @@ function HealthForm() {
     });
 
     const [status, setStatus] = useState('idle');
+    const [healthErrorModal, setHealthErrorModal] = useState({ isOpen: false, title: '', message: '' });
     useEffect(() => {
         const loadUserData = async () => {
             try {
@@ -81,11 +84,11 @@ function HealthForm() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.nombre || !formData.telefono || !formData.edad) {
-            alert("Por favor, complete Nombre, Edad y Teléfono.");
+            setHealthErrorModal({ isOpen: true, title: 'Campos requeridos', message: 'Por favor, complete Nombre, Edad y Teléfono.' });
             return;
         }
         if (!formData.aceptaWaiver) {
-            alert("Debe leer y aceptar el descargo de responsabilidad.");
+            setHealthErrorModal({ isOpen: true, title: 'Aceptación requerida', message: 'Debe leer y aceptar el descargo de responsabilidad.' });
             return;
         }
 
@@ -121,7 +124,6 @@ function HealthForm() {
             let userIdDisplay = internalUserId;
 
             if (resolvedUser) {
-                // Construir nombre completo desde userData
                 const userData = resolvedUser;
                 if (userData.firstName || userData.lastName) {
                     memberName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
@@ -134,7 +136,6 @@ function HealthForm() {
                 if (memberResult.success && memberResult.data) {
                     memberId = memberResult.data.id;
                     userIdDisplay = memberResult.data.id;
-                    // Construir nombre completo desde nombre + apellido
                     if (memberResult.data.nombre || memberResult.data.apellido) {
                         memberName = [memberResult.data.nombre, memberResult.data.apellido].filter(Boolean).join(' ');
                     } else if (memberResult.data.miembro_nombre) {
@@ -156,11 +157,9 @@ function HealthForm() {
                 additional_info: formData.comentarios
             });
             if (!result.success) throw new Error(result.error || 'Error guardando ficha');
-            const mensaje = result.updated ? 'Ficha médica actualizada correctamente' : 'Ficha médica creada correctamente';
-            alert(mensaje);
             setStatus('success');
         } catch (err) {
-            alert(err.message);
+            setHealthErrorModal({ isOpen: true, title: 'Error', message: err.message });
             setStatus('idle');
         }
     };
@@ -245,6 +244,7 @@ function HealthForm() {
 
     return (
         <div className="w-full">
+            <ErrorModal isOpen={healthErrorModal.isOpen} onClose={() => setHealthErrorModal(m => ({ ...m, isOpen: false }))} title={healthErrorModal.title} message={healthErrorModal.message} />
             <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-center rounded-t-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-black/10"></div>
                 <h2 className="text-2xl font-bold text-white relative z-10 flex justify-center items-center gap-2">
@@ -493,14 +493,38 @@ const PersonalData = ({ user, onSave, onBack }) => {
         }
     };
 
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|hotmail\.com|yahoo\.com|icloud\.com)$/i;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg(''); setSuccessMsg('');
         setSaving(true);
         try {
-            const result = await updateUser({ email: editForm.email, telefono: editForm.telefono });
-            if (!result.success) throw new Error(result.error);
-            onSave(editForm);
+            if (!emailRegex.test(editForm.email)) {
+                throw new Error('Correo inválido. Solo se aceptan dominios: gmail, outlook, hotmail, yahoo o icloud.');
+            }
+            const normalizedPhone = String(editForm.telefono || '').replace(/\D/g, '').slice(0, 10);
+            if (!/^\d{10}$/.test(normalizedPhone)) {
+                throw new Error('El teléfono debe contener 10 dígitos');
+            }
+
+            const result = await updateUser(editForm.id, {
+                email: editForm.email,
+                phone: normalizedPhone,
+                telefono: normalizedPhone
+            });
+            if (!result.success) throw new Error(result.error || 'No se pudo actualizar el usuario');
+
+            // Actualizar Auth + sincronizar email en miembros y memberships via Cloud Function (Admin SDK)
+            const authEmailUpdate = await updateClientEmailInAuth(editForm.email, editForm.id);
+            if (!authEmailUpdate.success) throw new Error(authEmailUpdate.error || 'No se pudo actualizar el correo en autenticación');
+
+            // Actualizar teléfono en miembros
+            await updateMemberPhoneByUserId(editForm.id, normalizedPhone);
+
+            const updatedForm = { ...editForm, telefono: normalizedPhone };
+            setEditForm(updatedForm);
+            onSave(updatedForm);
             setSuccessMsg('Datos actualizados');
         } catch (err) {
             setErrorMsg(err.message);
@@ -610,6 +634,8 @@ function UserProfile() {
     const [miembro, setMiembro] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [profileSuccessModal, setProfileSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+    const [profileErrorModal, setProfileErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -655,7 +681,7 @@ function UserProfile() {
                         ? `${userData.firstName} ${userData.lastName}` 
                         : userData.username || currentUser.displayName || currentUser.email,
                     email: userData.email || currentUser.email,
-                    telefono: userData.phone || '',
+                    telefono: userData.phone || userData.telefono || '',
                     username: userData.username || currentUser.email.split('@')[0]
                 });
 
@@ -688,15 +714,11 @@ function UserProfile() {
 
     const handleUpdateUser = async (updatedData) => {
         try {
-            const result = await updateUser(updatedData.id, { email: updatedData.email, telefono: updatedData.telefono });
-            if (!result.success) throw new Error(result.error);
-
             setUser(updatedData);
-            alert("¡Datos actualizados correctamente!");
-            setCurrentView('menu');
+            setProfileSuccessModal({ isOpen: true, title: '¡Listo!', message: '¡Datos actualizados correctamente!' });
         } catch (err) {
             console.error('Error actualizando datos:', err);
-            alert('Error al actualizar los datos. Intenta de nuevo.');
+            setProfileErrorModal({ isOpen: true, title: 'Error', message: 'Error al actualizar los datos. Intenta de nuevo.' });
         }
     };
 
@@ -730,6 +752,8 @@ function UserProfile() {
 
     return (
         <div className="w-full flex justify-center">
+            <SuccessModal isOpen={profileSuccessModal.isOpen} onClose={() => { setProfileSuccessModal(m => ({ ...m, isOpen: false })); setCurrentView('menu'); }} title={profileSuccessModal.title} message={profileSuccessModal.message} />
+            <ErrorModal isOpen={profileErrorModal.isOpen} onClose={() => setProfileErrorModal(m => ({ ...m, isOpen: false }))} title={profileErrorModal.title} message={profileErrorModal.message} />
             
             {currentView === 'menu' && (
                 <ProfileHeader 
@@ -758,7 +782,6 @@ function UserProfile() {
 
 export default UserProfile;
 
-// --- Cambio de Contraseña ---
 function ChangePassword({ onBack }) {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');

@@ -118,7 +118,6 @@ export const getMembers = async () => {
   }
 };
 
-// Alias para compatibilidad
 export const getAllMembers = getMembers;
 
 export const getMemberByUserId = async (userId) => {
@@ -197,6 +196,71 @@ export const createMember = async (memberData) => {
       updatedAt: serverTimestamp()
     });
     return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateMemberPhoneByUserId = async (userId, telefono) => {
+  try {
+    const memberResult = await getMemberByUserId(userId);
+    if (!memberResult.success || !memberResult.data?.id) {
+      return { success: false, error: "Miembro no encontrado" };
+    }
+
+    await updateDoc(doc(db, "miembros", memberResult.data.id), {
+      telefono,
+      updatedAt: serverTimestamp()
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateMemberEmailByUserId = async (userId, email) => {
+  try {
+    const memberResult = await getMemberByUserId(userId);
+    if (!memberResult.success || !memberResult.data?.id) {
+      return { success: false, error: "Miembro no encontrado" };
+    }
+
+    await updateDoc(doc(db, "miembros", memberResult.data.id), {
+      email,
+      updatedAt: serverTimestamp()
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateMembershipEmailByUserId = async (userId, email) => {
+  try {
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
+
+    const membershipQueries = [];
+    candidates.forEach((candidate) => {
+      membershipQueries.push(
+        query(collection(db, "memberships"), where("userId", "==", candidate)),
+        query(collection(db, "memberships"), where("user", "==", candidate))
+      );
+    });
+
+    const snapshots = await Promise.all(membershipQueries.map((q) => getDocs(q)));
+    const dedupDocs = new Map();
+    snapshots.forEach((snap) => snap.docs.forEach((d) => dedupDocs.set(d.id, d)));
+
+    const updates = Array.from(dedupDocs.values()).map((d) =>
+      updateDoc(doc(db, "memberships", d.id), { userEmail: email, updatedAt: serverTimestamp() })
+    );
+    await Promise.all(updates);
+
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -1292,7 +1356,14 @@ export const createHealthProfile = async (healthData) => {
     }
 
     const profileRef = doc(db, "healthProfiles", canonicalId);
-    const existingCanonical = await getDoc(profileRef);
+    let wasExisting = false;
+    try {
+      const existingCanonical = await getDoc(profileRef);
+      wasExisting = existingCanonical.exists();
+    } catch (err) {
+      // Si la lectura falla por reglas, aún intentamos guardar con upsert.
+      console.warn('No se pudo validar existencia de ficha, se intentará guardar directo:', err);
+    }
 
     const normalizedPayload = {
       ...completedData,
@@ -1308,31 +1379,13 @@ export const createHealthProfile = async (healthData) => {
       return localDate;
     };
 
-    if (existingCanonical.exists()) {
-      await updateDoc(profileRef, {
-        ...normalizedPayload,
-        updatedAt: getLocalMXDate()
-      });
-      return { success: true, id: canonicalId, updated: true };
-    }
-
-    const qMember = query(collection(db, "healthProfiles"), where("memberId", "==", normalizedPayload.memberId));
-    const memberSnapshot = await getDocs(qMember);
-    const qUser = query(collection(db, "healthProfiles"), where("userId", "==", normalizedPayload.userId));
-    const userSnapshot = await getDocs(qUser);
-    const legacyProfileDoc = memberSnapshot.docs[0] || userSnapshot.docs[0] || null;
-
     await setDoc(profileRef, {
       ...normalizedPayload,
-      createdAt: legacyProfileDoc ? (legacyProfileDoc.data().createdAt || getLocalMXDate()) : getLocalMXDate(),
+      createdAt: getLocalMXDate(),
       updatedAt: getLocalMXDate()
     }, { merge: true });
 
-    if (legacyProfileDoc && legacyProfileDoc.id !== canonicalId) {
-      await deleteDoc(doc(db, "healthProfiles", legacyProfileDoc.id));
-    }
-
-    return { success: true, id: canonicalId, updated: Boolean(legacyProfileDoc) };
+    return { success: true, id: canonicalId, updated: wasExisting };
   } catch (error) {
     return { success: false, error: error.message };
   }

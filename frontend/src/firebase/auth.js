@@ -78,6 +78,17 @@ export const registerClientByAdmin = async (payload) => {
   }
 };
 
+export const updateClientEmailInAuth = async (newEmail, userId = null) => {
+  try {
+    const fn = httpsCallable(functions, 'updateClientEmail');
+    const result = await fn({ newEmail, userId });
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en updateClientEmailInAuth:', error);
+    return { success: false, error: error?.message || 'No se pudo actualizar el correo en autenticación' };
+  }
+};
+
 // Logout
 export const logoutUser = async () => {
   try {

@@ -27,7 +27,10 @@ service cloud.firestore {
       return isAuthenticated() &&
              memberId != null &&
              exists(/databases/$(database)/documents/miembros/$(memberId)) &&
-             get(/databases/$(database)/documents/miembros/$(memberId)).data.userId == request.auth.uid;
+             (
+               get(/databases/$(database)/documents/miembros/$(memberId)).data.userId == request.auth.uid ||
+               get(/databases/$(database)/documents/miembros/$(memberId)).data.authUid == request.auth.uid
+             );
     }
 
     // Users Collection - Restrict access to own data or admins
@@ -39,7 +42,7 @@ service cloud.firestore {
                   )) ||
                   isAdmin();
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin() || (isAuthenticated() && (resource.data.authUid == request.auth.uid || resource.data.email == request.auth.token.email));
       allow delete: if isAdmin();
     }
 
@@ -47,7 +50,7 @@ service cloud.firestore {
     match /miembros/{memberId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin() || isAuthenticated();
-      allow update: if isAdmin() || belongsToUser(resource.data.userId);
+      allow update: if isAdmin() || belongsToUser(resource.data.userId) || (isAuthenticated() && resource.data.authUid == request.auth.uid);
       allow delete: if isAdmin();
     }
 
@@ -68,7 +71,7 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if isAdmin();
-      allow update: if isAdmin();
+      allow update: if isAdmin() || (isAuthenticated() && (request.auth.uid == resource.data.authUid || request.auth.token.email == resource.data.userEmail));
       allow delete: if isAdmin();
     }
 
@@ -126,7 +129,12 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         isOwner(resource.data.userId) || ownsMember(resource.data.memberId) || isAdmin()
       );
-      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (
+        isAuthenticated() && (
+          request.resource.data.userId == request.auth.uid ||
+          ownsMember(request.resource.data.memberId)
+        )
+      );
       allow update: if isAdmin() || (
         isAuthenticated() && (
           resource.data.userId == request.auth.uid ||

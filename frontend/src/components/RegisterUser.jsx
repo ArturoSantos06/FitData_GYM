@@ -155,12 +155,18 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
 }
 
 function RegisterUser({ onUserRegistered }) {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|hotmail\.com|yahoo\.com|icloud\.com)$/i;
+  const nameRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/;
+  const phoneRegex = /^\d{10}$/;
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
+    confirm_password: '',
     first_name: '',
     last_name: '',
+    phone: '',
     membership_id: '',
     payment_method: 'EFECTIVO'
   });
@@ -206,7 +212,13 @@ function RegisterUser({ onUserRegistered }) {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, phone: digitsOnly });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   // Calcular precio seleccionado
@@ -221,6 +233,39 @@ function RegisterUser({ onUserRegistered }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const normalizedEmail = formData.email.trim().toLowerCase();
+    const normalizedFirstName = formData.first_name.trim();
+    const normalizedLastName = formData.last_name.trim();
+    const normalizedPhone = formData.phone.trim();
+
+    if (!emailRegex.test(normalizedEmail)) {
+      setErrorTitle('Correo no válido');
+      setErrorMessage('Usa un correo válido como usuario@gmail.com o usuario@outlook.com.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!nameRegex.test(normalizedFirstName) || !nameRegex.test(normalizedLastName)) {
+      setErrorTitle('Nombre no válido');
+      setErrorMessage('Nombre(s) y apellidos solo pueden contener letras y espacios.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!phoneRegex.test(normalizedPhone)) {
+      setErrorTitle('Teléfono no válido');
+      setErrorMessage('Ingresa un número de teléfono válido de 10 dígitos.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (formData.password !== formData.confirm_password) {
+      setErrorTitle('Contraseña no coincide');
+      setErrorMessage('La contraseña y su confirmación deben ser iguales.');
+      setShowErrorModal(true);
+      return;
+    }
 
     if (!formData.membership_id) {
         setErrorTitle('Faltan Datos');
@@ -242,10 +287,11 @@ function RegisterUser({ onUserRegistered }) {
     try {
       const registerResult = await registerClientByAdmin({
         username: formData.username,
-        email: formData.email,
+        email: normalizedEmail,
         password: formData.password,
-        firstName: formData.first_name,
-        lastName: formData.last_name,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        phone: normalizedPhone,
         membershipTypeId: formData.membership_id,
         paymentMethod: formData.payment_method,
         montoRecibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice,
@@ -253,11 +299,13 @@ function RegisterUser({ onUserRegistered }) {
 
       if (!registerResult.success) {
         let mensaje = registerResult.error || 'Error al crear usuario';
-        if (mensaje.includes('email-already-in-use')) {
+        const mensajeLower = String(mensaje).toLowerCase();
+
+        if (mensajeLower.includes('email-already-in-use') || mensajeLower.includes('already in use')) {
           mensaje = 'Este correo ya está registrado';
-        } else if (mensaje.includes('weak-password')) {
+        } else if (mensajeLower.includes('weak-password')) {
           mensaje = 'La contraseña debe tener al menos 6 caracteres';
-        } else if (mensaje.includes('invalid-email')) {
+        } else if (mensajeLower.includes('invalid-email')) {
           mensaje = 'El correo electrónico no es válido';
         }
 
@@ -318,12 +366,12 @@ function RegisterUser({ onUserRegistered }) {
       setRegistrationCompleted(true);
 
       // Guardar email para ficha y mostrar formulario salud
-      setRecentEmail(formData.email);
+        setRecentEmail(normalizedEmail);
       setShowHealthForm(true);
 
       // Limpieza
       setFormData({ 
-          username: '', email: '', password: '', first_name: '', last_name: '', 
+          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', phone: '',
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
@@ -409,9 +457,19 @@ function RegisterUser({ onUserRegistered }) {
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Número de Teléfono</label>
+            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" placeholder="10 dígitos" maxLength={10} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" maxLength={20} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
+            <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" maxLength={20} required />
+          </div>
         </div>
 
         {/* SECCIÓN DE PAGO Y MEMBRESÍA */}

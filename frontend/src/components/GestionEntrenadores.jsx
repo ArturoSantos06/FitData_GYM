@@ -127,7 +127,7 @@ function GestionEntrenadores() {
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
           <div className="bg-linear-to-br from-blue-900/50 to-blue-800/30 p-6 rounded-xl border border-blue-700/50 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
@@ -135,16 +135,6 @@ function GestionEntrenadores() {
                 <p className="text-3xl font-bold text-white">{stats.totalClients}</p>
               </div>
               <Users className="text-blue-400" size={40} />
-            </div>
-          </div>
-
-          <div className="bg-linear-to-br from-green-900/50 to-green-800/30 p-6 rounded-xl border border-green-700/50 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-300 text-sm font-medium mb-1">Servicios Activos</p>
-                <p className="text-3xl font-bold text-white">{stats.activeServices}</p>
-              </div>
-              <CheckCircle className="text-green-400" size={40} />
             </div>
           </div>
 

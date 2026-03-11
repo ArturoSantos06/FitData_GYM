@@ -234,10 +234,18 @@ function ClientMembership() {
             image: membership.membershipImage || membership.membershipTypeImage || membership.image || null
           };
 
-          if ((!fallbackType.image || !fallbackType.duration_days) && membership.membershipType) {
+          const membershipTypeRef =
+            membership.membershipTypeId ||
+            membership.membershipType ||
+            membership.membership_type ||
+            null;
+
+          if ((!fallbackType.image || !fallbackType.duration_days) && membershipTypeRef) {
             const typeResult = await getMembershipTypes();
             if (typeResult.success) {
-              const currentType = typeResult.data.find((type) => type.id === membership.membershipType);
+              const currentType = typeResult.data.find(
+                (type) => String(type.id) === String(membershipTypeRef)
+              );
               if (currentType) {
                 fallbackType.name = fallbackType.name || currentType.name || 'Membresía';
                 fallbackType.duration_days = fallbackType.duration_days ?? currentType.duration_days ?? null;

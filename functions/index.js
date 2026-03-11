@@ -528,13 +528,19 @@ exports.registerClientByAdmin = onCall(async (request) => {
     password,
     firstName,
     lastName,
+    phone,
     membershipTypeId,
     paymentMethod,
     montoRecibido,
   } = request.data || {};
 
-  if (!username || !email || !password || !firstName || !lastName || !membershipTypeId) {
+  if (!username || !email || !password || !firstName || !lastName || !phone || !membershipTypeId) {
     throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro");
+  }
+
+  const normalizedPhone = String(phone).replace(/\D/g, "").slice(0, 10);
+  if (!/^\d{10}$/.test(normalizedPhone)) {
+    throw new HttpsError("invalid-argument", "Número de teléfono inválido");
   }
 
   const db = admin.firestore();
@@ -632,6 +638,8 @@ exports.registerClientByAdmin = onCall(async (request) => {
         username,
         firstName,
         lastName,
+        phone: normalizedPhone,
+        telefono: normalizedPhone,
         displayName: fullName,
         role: "client",
         isStaff: false,
@@ -674,7 +682,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
         nombre: firstName,
         apellido: lastName,
         email,
-        telefono: "",
+        telefono: normalizedPhone,
         qr_code: `FD-USER${newId}`,
         qrCode: `FD-USER${newId}`,
         avatar_color: "#6366f1",
@@ -753,5 +761,74 @@ exports.registerClientByAdmin = onCall(async (request) => {
     }
 
     throw new HttpsError("internal", error.message || "No se pudo registrar el cliente");
+  }
+});
+
+
+exports.updateClientEmail = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const { newEmail, userId } = request.data || {};
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|hotmail\.com|yahoo\.com|icloud\.com)$/i;
+
+  if (!newEmail || !emailRegex.test(newEmail)) {
+    throw new HttpsError("invalid-argument", "Correo inválido. Solo se aceptan dominios: gmail, outlook, hotmail, yahoo o icloud.");
+  }
+
+  const db = admin.firestore();
+  const authUid = request.auth.uid;
+
+  try {
+    await admin.auth().updateUser(authUid, { email: newEmail });
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const updates = [];
+
+
+    if (userId) {
+      const userRef = db.collection("users").doc(String(userId));
+      updates.push(userRef.update({ email: newEmail, updatedAt: timestamp }));
+    }
+    const usersByAuthUid = await db.collection("users").where("authUid", "==", authUid).limit(1).get();
+    if (!usersByAuthUid.empty) {
+      updates.push(usersByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
+    }
+
+    // 3. Actualizar colección miembros
+    const miembrosByAuthUid = await db.collection("miembros").where("authUid", "==", authUid).limit(1).get();
+    if (!miembrosByAuthUid.empty) {
+      updates.push(miembrosByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
+    }
+
+    const candidates = authUid ? [authUid] : [];
+    if (userId) {
+      candidates.push(String(userId));
+      const numericId = Number(userId);
+      if (!Number.isNaN(numericId)) candidates.push(numericId);
+    }
+
+    const membershipQueries = [
+      db.collection("memberships").where("authUid", "==", authUid).get(),
+    ];
+    if (userId) {
+      membershipQueries.push(db.collection("memberships").where("userId", "==", String(userId)).get());
+    }
+
+    const membershipSnaps = await Promise.all(membershipQueries);
+    const dedupDocs = new Map();
+    membershipSnaps.forEach((snap) => snap.docs.forEach((d) => dedupDocs.set(d.id, d)));
+    dedupDocs.forEach((d) => {
+      updates.push(d.ref.update({ userEmail: newEmail, updatedAt: timestamp }));
+    });
+
+    await Promise.all(updates);
+
+    logger.info("Email actualizado correctamente", { authUid, newEmail, membershipsUpdated: dedupDocs.size });
+    return { success: true };
+  } catch (error) {
+    logger.error("Error actualizando email", { authUid, error: String(error.message) });
+    throw new HttpsError("internal", error.message || "No se pudo actualizar el correo");
   }
 });
