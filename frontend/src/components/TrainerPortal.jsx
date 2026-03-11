@@ -32,9 +32,6 @@ function TrainerPortal() {
             <div className="h-20 md:h-24"/>
            
             <div className="max-w-7xl mx-auto pt-2 md:pt-4 pb-20 md:pb-0">
-               {activeTab === 'servicios' && (
-                 <ClientCoachView />
-             )}
                {activeTab === 'agenda' &&(
                 <div className="p-8 text-center border border-slate-800 rounded-xl bg-slate-900/50 text-slate-400">
                     Agenda

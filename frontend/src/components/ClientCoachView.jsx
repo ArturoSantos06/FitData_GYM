@@ -1,23 +1,90 @@
-import  React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Calendar, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
 
+// Herramientas exactas de Firebase //
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase/config'; 
+
 const ClientCoachView = () => {
-    //Estados a utilizar//
+    // Estados a utilizar //
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [serviceStatus, setServiceStatus] = useState('active');
+    const [loading, setLoading] = useState(true);
+    const [clienteId, setClienteId] = useState(null); 
 
-    const handleCancelService = () => {
-        setServiceStatus('cancelled');
-        setIsModalOpen(false);
-        //proximamente se agregara la conexión con el backend//
+    useEffect(() => {
+        const usuarioGuardado = localStorage.getItem('firebaseUser');
+        
+        if (usuarioGuardado) {
+            const usuarioReal = JSON.parse(usuarioGuardado);
+            const idReal = usuarioReal.uid || usuarioReal.id; 
+            setClienteId(idReal);
+        } else {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const fetchMiEntrenador = async () => {
+            if (!clienteId) return; 
+
+            try {
+                const docRef = doc(db, "miembros", clienteId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const estado = data.entrenadorActivo === false ? 'cancelled' : 'active';
+                    setServiceStatus(estado);
+                }
+            } catch (error) {
+                console.error("Error al obtener datos del cliente:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMiEntrenador();
+    }, [clienteId]); 
+
+    const handleCancelService = async () => {
+        try {
+            const docRef = doc(db, "miembros", clienteId);
+            
+            await updateDoc(docRef, {
+                entrenadorActivo: false
+            });
+
+            setServiceStatus('cancelled');
+            setIsModalOpen(false);
+            
+        } catch (error) {
+            console.error("Error al cancelar el servicio en Firebase:", error);
+            alert("Hubo un error al intentar cancelar el servicio.");
+        }
     };
 
+    if (loading) {
+        return <div className="text-gray-300 text-center mt-10 font-bold">Cargando información de tu entrenador...</div>;
+    }
+
+    if (!clienteId) {
+        return (
+            <div className="bg-gray-800 p-8 rounded-xl max-w-md mx-auto mt-10 text-center border border-red-500">
+                <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl text-white font-bold mb-2">Acceso Denegado</h2>
+                <p className="text-gray-400">Por favor, inicia sesión para ver la información de tu entrenador.</p>
+            </div>
+        );
+    }
+
     return (
-        <div className = "bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-purple-400 text-gray-100 font-sans max-w-3xl mx-auto">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-purple-400 text-gray-100 font-sans max-w-3xl mx-auto">
             {/* Header */}
             <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-purple-400 to-blue-400 mb-4">
                 Mi entrenador
             </h2>
+            
             {/* Card de información del entrenador */}
             <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <div className="w-24 h-24 rounded-full flex items-center justify-center text-slate-500 border-2 border-slate-600 shadow-inner shrink-0">
@@ -31,8 +98,7 @@ const ClientCoachView = () => {
                         {serviceStatus === 'active' ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border bg-green-900/20 text-green-400 border-green-500/50">
                                 <span className="w-2 h-2 rounded-full mr-2 bg-green-500 animate-pulse"></span>
-                                     Entrenador activo
-                                
+                                Entrenador activo
                             </span>
                         ) : (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border bg-gray-900/50 text-gray-400 border-gray-600">
@@ -44,8 +110,8 @@ const ClientCoachView = () => {
                 </div>
             </div>
 
-        {/* Resumen de plan */}
-        <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 mb-8">
+            {/* Resumen de plan */}
+            <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 mb-8">
                 <h4 className="text-lg font-semibold text-gray-200 mb-4 flex items-center justify-center sm:justify-start gap-2">
                     <Calendar size={20} className="text-blue-400"/> Resumen de tu Plan
                 </h4>
@@ -112,7 +178,6 @@ const ClientCoachView = () => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

@@ -6,6 +6,8 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: 'inicio', label: 'Inicio', icon: QrCode },
     { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
     { id: 'perfil', label: 'Perfil', icon: User },
+    { id: 'servicios', label: 'Servicios', icon: User },
+
   ];
 
   return (
@@ -16,7 +18,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
             FitData <span className="text-white">GYM</span>
           </span>
 
-          <nav className="flex items-center gap-5">
+          <nav className="flex items-center gap-4">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -48,7 +50,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
       </header>
 
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        <div className="grid grid-cols-4 h-full">
+        <div className="grid grid-cols-5 h-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;

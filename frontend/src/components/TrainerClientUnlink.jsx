@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { Search } from 'lucide-react';
-import datosMock from '../data/clientes_entrenador.json';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 function TrainerClientUnlink() {
     //Estados a utilizar//
@@ -9,28 +10,84 @@ function TrainerClientUnlink() {
     const [mostrarArchivados, setMostrarArchivados] = useState(false);
 
     useEffect(() => {
-        if (datosMock && datosMock.users){
-           const initialData = datosMock.users.map(c => ({ ...c, archivado: false}));
-           setClients(initialData);
-        }
+        const fetchClientes = async () => {
+            try {
+                const querySnapshot = await getDocs(collection(db, "miembros"));
+                
+                const clientesFirebase = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    
+                    return {
+                        id: doc.id, 
+                        name: data.nombre ? `${data.nombre} ${data.apellido || ''}`.trim() : "Sin nombre",
+                        pagoAlCorriente: data.active === true, 
+                        estadoServicio: data.active ? 'activo' : 'cancelado',
+                        archivado: data.archivado || false,
+                        // Leemos si el cliente fue eliminado previamente
+                        eliminado: data.eliminado || false 
+                    };
+                });
+                
+                const clientesVivos = clientesFirebase.filter(cliente => cliente.eliminado === false);
+                
+                setClients(clientesVivos);
+            } catch (error) {
+                console.error("Error al conectar con Firebase:", error);
+            }
+        };
+
+        fetchClientes();
     }, []);
    
-    //Archivar cliente//
-    const handleArchive = (id) => {
-        const updated = clients.map(client =>
-            client.id === id ? {...client, archivado: !client.archivado } : client
-        );
-        setClients(updated);
+   // Archivar / Desarchivar cliente
+    const handleArchive = async (id) => {
+        //se busca al cliente
+        const clienteActual = clients.find(c => c.id === id);
+        const nuevoEstado = !clienteActual.archivado; 
+
+        try {
+            const clienteRef = doc(db, "miembros", id);
+            
+            //le decimos a la BD que hay que archivarlo
+            await updateDoc(clienteRef, {
+                archivado: nuevoEstado
+            });
+
+            const updated = clients.map(client =>
+                client.id === id ? {...client, archivado: nuevoEstado } : client
+            );
+            setClients(updated);
+
+        } catch (error) {
+            console.error("Error al actualizar en Firebase:", error);
+            alert("Hubo un error al archivar al cliente.");
+        }
     };
     
-    //Eliminar cliente//
-    const handleDelete = (id) => {
-        if (window.confirm("¿Estás seguro de eliminar permanentemente este cliente?")) {
-            setClients(clients.filter(client => client.id !== id));
+    // Eliminar cliente lógicamente //
+    const handleDelete = async (id) => {
+        if (window.confirm("¿Estás seguro de eliminar este cliente? Desaparecerá de tu lista")) {
+            try {
+                // seleccionamos al cliente
+                const clienteRef = doc(db, "miembros", id);
+                
+                // En lugar de borrarlo, le agregamos la etiqueta "eliminado"
+                await updateDoc(clienteRef, {
+                    eliminado: true
+                });
+                
+                // Lo quitamos de la pantalla inmediatamente
+                setClients(clients.filter(client => client.id !== id));
+                
+                console.log("Cliente eliminado lógicamente con éxito.");
+            } catch (error) {
+                console.error("Error al intentar eliminar:", error);
+                alert("Hubo un problema al eliminar el cliente.");
+            }
         }
     };
 
-    //Filtrar clientes, solo se muestran los que no están archivados y coincidencias//
+    // solo se muestran los que no están archivados y coincidencias //
     const filteredClients = clients.filter(client => {
         const coincideBusqueda = client.name.toLowerCase().includes(searchTerm.toLowerCase());
         const coincideEstado = mostrarArchivados ? client.archivado : !client.archivado;
@@ -43,9 +100,8 @@ function TrainerClientUnlink() {
          {/* Header*/}
          <div>
             <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-teal-400 to-green-400">
-                Gestión de Clientes
+                Desvinculación y Pagos
             </h2>
-            <p className="text-xs text-gray-400 mt-1.5">Monitorización y Desvinculación</p>
          </div>
 
          <div className="flex flex-col md:flex-row gap-4 mb-6 mt-4">
@@ -143,7 +199,7 @@ function TrainerClientUnlink() {
                     {filteredClients.length === 0 && (
                         <tr>
                             <td colSpan="4" className="py-10 text-center text-gray-500 italic">
-                                No hay clientes activos que mostrar.
+                                No hay clientes que mostrar.
                             </td>
                         </tr>
                     )}
