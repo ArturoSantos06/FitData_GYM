@@ -17,7 +17,6 @@ import {
 import { db } from "./config";
 
 const getLocalMXDate = () => {
-  // Store absolute current timestamp; presentation layer applies Mexico timezone.
   return Timestamp.now();
 };
 
@@ -376,7 +375,6 @@ export const getUserMembershipsByAuthUid = async (authUid, userEmail = null) => 
 
 export const createMembership = async (membershipData) => {
   try {
-    // Obtener todos los documentos de memberships para encontrar el número máximo
     const querySnapshot = await getDocs(collection(db, "memberships"));
     let maxId = 0;
     
@@ -387,10 +385,8 @@ export const createMembership = async (membershipData) => {
       }
     });
     
-    // Generar el siguiente ID
     const newId = (maxId + 1).toString();
     
-    // Crear el documento con ID numérico
     await setDoc(doc(db, "memberships", newId), {
       ...membershipData,
       createdAt: serverTimestamp(),
@@ -462,7 +458,6 @@ export const assignMembership = async (assignmentData) => {
     const { userId, membershipTypeId, paymentMethod, montoRecibido, forceRenew } = assignmentData;
 
     const getMexicoDateOnly = () => {
-      // en-CA returns YYYY-MM-DD and avoids UTC day shifts in Americas
       return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
     };
 
@@ -473,7 +468,6 @@ export const assignMembership = async (assignmentData) => {
       return new Date(y, m - 1, d, 0, 0, 0, 0);
     };
     
-    // 1. Verificar si el usuario ya tiene membresía activa
     const existingMemberships = await getUserMemberships(userId);
     if (existingMemberships.success && existingMemberships.data.length > 0) {
       const todayLocal = parseDateOnly(getMexicoDateOnly()) || new Date();
@@ -497,7 +491,6 @@ export const assignMembership = async (assignmentData) => {
       }
     }
     
-    // 2. Obtener tipo de membresía para calcular fechas
     const membershipTypeDoc = await getDoc(doc(db, "membershipTypes", membershipTypeId));
     if (!membershipTypeDoc.exists()) {
       return { success: false, error: "Tipo de membresía no encontrado" };
@@ -505,13 +498,11 @@ export const assignMembership = async (assignmentData) => {
     
     const membershipType = membershipTypeDoc.data();
 
-    // 2.1 Obtener datos de usuario para mostrar en listados
     const userDoc = await getDoc(doc(db, "users", userId));
     const userData = userDoc.exists() ? userDoc.data() : {};
     const userFullName = [userData.firstName, userData.lastName].filter(Boolean).join(" ").trim();
     const userName = userData.username || userFullName || (userData.email ? userData.email.split("@")[0] : "");
     
-    // 3. Calcular fechas de vigencia
     const startDate = getMexicoDateOnly();
     const endDate = parseDateOnly(startDate) || new Date();
     const durationDays = Number(membershipType.duration_days || 0);
@@ -522,7 +513,6 @@ export const assignMembership = async (assignmentData) => {
     }
     const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
     
-    // 4. Crear o actualizar membresía existente del usuario
     const membershipData = {
       user: userId,
       membershipType: membershipTypeId,
@@ -626,10 +616,8 @@ export const getProducts = async () => {
     const querySnapshot = await getDocs(collection(db, "productos"));
     const products = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      // Normalizar el campo de imagen (puede ser 'imagen' o 'image')
       const imageUrl = data.imagen || data.image;
       
-      // Log para diagnóstico
       if (!imageUrl || imageUrl.trim() === '') {
         console.warn(`⚠️ Producto "${data.nombre}" sin imagen URL`);
       } else if (!imageUrl.startsWith('http')) {
@@ -639,8 +627,8 @@ export const getProducts = async () => {
       return {
         id: doc.id,
         ...data,
-        imagen: imageUrl, // Garantizar que el campo se llame 'imagen'
-        image: imageUrl   // También disponible como 'image' para compatibilidad
+        imagen: imageUrl, 
+        image: imageUrl  
       };
     });
     
@@ -717,7 +705,6 @@ export const createInventoryEntry = async (entryData) => {
   try {
     const { productoId, cantidad, usuarioNombre } = entryData;
     
-    // 1. Obtener producto actual
     const productDoc = await getDoc(doc(db, "productos", productoId));
     if (!productDoc.exists()) {
       return { success: false, error: "Producto no encontrado" };
@@ -726,12 +713,10 @@ export const createInventoryEntry = async (entryData) => {
     const productData = productDoc.data();
     const newStock = (productData.stock || 0) + cantidad;
     
-    // 2. Actualizar stock del producto
     await updateDoc(doc(db, "productos", productoId), {
       stock: newStock
     });
     
-    // 3. Crear registro de entrada
     const entryRecord = {
       producto: productoId,
       producto_nombre: productData.nombre,
@@ -844,7 +829,6 @@ export const getMemberByQRCode = async (qrCode) => {
 
 export const checkInMember = async (qrCode) => {
   try {
-    // 1. Buscar miembro por QR
     const memberResult = await getMemberByQRCode(qrCode);
     if (!memberResult.success) {
       return { success: false, error: "Código QR no válido" };
@@ -852,7 +836,6 @@ export const checkInMember = async (qrCode) => {
     
     const member = memberResult.data;
     
-    // 2. Verificar si ya tiene check-in activo hoy (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -881,7 +864,6 @@ export const checkInMember = async (qrCode) => {
       };
     }
     
-    // 3. Verificar membresía activa
     const membershipsQuery = query(
       collection(db, "memberships"),
       where("userId", "==", member.userId)
@@ -903,7 +885,6 @@ export const checkInMember = async (qrCode) => {
       };
     }
     
-    // 4. Crear registro de asistencia
     const attendanceData = {
       memberId: member.id,
       userId: member.userId,
@@ -932,7 +913,6 @@ export const checkInMember = async (qrCode) => {
 
 export const checkOutMember = async (qrCode) => {
   try {
-    // 1. Buscar miembro por QR
     const memberResult = await getMemberByQRCode(qrCode);
     if (!memberResult.success) {
       return { success: false, error: "Código QR no válido" };
@@ -940,7 +920,6 @@ export const checkOutMember = async (qrCode) => {
     
     const member = memberResult.data;
     
-    // 2. Buscar check-in activo del día (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -968,7 +947,6 @@ export const checkOutMember = async (qrCode) => {
       };
     }
     
-    // 3. Actualizar con hora de salida y calcular tiempo
     const checkInData = activeCheckIn.data();
     const checkInTime = new Date(checkInData.fecha_hora_entrada);
     const checkOutTime = new Date();
@@ -1040,7 +1018,6 @@ export const getAttendances = async (filters = {}) => {
       };
     });
 
-    // Filtro por fecha (client-side, compatible con ambos formatos)
     if (filters.fecha) {
       const [year, month, day] = String(filters.fecha).split("-").map(Number);
       const startDate = new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
@@ -1053,7 +1030,6 @@ export const getAttendances = async (filters = {}) => {
       });
     }
 
-    // Filtro de búsqueda por nombre (client-side)
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       attendances = attendances.filter(att =>
@@ -1061,7 +1037,6 @@ export const getAttendances = async (filters = {}) => {
       );
     }
 
-    // Ordenar por fecha descendente (client-side)
     attendances.sort((a, b) => {
       const dateA = a.fecha_hora_entrada ? new Date(a.fecha_hora_entrada) : new Date(0);
       const dateB = b.fecha_hora_entrada ? new Date(b.fecha_hora_entrada) : new Date(0);
@@ -1085,7 +1060,6 @@ export const createSale = async (saleData) => {
   try {
     const { cliente_id, metodo_pago, total, productos, monto_recibido } = saleData;
     
-    // 1. Validar y actualizar stock de cada producto
     for (const item of productos) {
       const productDoc = await getDoc(doc(db, "productos", item.id));
       if (!productDoc.exists()) {
@@ -1097,17 +1071,14 @@ export const createSale = async (saleData) => {
         return { success: false, error: `Stock insuficiente para ${item.nombre}` };
       }
       
-      // Actualizar stock
       const newStock = productData.stock - item.cantidad;
       await updateDoc(doc(db, "productos", item.id), {
         stock: newStock
       });
     }
     
-    // 2. Generar folio único (timestamp + random)
     const folio = generateSaleFolio();
     
-    // 3. Obtener información del cliente si existe
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
@@ -1126,7 +1097,6 @@ export const createSale = async (saleData) => {
       }
     }
     
-    // 4. Crear registro de venta
     const ventaData = {
       folio: folio,
       cliente: cliente_id || null,
@@ -1361,7 +1331,6 @@ export const createHealthProfile = async (healthData) => {
       const existingCanonical = await getDoc(profileRef);
       wasExisting = existingCanonical.exists();
     } catch (err) {
-      // Si la lectura falla por reglas, aún intentamos guardar con upsert.
       console.warn('No se pudo validar existencia de ficha, se intentará guardar directo:', err);
     }
 
@@ -1488,6 +1457,71 @@ export const updateTrainerNote = async (noteId, noteData) => {
 export const deleteTrainerNote = async (noteId) => {
   try {
     await deleteDoc(doc(db, "trainerNotes", noteId));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// REPOSITORIO DIGITAL DE DIETAS
+
+export const createDietFileRecord = async (fileData) => {
+  try {
+    const docRef = await addDoc(collection(db, "dietFiles"), {
+      ...fileData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAllDietFiles = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "dietFiles"));
+    const files = querySnapshot.docs
+      .map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }))
+      .sort((a, b) => {
+        const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+        const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+    return { success: true, data: files };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getDietFilesByMember = async (memberId) => {
+  try {
+    const q = query(collection(db, "dietFiles"), where("memberId", "==", String(memberId)));
+    const querySnapshot = await getDocs(q);
+    const files = querySnapshot.docs
+      .map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }))
+      .sort((a, b) => {
+        const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+        const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+    return { success: true, data: files };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteDietFileRecord = async (fileId) => {
+  try {
+    await deleteDoc(doc(db, "dietFiles", fileId));
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

@@ -1,6 +1,6 @@
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -830,5 +830,51 @@ exports.updateClientEmail = onCall(async (request) => {
   } catch (error) {
     logger.error("Error actualizando email", { authUid, error: String(error.message) });
     throw new HttpsError("internal", error.message || "No se pudo actualizar el correo");
+  }
+});
+
+exports.downloadDietFile = onRequest({ cors: true, region: "us-east1" }, async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
+
+  const idToken = authHeader.slice(7);
+  let decoded;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Token inválido" });
+  }
+
+  const userDoc = await admin.firestore().collection("users").doc(decoded.uid).get();
+  if (userDoc.data()?.role !== "admin") {
+    return res.status(403).json({ error: "Solo administradores pueden descargar archivos" });
+  }
+
+  const storagePath = req.query.path;
+  const fileName = req.query.name || "archivo";
+
+  if (!storagePath) {
+    return res.status(400).json({ error: "Falta el parámetro path" });
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ error: "Archivo no encontrado" });
+    }
+
+    const [metadata] = await file.getMetadata();
+    res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader("Cache-Control", "private, no-cache");
+
+    file.createReadStream().pipe(res);
+  } catch (error) {
+    logger.error("Error descargando archivo de dieta", { error: String(error.message) });
+    res.status(500).json({ error: "No se pudo descargar el archivo" });
   }
 });

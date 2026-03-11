@@ -15,6 +15,7 @@ import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
+import DietaRepositorio from './components/DietaRepositorio';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -103,6 +104,9 @@ function AdminArea() {
           
           {/* 9. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
+
+          {/* 10. Repositorio Digital de Dietas (RF-027) */}
+          <Route path="repositorio-dietas" element={<DietaRepositorio />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>

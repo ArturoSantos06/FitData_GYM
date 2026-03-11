@@ -153,6 +153,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Diet Files - Private patient record files for admin management
+    match /dietFiles/{fileId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;

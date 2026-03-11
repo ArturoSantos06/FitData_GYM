@@ -2,9 +2,13 @@ import {
   ref,
   uploadBytes,
   getDownloadURL,
+  getBlob,
   deleteObject
 } from "firebase/storage";
-import { storage } from "./config";
+import { storage, auth } from "./config";
+
+const DIET_ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const DIET_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // Subir imagen
 export const uploadImage = async (file, path) => {
@@ -85,4 +89,83 @@ export const uploadMembershipImage = async (file, membershipTypeId) => {
 export const uploadMemberAvatar = async (file, memberId) => {
   const path = `avatars/${memberId}/${file.name}`;
   return await uploadImage(file, path);
+};
+
+export const uploadDietDocument = async (file, memberId) => {
+  try {
+    if (!file) {
+      throw new Error("No se seleccionó ningún archivo");
+    }
+
+    if (!DIET_ALLOWED_TYPES.includes(file.type)) {
+      throw new Error("Solo se permiten archivos PDF, JPG o PNG");
+    }
+
+    if (file.size > DIET_MAX_FILE_SIZE) {
+      throw new Error("El archivo es muy grande. Máximo 10MB");
+    }
+
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `dietas/${memberId}/${Date.now()}_${sanitizedName}`;
+    const storageRef = ref(storage, path);
+    const metadata = {
+      contentType: file.type,
+      customMetadata: {
+        uploadedAt: new Date().toISOString(),
+        memberId: String(memberId)
+      }
+    };
+
+    const snapshot = await uploadBytes(storageRef, file, metadata);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    return {
+      success: true,
+      url: downloadURL,
+      path,
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size
+    };
+  } catch (error) {
+    let errorMessage = error.message;
+
+    if (error.code === 'storage/unauthorized') {
+      errorMessage = 'No tienes permisos para subir archivos al expediente';
+    }
+
+    return { success: false, error: errorMessage };
+  }
+};
+
+export const downloadDietDocument = async (storagePath, fileName) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No hay sesión activa");
+
+    const token = await user.getIdToken();
+    const url = `https://us-east1-fitdatagym-f347a.cloudfunctions.net/downloadDietFile?path=${encodeURIComponent(storagePath)}&name=${encodeURIComponent(fileName || 'archivo')}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Error ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = blobUrl;
+    anchor.download = fileName || 'archivo';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(blobUrl);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 };

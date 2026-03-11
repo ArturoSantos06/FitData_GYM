@@ -136,9 +136,14 @@ function UserMembershipList({ refreshTrigger }) {
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-teal-500 text-gray-100">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
-          Estado de Membresías
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
+            Estado de Membresías
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            {sortedAssignments.length}{searchTerm && assignments.length !== sortedAssignments.length ? ` de ${assignments.length}` : ''} registros
+          </p>
+        </div>
         
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
             

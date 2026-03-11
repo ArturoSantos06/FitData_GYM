@@ -79,7 +79,13 @@ export {
   getTrainerNotesByMember,
   getAllTrainerNotes,
   updateTrainerNote,
-  deleteTrainerNote
+  deleteTrainerNote,
+
+  // Diet Repository
+  createDietFileRecord,
+  getAllDietFiles,
+  getDietFilesByMember,
+  deleteDietFileRecord
 } from './firestore';
 
 // Export Storage services
@@ -88,5 +94,7 @@ export {
   deleteImage,
   uploadProductImage,
   uploadMembershipImage,
-  uploadMemberAvatar
+  uploadMemberAvatar,
+  uploadDietDocument,
+  downloadDietDocument
 } from './storage';

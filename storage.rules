@@ -36,5 +36,13 @@ service firebase.storage {
       allow read: if true;
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
+
+    // Repositorio digital de dietas - solo admin puede leer y escribir
+    match /dietas/{memberId}/{fileName} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() &&
+        request.resource != null &&
+        request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+    }
   }
 }
