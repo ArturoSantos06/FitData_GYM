@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import SuccessModal from './SuccessModal';
+import { getUsers, getMembershipTypes, assignMembership } from '../firebase';
 
-// --- MODAL DE CONFIRMACIÓN DE CONFLICTO (RENOVACIÓN) ---
+// MODAL DE RENOVACIÓNV 
 const RenewModal = ({ data, onConfirm, onCancel }) => {
   if (!data) return null;
   return (
@@ -53,20 +54,22 @@ function AssignMembership({ onSuccess }) {
   // Para detectar clics fuera del buscador
   const dropdownRef = React.useRef(null);
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const fetchData = async (endpoint, setter) => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/${endpoint}/`, { headers: { 'Authorization': `Token ${token}` } });
-        if (!response.ok) throw new Error(`Error al cargar ${endpoint}`);
-        const data = await response.json();
-        setter(data.results || data);
+        const usersResult = await getUsers();
+        if (usersResult.success) {
+          setUsers(usersResult.data);
+        }
+        
+        const typesResult = await getMembershipTypes();
+        if (typesResult.success) {
+          setMembershipTypes(typesResult.data);
+        }
       } catch (err) { console.error(err); }
     };
-    fetchData('users', setUsers); 
-    fetchData('memberships', setMembershipTypes);
+    
+    fetchData();
 
     // Click outside listener
     const handleClickOutside = (event) => {
@@ -82,18 +85,21 @@ function AssignMembership({ onSuccess }) {
   const getImageUrl = (imgPath) => {
     if (!imgPath) return "https://placehold.co/400x250/1e293b/ffffff?text=Sin+Imagen";
     if (imgPath.startsWith('http')) return imgPath;
-    return `${API_URL}${imgPath}`;
+    return imgPath;
   };
 
   // Lógica de filtrado de clientes
   const clientesFiltrados = users.filter(user => {
-      const nombreCompleto = `${user.first_name} ${user.last_name} ${user.username}`.toLowerCase();
+      const nombreCompleto = `${user.firstName || ''} ${user.lastName || ''} ${user.displayName || ''} ${user.username || ''}`.toLowerCase();
       return nombreCompleto.includes(busquedaCliente.toLowerCase());
   });
 
   const seleccionarCliente = (user) => {
       setSelectedUser(user.id);
-      setBusquedaCliente(`${user.username} (${user.first_name} ${user.last_name})`);
+      const firstName = user.firstName || '';
+      const lastName = user.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim() || user.displayName || '';
+      setBusquedaCliente(`${user.username}${fullName ? ` (${fullName})` : ''}`);
       setMostrarDropdown(false);
   };
 
@@ -121,36 +127,25 @@ function AssignMembership({ onSuccess }) {
     }
 
     setIsLoading(true);
-    const token = localStorage.getItem('token');
-    const payload = {
-      user: selectedUser,
-      membership_type: selectedMembership,
-      payment_method: paymentMethod,
-      monto_recibido: paymentMethod === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice,
-      force_renew: forceRenew
-    };
-
+    
     try {
-      const response = await fetch(`${API_URL}/api/user-memberships/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-        body: JSON.stringify(payload),
+      const result = await assignMembership({
+        userId: selectedUser,
+        membershipTypeId: selectedMembership,
+        paymentMethod: paymentMethod,
+        montoRecibido: paymentMethod === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice,
+        forceRenew: forceRenew
       });
 
-      if (response.status === 409) {
-        const conflict = await response.json();
-        setConflictData(conflict);
-        setIsLoading(false);
-        return;
+      if (!result.success) {
+        if (result.conflict) {
+          setConflictData(result);
+          setIsLoading(false);
+          return;
+        }
+        throw new Error(result.error);
       }
 
-      if (!response.ok) { 
-        const errData = await response.json(); 
-        throw new Error(errData.detail || errData.error || 'Error al asignar.'); 
-      }
-
-      const result = await response.json();
-      
       setSuccessMessage(result.message || "Membresía Actualizada");
       if (paymentMethod === 'EFECTIVO') {
           setSuccessSubMessage(`💰 Cambio: $${cambio.toFixed(2)}\n📧 Ticket enviado.`);
@@ -223,7 +218,14 @@ function AssignMembership({ onSuccess }) {
                             className="p-3 hover:bg-slate-700 cursor-pointer text-white border-b border-slate-700 last:border-0"
                         >
                             <div className="font-bold text-cyan-400">{user.username}</div>
-                            <div className="text-xs text-gray-400">{user.first_name} {user.last_name}</div>
+                            <div className="text-xs text-gray-400">
+                              {(() => {
+                                const firstName = user.firstName || '';
+                                const lastName = user.lastName || '';
+                                const fullName = `${firstName} ${lastName}`.trim();
+                                return fullName || user.displayName || 'Sin nombre registrado';
+                              })()}
+                            </div>
                         </li>
                     ))}
                     {clientesFiltrados.length === 0 && (
