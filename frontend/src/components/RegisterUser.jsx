@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
-import SuccessModal from './SuccessModal'; 
+import SuccessModal from './SuccessModal';
+import { registerClientByAdmin, registerTrainerByAdmin, getProducts, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config'; 
 
-// Formulario rápido para ficha médica inicial administrada
 function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [miembroId, setMiembroId] = useState(null);
+  const [miembroUserId, setMiembroUserId] = useState(null);
+  const [miembroNombre, setMiembroNombre] = useState('');
   const [data, setData] = useState({
     edad: '',
     condicion_corazon: false,
@@ -17,20 +21,23 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     comentarios: ''
   });
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   useEffect(() => {
     if (!miembroEmail) return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    fetch(`${API_URL}/api/miembros/?search=${encodeURIComponent(miembroEmail)}`, { headers: { Authorization: `Token ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(list => {
-        const arr = Array.isArray(list.results) ? list.results : list;
-        const found = arr.find(m => m.email.toLowerCase() === miembroEmail.toLowerCase());
-        if (found) setMiembroId(found.id);
-      })
-      .catch(()=>{});
+    
+    const fetchMember = async () => {
+      const result = await getMemberByEmail(miembroEmail);
+      if (result.success) {
+        setMiembroId(result.data.id);
+        setMiembroUserId(result.data.userId || null);
+        const fullName = [result.data.nombre, result.data.apellido].filter(Boolean).join(' ') || 
+                        result.data.miembro_nombre || 
+                        result.data.email || 
+                        'Sin nombre';
+        setMiembroNombre(fullName);
+      }
+    };
+    
+    fetchMember();
   }, [miembroEmail]);
 
   const handleChange = (e) => {
@@ -42,7 +49,7 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!miembroId) {
@@ -54,26 +61,36 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
       return;
     }
     setLoading(true);
-    const token = localStorage.getItem('token');
-    fetch(`${API_URL}/api/health-profiles/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
-      body: JSON.stringify({ miembro_id: miembroId, ...data, edad: parseInt(data.edad,10) })
-    })
-      .then(r => r.json().then(d => ({ ok: r.ok, d })))
-      .then(res => {
-        if (!res.ok) throw new Error(res.d.error || 'Error guardando ficha');
-        console.log('✅ Ficha médica guardada exitosamente');
-        setSaved(true);
-        if (typeof onSaved === 'function') {
-          console.log('🔄 [LOG] AdminHealthForm: Llamando onSaved para refrescar Fichas Médicas');
-          onSaved();
-        } else {
-          console.log('⚠️ [LOG] AdminHealthForm: onSaved no es función');
-        }
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    
+    const healthData = {
+      memberId: miembroId,
+      userId: miembroUserId,
+      memberName: miembroNombre,
+      userIdDisplay: miembroId,
+      age: parseInt(data.edad, 10),
+      heart_condition: data.condicion_corazon,
+      high_blood_pressure: data.presion_alta,
+      recent_injuries: data.lesiones_recientes,
+      medications: data.medicamentos,
+      additional_info: data.comentarios
+    };
+    
+    const result = await createHealthProfile(healthData);
+    
+    if (result.success) {
+      setSaved(true);
+      if (typeof onSaved === 'function') {
+        onSaved();
+      }
+      
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } else {
+      setError(result.error || 'Error guardando ficha');
+    }
+    
+    setLoading(false);
   };
 
   if (saved) {
@@ -143,6 +160,7 @@ function RegisterUser({ onUserRegistered }) {
     username: '',
     email: '',
     password: '',
+    confirm_password: '',
     first_name: '',
     last_name: '',
     membership_id: '',
@@ -166,21 +184,25 @@ function RegisterUser({ onUserRegistered }) {
   const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
+  const [registrationCompleted, setRegistrationCompleted] = useState(false);
 
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/memberships/`);
-        if (response.ok) {
-          const data = await response.json();
-          setMemberships(data.results || data);
-        }
-      } catch (err) { console.error(err); }
+        // Obtener tipos de membresía de Firestore
+        const q = query(collection(db, 'membershipTypes'));
+        const querySnapshot = await getDocs(q);
+        const types = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setMemberships(types);
+      } catch (err) {
+        console.error('Error cargando membresías:', err);
+      }
     };
     fetchMemberships();
   }, []);
@@ -189,18 +211,67 @@ function RegisterUser({ onUserRegistered }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const onlyLettersRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+$/;
+  const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateTrainerRegistration = () => {
+    const username = formData.username.trim();
+    const firstName = formData.first_name.trim();
+    const lastName = formData.last_name.trim();
+    const email = formData.email.trim();
+
+    if (!onlyLettersRegex.test(username)) {
+      return 'El nombre de usuario debe contener solo letras y sin espacios.';
+    }
+    if (!onlyLettersRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y sin espacios.';
+    }
+    if (!onlyLettersRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y sin espacios.';
+    }
+    if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
+      return 'El correo no debe tener espacios en blanco.';
+    }
+    if (!validEmailRegex.test(email)) {
+      return 'Ingresa un correo electrónico válido.';
+    }
+    if (!formData.confirm_password) {
+      return 'Confirma la contraseña.';
+    }
+    if (formData.password !== formData.confirm_password) {
+      return 'La contraseña y su confirmación no coinciden.';
+    }
+    return null;
+  };
+
+  const toSafeNumber = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
   // Calcular precio seleccionado
   const selectedPrice = memberships.find(m => m.id.toString() === formData.membership_id)?.price || 0;
+  const selectedPriceNumber = toSafeNumber(selectedPrice, 0);
 
   // Efecto para calcular cambio
   useEffect(() => {
-    const recibido = parseFloat(montoRecibido) || 0;
-    const precio = parseFloat(selectedPrice) || 0;
+    const recibido = toSafeNumber(montoRecibido, 0);
+    const precio = selectedPriceNumber;
     setCambio(recibido - precio);
-  }, [montoRecibido, selectedPrice]);
+  }, [montoRecibido, selectedPriceNumber]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.user_type === 'ENTRENADOR') {
+      const trainerValidationError = validateTrainerRegistration();
+      if (trainerValidationError) {
+        setErrorTitle('Validación de Registro');
+        setErrorMessage(trainerValidationError);
+        setShowErrorModal(true);
+        return;
+      }
+    }
 
     if (formData.user_type === 'CLIENTE' && !formData.membership_id) {
         setErrorTitle('Faltan Datos');
@@ -210,10 +281,12 @@ function RegisterUser({ onUserRegistered }) {
     }
 
     // Validación de Efectivo
+    const montoRecibidoNumber = toSafeNumber(montoRecibido, 0);
+
     if (
       formData.user_type === 'CLIENTE' &&
       formData.payment_method === 'EFECTIVO' &&
-      (parseFloat(montoRecibido) < parseFloat(selectedPrice))
+      (montoRecibidoNumber < selectedPriceNumber)
     ) {
         setErrorTitle('Pago Insuficiente');
         setErrorMessage('El monto recibido es menor al costo de la membresía.');
@@ -222,55 +295,83 @@ function RegisterUser({ onUserRegistered }) {
     }
 
     setIsLoading(true);
-    const payload = {
-      user_type: formData.user_type,
-      username: formData.username,
-      email: formData.email,
-      password: formData.password,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-    };
-
-    if (formData.user_type === 'CLIENTE') {
-      payload.membership_id = formData.membership_id;
-      payload.payment_method = formData.payment_method;
-      payload.monto_recibido = formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice;
-    }
 
     try {
-      const response = await fetch(`${API_URL}/api/users/register-with-membership/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      let registerResult;
 
-      const data = await response.json();
+      if (formData.user_type === 'ENTRENADOR') {
+        registerResult = await registerTrainerByAdmin({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+        });
+      } else {
+        registerResult = await registerClientByAdmin({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+          membershipTypeId: formData.membership_id,
+          paymentMethod: formData.payment_method,
+          montoRecibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
+        });
+      }
 
-      if (!response.ok) {
-        let titulo = 'Error de Registro';
-        let mensaje = 'Ocurrió un problema.';
-
-        if (data.username) {
-            titulo = 'Usuario No Disponible';
-            mensaje = `El usuario "${formData.username}" ya existe.`;
-        } else if (data.email_error) {
-            titulo = 'Correo Duplicado';
-            mensaje = data.email_error[0];
-        } else if (data.fullname_error) {
-            titulo = 'Cliente Ya Registrado';
-            mensaje = data.fullname_error[0];
-        } else if (data.detail) {
-            mensaje = data.detail;
-        } else if (data.error) {
-            mensaje = data.error;
+      if (!registerResult.success) {
+        let mensaje = registerResult.error || 'Error al crear usuario';
+        if (mensaje.includes('email-already-in-use')) {
+          mensaje = 'Este correo ya está registrado';
+        } else if (mensaje.includes('weak-password')) {
+          mensaje = 'La contraseña debe tener al menos 6 caracteres';
+        } else if (mensaje.includes('invalid-email')) {
+          mensaje = 'El correo electrónico no es válido';
         }
 
-        setErrorTitle(titulo);
+        setErrorTitle('Error de Registro');
         setErrorMessage(mensaje);
         setShowErrorModal(true);
         return;
+      }
+
+      const registeredUserId = registerResult?.data?.id || null;
+      const saleFolio = registerResult?.data?.saleFolio || null;
+      const selectedMembership = memberships.find(m => m.id.toString() === formData.membership_id);
+      const shouldValidateSale = formData.user_type === 'CLIENTE' && selectedPriceNumber > 0;
+
+      if (shouldValidateSale && saleFolio) {
+        const saleCheck = await getSaleByFolio(saleFolio);
+        if (!saleCheck.success || !saleCheck.exists) {
+          const fallbackSaleByFolio = await createMembershipSale({
+            cliente_id: String(registeredUserId || ''),
+            metodo_pago: formData.payment_method,
+            total: selectedPriceNumber,
+            membership_name: selectedMembership?.name || 'Membresía',
+            monto_recibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
+            tipo_venta: 'ALTA_MEMBRESIA'
+          });
+
+          if (!fallbackSaleByFolio.success) {
+            throw new Error('Cliente creado, pero la venta no se guardó en base de datos. Intenta nuevamente.');
+          }
+        }
+      }
+
+      if (shouldValidateSale && !saleFolio && registeredUserId) {
+        const fallbackSale = await createMembershipSale({
+          cliente_id: String(registeredUserId),
+          metodo_pago: formData.payment_method,
+          total: selectedPriceNumber,
+          membership_name: selectedMembership?.name || 'Membresía',
+          monto_recibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
+          tipo_venta: 'ALTA_MEMBRESIA'
+        });
+
+        if (!fallbackSale.success) {
+          throw new Error('Cliente creado, pero la venta no se guardó en base de datos. Intenta nuevamente.');
+        }
       }
 
       // --- ÉXITO ---
@@ -286,6 +387,7 @@ function RegisterUser({ onUserRegistered }) {
         setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
       }
       setShowSuccessModal(true);
+      setRegistrationCompleted(true);
 
         // Guardar email para ficha y mostrar formulario salud solo para cliente
         if (formData.user_type === 'CLIENTE') {
@@ -296,19 +398,25 @@ function RegisterUser({ onUserRegistered }) {
           setShowHealthForm(false);
         }
 
-        // Limpieza
+      // Limpieza
       setFormData({ 
           user_type: 'CLIENTE',
-          username: '', email: '', password: '', first_name: '', last_name: '', 
+          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
       
+      // Notificar al componente padre si existe
+      if (onUserRegistered) {
+        console.log('📢 [REGISTRO] Notificando al componente padre...');
+        onUserRegistered();
+      }
+
 
     } catch (err) {
-      console.error(err);
-      setErrorTitle('Error de Conexión');
-      setErrorMessage('No se pudo conectar con el servidor.');
+      console.error('Error en registro:', err);
+      setErrorTitle('Error de Registro');
+      setErrorMessage(err.message || 'No se pudo completar el registro.');
       setShowErrorModal(true);
     } finally {
       setIsLoading(false);
@@ -327,7 +435,10 @@ function RegisterUser({ onUserRegistered }) {
 
       <SuccessModal 
         isOpen={showSuccessModal}
-        onClose={() => { setShowSuccessModal(false); setShowHealthForm(false); }}
+        onClose={() => { 
+          setShowSuccessModal(false); 
+          setShowHealthForm(false);
+        }}
         title="¡Registro Exitoso!"
         message={successMessage}
         subMessage={successSubMessage}
@@ -337,14 +448,15 @@ function RegisterUser({ onUserRegistered }) {
             <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
             <AdminHealthForm 
               miembroEmail={recentEmail} 
-              onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }} 
+              onClose={() => { 
+                setShowHealthForm(false); 
+                setShowSuccessModal(false);
+              }} 
               onSaved={() => { 
                 console.log('🎯 [LOG] RegisterUser: Ficha guardada, callback existe?', !!onUserRegistered);
                 if (onUserRegistered) {
                   console.log('🚀 [LOG] RegisterUser: Ejecutando onUserRegistered para refrescar Fichas Médicas');
                   onUserRegistered();
-                } else {
-                  console.log('⚠️ [LOG] RegisterUser: onUserRegistered no existe');
                 }
               }}
             />
@@ -388,9 +500,13 @@ function RegisterUser({ onUserRegistered }) {
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
           <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
+          <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
 
         {/* SECCIÓN DE PAGO Y MEMBRESÍA */}

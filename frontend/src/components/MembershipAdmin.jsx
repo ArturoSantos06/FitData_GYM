@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getMembershipTypes, createMembershipType, updateMembershipType, deleteMembershipType, uploadMembershipImage } from '../firebase';
 
 // --- MODAL DE TÉRMINOS ---
 const TermsModal = ({ onClose }) => (
@@ -66,8 +67,7 @@ function MembershipAdmin() {
   
 
   const [activeCardId, setActiveCardId] = useState(null);
-
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchMemberships();
@@ -75,17 +75,18 @@ function MembershipAdmin() {
 
   const fetchMemberships = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/memberships/`);
-      if (!response.ok) throw new Error('Error al cargar datos');
-      const data = await response.json();
-      setMemberships(data);
+      const result = await getMembershipTypes();
+      if (result.success) {
+        setMemberships(result.data);
+      }
     } catch (error) { console.error('Error:', error); }
   };
 
   const getImageUrl = (imgPath) => {
     if (!imgPath) return null;
+    // Firestore Storage URLs are complete HTTP URLs
     if (imgPath.startsWith('http')) return imgPath;
-    return `${API_URL}${imgPath}`;
+    return imgPath;
   };
 
   const handleFileChange = (e) => {
@@ -98,34 +99,57 @@ function MembershipAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('price', price);
-    formData.append('duration_days', duration);
-    if (image) formData.append('image', image);
-
-    const isEditing = editingId !== null;
-    const url = isEditing ? `${API_URL}/api/memberships/${editingId}/` : `${API_URL}/api/memberships/`;
-    const method = isEditing ? 'PATCH' : 'POST';
-    const token = localStorage.getItem('token');
-
+    setIsLoading(true);
+    
     try {
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Authorization': `Token ${token}` },
-        body: formData,
-      });
+      const dataToSend = {
+        name: name,
+        price: parseFloat(price),
+        duration_days: parseInt(duration),
+        image: null
+      };
 
-      if (!response.ok) throw new Error('Error al guardar');
-      const savedData = await response.json();
-
-      if (isEditing) {
-        setMemberships(memberships.map((m) => (m.id === editingId ? savedData : m)));
+      let createdId = editingId;
+      
+      if (editingId) {
+        // Update
+        if (image) {
+          const uploadResult = await uploadMembershipImage(image, editingId);
+          if (uploadResult.success) {
+            dataToSend.image = uploadResult.url;
+          }
+        }
+        
+        const result = await updateMembershipType(editingId, dataToSend);
+        if (!result.success) throw new Error(result.error);
+        
+        setMemberships(memberships.map((m) => (m.id === editingId ? { id: editingId, ...dataToSend } : m)));
       } else {
-        setMemberships([...memberships, savedData]);
+        // Create
+        const createResult = await createMembershipType(dataToSend);
+        if (!createResult.success) throw new Error(createResult.error);
+        
+        createdId = createResult.id;
+        
+        // Upload image if present
+        if (image) {
+          const uploadResult = await uploadMembershipImage(image, createdId);
+          if (uploadResult.success) {
+            dataToSend.image = uploadResult.url;
+            await updateMembershipType(createdId, dataToSend);
+          }
+        }
+        
+        setMemberships([...memberships, { id: createdId, ...dataToSend }]);
       }
+      
       handleCancel();
-    } catch (error) { console.error('Error:', error); alert("Error al guardar."); }
+      setIsLoading(false);
+    } catch (error) { 
+      console.error('Error:', error);
+      alert("Error al guardar: " + error.message);
+      setIsLoading(false);
+    }
   };
 
   const handleEdit = (membership, e) => {
@@ -136,21 +160,25 @@ function MembershipAdmin() {
     setImage(null);
     setPreviewUrl(getImageUrl(membership.image));
     setEditingId(membership.id);
-    setActiveCardId(null); 
+    setActiveCardId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
     if (!window.confirm('¿Borrar membresía?')) return;
-    const token = localStorage.getItem('token');
+    
     try {
-      await fetch(`${API_URL}/api/memberships/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` },
-      });
-      setMemberships(memberships.filter((m) => m.id !== id));
-    } catch (error) { console.error(error); }
+      const result = await deleteMembershipType(id);
+      if (result.success) {
+        setMemberships(memberships.filter((m) => m.id !== id));
+      } else {
+        alert('Error al eliminar: ' + result.error);
+      }
+    } catch (error) { 
+      console.error(error);
+      alert('Error al eliminar');
+    }
   };
 
   const handleCancel = () => {

@@ -13,6 +13,8 @@ import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
+import BitacoraEntrenador from './components/BitacoraEntrenador';
+import GestionEntrenadores from './components/GestionEntrenadores';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -21,29 +23,68 @@ import AboutTeam from './components/AboutTeam';
 import VistaEntrenador from './components/VistaEntrenador';
 import RutinaEntrenador from './components/RutinaEntrenador';
 import EntrenadorLogin from './components/EntrenadorLogin';
+import { logoutUser, getCurrentUser, onAuthChanged } from './firebase';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged((user) => {
+      setHasFirebaseSession(Boolean(user));
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   if (!isTrainerAuthenticated) {
     return <Navigate to="/entrenador/login" replace />;
   }
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">
+        Cargando sesión...
+      </div>
+    );
+  }
+
+  if (!hasFirebaseSession) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
   return children;
 }
 
 function AdminArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('token')));
-  const [isLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
+  const [isLoading, setIsLoading] = useState(false);
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
-
+  
+  const handleUserRegistered = () => {
+    setRefreshHealthProfiles(prev => prev + 1);
+    setRefreshList(prev => prev + 1);
+  };
+  
   useEffect(() => {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
+  useEffect(() => {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
+    setIsLoading(false);
+  }, []);
+
   const handleLogin = () => setIsAuthenticated(true);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
+    localStorage.removeItem('firebaseUser');
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
@@ -71,7 +112,7 @@ function AdminArea() {
           <Route path="/" element={<Home />} />
           
           {/* 2. Registrar Clientes Nuevos */}
-          <Route path="registrar" element={<RegisterUser onUserRegistered={() => setRefreshHealthProfiles(prev => prev + 1)} />} />
+          <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
           
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
@@ -95,6 +136,12 @@ function AdminArea() {
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
           
+          {/* 8. Bitácora de Notas Privadas del Entrenador */}
+          <Route path="bitacora" element={<BitacoraEntrenador />} />
+          
+          {/* 9. Gestión de Entrenadores (RF-018) */}
+          <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
+          
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </main>
@@ -107,13 +154,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta Pública: Landing Page (Inicio) */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Ruta Pública: Acerca del Equipo */}
         <Route path="/equipo" element={<AboutTeam />} />
 
-        {/* Rutas de Cliente */}
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
         <Route path="/entrenador/login" element={<EntrenadorLogin />} />
@@ -134,10 +178,8 @@ function App() {
           }
         />
 
-        {/* Ruta Privada: Área de Admin (Todo lo que empiece con /admin) */}
         <Route path="/admin/*" element={<AdminArea />} />
 
-        {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

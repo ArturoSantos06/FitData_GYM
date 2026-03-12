@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Users, ArrowLeft, LogOut } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { getAllMembers, logoutUser, ensureUserClaim } from '../firebase';
 
 function VistaEntrenador() {
   const navigate = useNavigate();
@@ -17,13 +16,14 @@ function VistaEntrenador() {
         setIsLoading(true);
         setError('');
 
-        const response = await fetch(`${API_URL}/api/miembros/`);
-        if (!response.ok) {
-          throw new Error('No se pudo cargar la lista de alumnos asignados');
+        await ensureUserClaim();
+
+        const result = await getAllMembers();
+        if (!result.success) {
+          throw new Error(result.error || 'No se pudo cargar la lista de alumnos asignados');
         }
 
-        const data = await response.json();
-        setMembers(Array.isArray(data) ? data : []);
+        setMembers(Array.isArray(result.data) ? result.data : []);
       } catch (err) {
         setError(err.message || 'Error al cargar alumnos');
       } finally {
@@ -61,9 +61,10 @@ function VistaEntrenador() {
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 localStorage.removeItem('trainer_token');
                 localStorage.removeItem('trainer_username');
+                await logoutUser();
                 navigate('/entrenador/login');
               }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:border-red-500 hover:text-red-300 transition-colors"
@@ -124,18 +125,18 @@ function VistaEntrenador() {
                 return (
                   <div key={member.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                     <p
-                      onDoubleClick={() =>
+                      onClick={() =>
                         navigate(`/entrenador/rutina/${member.id}`, {
                           state: { member }
                         })
                       }
                       className="text-white font-semibold cursor-pointer select-none hover:text-blue-400 transition-colors"
-                      title="Doble clic para abrir rutina"
+                      title="Clic para abrir rutina"
                     >
                       {fullName || 'Sin nombre registrado'}
                     </p>
                     <p className="text-slate-400 text-xs mt-1">Matrícula: {matricula}</p>
-                    <p className="text-slate-500 text-xs mt-1">Doble clic en el nombre para crear rutina</p>
+                    <p className="text-slate-500 text-xs mt-1">Clic en el nombre para crear rutina</p>
                   </div>
                 );
               })}

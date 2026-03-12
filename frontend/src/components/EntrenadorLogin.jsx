@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, LogIn, ArrowLeft } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { loginUser, getUser, getUserByEmail } from '../firebase';
 
 function EntrenadorLogin() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,21 +16,33 @@ function EntrenadorLogin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api-token-auth/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Usuario o contraseña incorrectos');
+      const result = await loginUser(email, password);
+      if (!result.success) {
+        throw new Error(result.error || 'Correo o contrasena incorrectos');
       }
 
-      const data = await response.json();
-      localStorage.setItem('trainer_token', data.token);
-      localStorage.setItem('trainer_username', username);
+      const firebaseUser = result.user;
+
+      let role = null;
+      const byUid = await getUser(firebaseUser.uid);
+      if (byUid.success) {
+        role = String(byUid.data?.role || '').toLowerCase();
+      }
+
+      if (!role) {
+        const byEmail = await getUserByEmail(firebaseUser.email || '');
+        if (byEmail.success) {
+          role = String(byEmail.data?.role || '').toLowerCase();
+        }
+      }
+
+      if (role !== 'trainer' && role !== 'entrenador') {
+        throw new Error('Tu cuenta no tiene permisos de entrenador');
+      }
+
+      const idToken = await firebaseUser.getIdToken();
+      localStorage.setItem('trainer_token', idToken);
+      localStorage.setItem('trainer_username', firebaseUser.email || email);
       navigate('/entrenador');
     } catch (err) {
       setError(err.message || 'No se pudo iniciar sesión');
@@ -51,15 +62,15 @@ function EntrenadorLogin() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Usuario</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Correo</label>
               <div className="relative">
                 <User className="absolute left-3 top-3.5 text-slate-500" size={18} />
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="tu_usuario"
+                  placeholder="entrenador@fitdata.gym"
                   required
                 />
               </div>
