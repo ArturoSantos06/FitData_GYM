@@ -409,7 +409,7 @@ const PersonalData = ({ user, onSave, onBack }) => {
                         if (m) setMiembroId(m.id);
                     })
                     .catch(()=>{});
-        }, []);
+        }, [editForm.email]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
