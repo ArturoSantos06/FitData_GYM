@@ -194,6 +194,39 @@ function ClientRoutine() {
   const [routine, setRoutine] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [resolvedFileUrls, setResolvedFileUrls] = useState({});
+  const [downloadingIndex, setDownloadingIndex] = useState(null);
+
+  const handleDownloadFile = async (downloadUrl, fileName, fileIndex) => {
+    if (!downloadUrl) return;
+    try {
+      setDownloadingIndex(fileIndex);
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('No se pudo obtener el archivo.');
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName || 'archivo';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Fallback: usar el enlace directo si el navegador bloquea la descarga por fetch.
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = downloadUrl;
+      fallbackLink.download = fileName || 'archivo';
+      fallbackLink.rel = 'noreferrer';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      fallbackLink.remove();
+    } finally {
+      setDownloadingIndex(null);
+    }
+  };
 
   useEffect(() => {
     let routineUnsubscribe = null;
@@ -558,16 +591,15 @@ function ClientRoutine() {
                     {sizeKB && <p className="text-slate-500 text-xs">{sizeKB}</p>}
                   </div>
                   {canDownload ? (
-                    <a
-                      href={downloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      download={file.nombre || undefined}
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFile(downloadUrl, file.nombre || 'archivo', idx)}
+                      disabled={downloadingIndex === idx}
                       className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors"
                     >
                       <Download size={13} />
-                      Descargar
-                    </a>
+                      {downloadingIndex === idx ? 'Descargando...' : 'Descargar'}
+                    </button>
                   ) : (
                     <span className="text-[11px] text-slate-500">No disponible</span>
                   )}

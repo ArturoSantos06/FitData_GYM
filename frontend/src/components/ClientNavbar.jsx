@@ -1,10 +1,11 @@
 import React from 'react';
-import { QrCode, ShoppingBag, User, LogOut } from 'lucide-react';
+import { QrCode, ShoppingBag, Dumbbell, User, LogOut } from 'lucide-react';
 
 const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
     { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
+    { id: 'rutina', label: 'Rutina', icon: Dumbbell },
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
 
@@ -48,7 +49,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
       </header>
 
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        <div className="grid grid-cols-4 h-full">
+        <div className="grid grid-cols-5 h-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
