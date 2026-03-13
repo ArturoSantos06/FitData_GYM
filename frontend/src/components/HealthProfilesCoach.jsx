@@ -183,3 +183,6 @@ function HealthProfilesCoach({ refreshTrigger }) {
 }
 
 export default HealthProfilesCoach;
+
+
+//http://localhost:5173/admin/fichas-medicas-coach

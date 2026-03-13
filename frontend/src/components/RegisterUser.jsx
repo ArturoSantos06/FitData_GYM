@@ -161,6 +161,7 @@ function RegisterUser({ onUserRegistered }) {
     password: '',
     first_name: '',
     last_name: '',
+    sexo: '',
     membership_id: '',
     payment_method: 'EFECTIVO'
   });
@@ -246,6 +247,7 @@ function RegisterUser({ onUserRegistered }) {
         password: formData.password,
         firstName: formData.first_name,
         lastName: formData.last_name,
+        sexo: formData.sexo,
         membershipTypeId: formData.membership_id,
         paymentMethod: formData.payment_method,
         montoRecibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice,
@@ -323,7 +325,7 @@ function RegisterUser({ onUserRegistered }) {
 
       // Limpieza
       setFormData({ 
-          username: '', email: '', password: '', first_name: '', last_name: '', 
+          username: '', email: '', password: '', first_name: '', last_name: '', sexo: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
@@ -408,6 +410,14 @@ function RegisterUser({ onUserRegistered }) {
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Sexo</label>
+          <select name="sexo" value={formData.sexo} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required>
+            <option value="">-- Selecciona --</option>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
