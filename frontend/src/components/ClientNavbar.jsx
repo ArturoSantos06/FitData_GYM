@@ -1,15 +1,17 @@
 import React from 'react';
-import { QrCode, ShoppingBag, User, LogOut } from 'lucide-react';
+import { QrCode, ShoppingBag, User, LogOut, MessageSquare } from 'lucide-react';
 
 const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
     { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
+    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare }, // <-- Nueva pestaña de mensajería
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
 
   return (
     <>
+      {/* --- Menú de Escritorio --- */}
       <header className="hidden md:flex fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 z-50 h-20 items-center px-8 justify-center shadow-2xl">
         <div className="flex items-center gap-5">
           <span className="text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400 mr-4 cursor-pointer">
@@ -19,7 +21,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
           <nav className="flex items-center gap-5">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
+              // Eliminé const Icon = tab.icon; de aquí porque no se usa en escritorio
               return (
                 <button
                   key={tab.id}
@@ -47,8 +49,10 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
         </div>
       </header>
 
+      {/* --- Menú Móvil --- */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        <div className="grid grid-cols-4 h-full">
+        {/* Cambié grid-cols-4 a grid-cols-5 para acomodar el nuevo tab */}
+        <div className="grid grid-cols-5 h-full"> 
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -69,6 +73,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
               </button>
             );
           })}
+          
           <button
             onClick={onLogout}
             className="flex flex-col items-center justify-center gap-1 text-red-400"

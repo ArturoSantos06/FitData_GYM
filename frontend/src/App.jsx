@@ -18,6 +18,7 @@ import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
 import CitasNutri from './components/CitasNutri';
 import CitasTrainer from './components/CitasTrainer';
+import FeedbackClie from './components/FeedbackClie';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -115,6 +116,9 @@ function AdminArea() {
 
           {/* 12. Citas de Entrenamiento */}
           <Route path="citas-trainer" element={<CitasTrainer />} />
+
+          {/* 13. Feedback y comunicación */}
+          <Route path="feedback" element={<FeedbackClie />} />
 
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
