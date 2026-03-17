@@ -1423,6 +1423,31 @@ export const getTrainerNotesByMember = async (memberId) => {
     }));
     return { success: true, data: notes };
   } catch (error) {
+    const isIndexError =
+      String(error?.code || '').includes('failed-precondition') ||
+      String(error?.message || '').toLowerCase().includes('requires an index');
+
+    if (isIndexError) {
+      try {
+        const fallbackQuery = query(
+          collection(db, "trainerNotes"),
+          where("memberId", "==", memberId)
+        );
+        const fallbackSnapshot = await getDocs(fallbackQuery);
+        const notes = fallbackSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+            const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+            return bTime - aTime;
+          });
+
+        return { success: true, data: notes };
+      } catch (fallbackError) {
+        return { success: false, error: fallbackError.message };
+      }
+    }
+
     return { success: false, error: error.message };
   }
 };

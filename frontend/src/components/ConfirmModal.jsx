@@ -16,7 +16,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
         </div>
 
         <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-        <p className="text-gray-400 mb-6 text-sm">
+        <p className="text-gray-400 mb-6 text-sm whitespace-pre-wrap wrap-anywhere">
           {message}
         </p>
 
