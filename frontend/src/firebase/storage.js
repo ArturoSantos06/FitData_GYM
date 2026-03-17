@@ -1,10 +1,11 @@
 import { 
+  getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
   deleteObject
 } from "firebase/storage";
-import { storage } from "./config";
+import app, { storage } from "./config";
 
 const sanitizeFileName = (value) => {
   return String(value || 'archivo')
@@ -113,7 +114,6 @@ export const uploadRoutineAttachment = async (file, memberId, trainerUid) => {
     const safeName = sanitizeFileName(file.name);
     const timestamp = Date.now();
     const path = `trainerRoutines/${memberId}/${timestamp}_${safeName}`;
-    const storageRef = ref(storage, path);
     const metadata = {
       contentType: file.type,
       customMetadata: {
@@ -123,11 +123,42 @@ export const uploadRoutineAttachment = async (file, memberId, trainerUid) => {
       },
     };
 
-    const snapshot = await uploadBytes(storageRef, file, metadata);
-    const url = await getDownloadURL(snapshot.ref);
+    const bucketFromEnv = String(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim();
+    const bucketCandidates = [];
+    if (bucketFromEnv) {
+      bucketCandidates.push(bucketFromEnv);
+      if (bucketFromEnv.endsWith('.firebasestorage.app')) {
+        bucketCandidates.push(bucketFromEnv.replace('.firebasestorage.app', '.appspot.com'));
+      } else if (bucketFromEnv.endsWith('.appspot.com')) {
+        bucketCandidates.push(bucketFromEnv.replace('.appspot.com', '.firebasestorage.app'));
+      }
+    }
 
-    return { success: true, url, path };
+    const uniqueBuckets = [...new Set(bucketCandidates.filter(Boolean))];
+    const storageInstances = [storage, ...uniqueBuckets.map((bucket) => getStorage(app, `gs://${bucket}`))];
+
+    let lastError = null;
+    for (const storageInstance of storageInstances) {
+      try {
+        const storageRef = ref(storageInstance, path);
+        const snapshot = await uploadBytes(storageRef, file, metadata);
+        const url = await getDownloadURL(snapshot.ref);
+        return { success: true, url, path };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error('No se pudo subir el archivo al bucket de Storage.');
   } catch (error) {
-    return { success: false, error: error.message };
+    if (error?.code === 'storage/unauthorized') {
+      return {
+        success: false,
+        code: 'storage/unauthorized',
+        error: 'No hay permisos de Storage para adjuntar archivos. La rutina se guardara sin esos adjuntos.',
+      };
+    }
+
+    return { success: false, code: error?.code || null, error: error.message };
   }
 };

@@ -7,6 +7,7 @@ import {
 import {
   auth,
   ensureUserClaim,
+  onAuthChanged,
   createOrUpdateTrainerRoutine,
   deleteTrainerRoutineByMember,
   getTrainerRoutineByMember,
@@ -146,6 +147,7 @@ function RutinaEntrenador() {
     delete: '',
   });
   const [formSuccessMessage, setFormSuccessMessage] = useState('');
+  const [formWarningMessage, setFormWarningMessage] = useState('');
   // Caché por grupo muscular (evita repetir requests)
   const catalogCacheRef = useRef({});
 
@@ -351,6 +353,7 @@ function RutinaEntrenador() {
 
   const clearMessages = () => {
     setFormSuccessMessage('');
+    setFormWarningMessage('');
     setFormErrors({
       routineName: '',
       days: '',
@@ -359,6 +362,32 @@ function RutinaEntrenador() {
       delete: '',
     });
   };
+
+  const waitForTrainerSession = (timeoutMs = 3500) =>
+    new Promise((resolve) => {
+      if (auth.currentUser) {
+        resolve(auth.currentUser);
+        return;
+      }
+
+      let settled = false;
+      const unsubscribe = onAuthChanged((user) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        unsubscribe();
+        resolve(user || null);
+      });
+
+      const timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        unsubscribe();
+        resolve(auth.currentUser || null);
+      }, timeoutMs);
+    });
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const validateRoutineForm = () => {
     const hasAttachedFiles = Array.isArray(files) && files.length > 0;
@@ -420,6 +449,27 @@ function RutinaEntrenador() {
       return;
     }
 
+    const claimResult = await ensureUserClaim();
+    if (!claimResult.success) {
+      setFormErrors((prev) => ({
+        ...prev,
+        save: claimResult.error || 'No se pudo validar la sesion del entrenador. Intenta de nuevo.',
+      }));
+      return;
+    }
+
+    // Da margen a la propagacion del token con claim antes de escribir en Firestore.
+    await wait(1000);
+
+    const currentTrainer = await waitForTrainerSession();
+    if (!currentTrainer?.uid) {
+      setFormErrors((prev) => ({
+        ...prev,
+        save: 'Tu sesion no esta lista. Cierra y vuelve a iniciar sesion como entrenador.',
+      }));
+      return;
+    }
+
     setIsSaving(true);
 
     const days = activeDays.map((day) => ({
@@ -456,8 +506,8 @@ function RutinaEntrenador() {
       days,
       steps,
       files: [],
-      createdBy: auth.currentUser?.uid || '',
-      trainerEmail: auth.currentUser?.email || '',
+      createdBy: currentTrainer.uid,
+      trainerEmail: currentTrainer.email || '',
     };
 
     try {
@@ -473,9 +523,16 @@ function RutinaEntrenador() {
 
       const newFiles = files.filter((f) => f instanceof File);
       const uploadedFiles = [];
+      const skippedFiles = [];
       for (const file of newFiles) {
-        const uploadResult = await uploadRoutineAttachment(file, String(memberId), auth.currentUser?.uid || '');
+        const uploadResult = await uploadRoutineAttachment(file, String(memberId), currentTrainer.uid);
         if (!uploadResult.success) {
+          const isStorageUnauthorized = uploadResult.code === 'storage/unauthorized';
+          if (isStorageUnauthorized) {
+            skippedFiles.push(file.name);
+            continue;
+          }
+
           throw new Error(uploadResult.error || 'No se pudo subir uno de los archivos adjuntos.');
         }
 
@@ -493,6 +550,11 @@ function RutinaEntrenador() {
       const result = await createOrUpdateTrainerRoutine(payload);
       if (result.success) {
         setFormSuccessMessage('Rutina guardada correctamente.');
+        if (skippedFiles.length > 0) {
+          setFormWarningMessage(
+            `Se guardo la rutina, pero ${skippedFiles.length} adjunto(s) no se subieron por permisos de Storage.`
+          );
+        }
         setFiles(payload.files.map((f) => ({
           name: f.nombre,
           type: f.tipo,
@@ -503,8 +565,12 @@ function RutinaEntrenador() {
       } else {
         setFormErrors((prev) => ({ ...prev, save: result.error || 'No se pudo guardar la rutina.' }));
       }
-    } catch {
-      setFormErrors((prev) => ({ ...prev, save: 'Ocurrió un error al guardar la rutina.' }));
+    } catch (error) {
+      const message = String(error?.message || '').trim();
+      setFormErrors((prev) => ({
+        ...prev,
+        save: message || 'Ocurrio un error al guardar la rutina.',
+      }));
     } finally {
       setIsSaving(false);
     }
@@ -562,6 +628,12 @@ function RutinaEntrenador() {
           {formSuccessMessage && (
             <div className="bg-emerald-950 border border-emerald-700 rounded-2xl px-4 py-3 text-sm text-emerald-300">
               {formSuccessMessage}
+            </div>
+          )}
+
+          {formWarningMessage && (
+            <div className="bg-amber-950 border border-amber-700 rounded-2xl px-4 py-3 text-sm text-amber-200">
+              {formWarningMessage}
             </div>
           )}
 

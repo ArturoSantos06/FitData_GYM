@@ -23,7 +23,7 @@ import {
   getUserByAuthUid,
   subscribeTrainerRoutineByMember,
 } from '../firebase';
-import { getDownloadURL, listAll, ref } from 'firebase/storage';
+import { getBlob, getDownloadURL, listAll, ref } from 'firebase/storage';
 
 function formatDateTime(value) {
   if (!value) return 'Sin fecha';
@@ -195,34 +195,64 @@ function ClientRoutine() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [resolvedFileUrls, setResolvedFileUrls] = useState({});
   const [downloadingIndex, setDownloadingIndex] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
 
-  const handleDownloadFile = async (downloadUrl, fileName, fileIndex) => {
-    if (!downloadUrl) return;
+  const extractStoragePathFromUrl = (url) => {
     try {
+      const parsed = new URL(url);
+      const marker = '/o/';
+      const idx = parsed.pathname.indexOf(marker);
+      if (idx === -1) return '';
+      const encodedPath = parsed.pathname.slice(idx + marker.length);
+      return decodeURIComponent(encodedPath || '');
+    } catch {
+      return '';
+    }
+  };
+
+  const handleDownloadFile = async (file, downloadUrl, fileIndex) => {
+    const fileName = file?.nombre || file?.name || 'archivo';
+    const directPath = file?.storagePath || file?.path || extractStoragePathFromUrl(downloadUrl || '');
+    if (!downloadUrl && !directPath) return;
+
+    try {
+      setDownloadError('');
       setDownloadingIndex(fileIndex);
-      const response = await fetch(downloadUrl);
-      if (!response.ok) {
-        throw new Error('No se pudo obtener el archivo.');
+
+      let blob = null;
+      if (directPath) {
+        try {
+          blob = await getBlob(ref(storage, directPath));
+        } catch {
+          blob = null;
+        }
       }
 
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
+      if (blob) {
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      if (!downloadUrl) {
+        throw new Error('No se pudo resolver una URL de descarga para este archivo.');
+      }
+
       const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fileName || 'archivo';
+      link.href = downloadUrl;
+      link.download = fileName;
+      link.rel = 'noreferrer';
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(objectUrl);
     } catch {
-      // Fallback: usar el enlace directo si el navegador bloquea la descarga por fetch.
-      const fallbackLink = document.createElement('a');
-      fallbackLink.href = downloadUrl;
-      fallbackLink.download = fileName || 'archivo';
-      fallbackLink.rel = 'noreferrer';
-      document.body.appendChild(fallbackLink);
-      fallbackLink.click();
-      fallbackLink.remove();
+      setDownloadError('No se pudo descargar este archivo. El enlace puede haber expirado o no tienes permisos de Storage.');
     } finally {
       setDownloadingIndex(null);
     }
@@ -306,7 +336,8 @@ function ClientRoutine() {
       }
 
       const nextUrls = {};
-      const needsFolderLookup = currentFiles.some((file) => !file?.url && !file?.storagePath);
+      // Si falta storagePath en al menos un archivo, buscamos por carpeta para regenerar URLs.
+      const needsFolderLookup = currentFiles.some((file) => !file?.storagePath && !file?.path);
       let folderItems = [];
 
       if (needsFolderLookup) {
@@ -320,12 +351,6 @@ function ClientRoutine() {
       }
 
       await Promise.all(currentFiles.map(async (file, index) => {
-        const explicitUrl = file?.url || file?.downloadURL || '';
-        if (explicitUrl) {
-          nextUrls[index] = explicitUrl;
-          return;
-        }
-
         const directPath = file?.storagePath || file?.path || '';
         if (directPath) {
           try {
@@ -356,6 +381,11 @@ function ClientRoutine() {
               // Mantener sin URL si falla.
             }
           }
+        }
+
+        const explicitUrl = file?.url || file?.downloadURL || '';
+        if (explicitUrl) {
+          nextUrls[index] = explicitUrl;
         }
       }));
 
@@ -572,12 +602,18 @@ function ClientRoutine() {
             </span>
           </div>
 
+          {downloadError && (
+            <div className="mx-4 mt-4 rounded-lg border border-red-700 bg-red-950 px-3 py-2 text-xs text-red-200">
+              {downloadError}
+            </div>
+          )}
+
           <div className="p-4 md:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {routine.files.map((file, idx) => {
               const isPdf = file.tipo === 'application/pdf';
               const sizeKB = file.size ? `${(file.size / 1024).toFixed(0)} KB` : null;
-              const downloadUrl = file.url || resolvedFileUrls[idx] || '';
-              const canDownload = Boolean(downloadUrl);
+              const downloadUrl = resolvedFileUrls[idx] || file.url || '';
+              const canDownload = Boolean(downloadUrl || file.storagePath || file.path);
               return (
                 <div
                   key={`${file.nombre || 'archivo'}-${idx}`}
@@ -593,7 +629,7 @@ function ClientRoutine() {
                   {canDownload ? (
                     <button
                       type="button"
-                      onClick={() => handleDownloadFile(downloadUrl, file.nombre || 'archivo', idx)}
+                      onClick={() => handleDownloadFile(file, downloadUrl, idx)}
                       disabled={downloadingIndex === idx}
                       className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 transition-colors"
                     >

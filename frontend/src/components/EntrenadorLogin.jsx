@@ -24,19 +24,24 @@ function EntrenadorLogin() {
       const firebaseUser = result.user;
 
       let role = null;
+      let roleLookupFailed = false;
       const byUid = await getUser(firebaseUser.uid);
       if (byUid.success) {
         role = String(byUid.data?.role || '').toLowerCase();
+      } else if (byUid.error) {
+        roleLookupFailed = true;
       }
 
       if (!role) {
         const byEmail = await getUserByEmail(firebaseUser.email || '');
         if (byEmail.success) {
           role = String(byEmail.data?.role || '').toLowerCase();
+        } else if (byEmail.error) {
+          roleLookupFailed = true;
         }
       }
 
-      if (role !== 'trainer' && role !== 'entrenador') {
+      if (!roleLookupFailed && role !== 'trainer' && role !== 'entrenador') {
         throw new Error('Tu cuenta no tiene permisos de entrenador');
       }
 
