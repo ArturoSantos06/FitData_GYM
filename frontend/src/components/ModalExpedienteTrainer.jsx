@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { X, User, Zap } from 'lucide-react';
 import ModalAgendarTrainer from './ModalAgendarTrainer';
 import ModalDetalleTrainer from './ModalDetalleTrainer';
 import DialogoSistemaNutri from './DialogoSistemaNutri';
 
-const ModalExpedienteTrainer = ({ miembro, todosLosEntrenos, onClose }) => {
+const ModalExpedienteTrainer = ({ miembro, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewingEntreno, setViewingEntreno] = useState(null);
   const [dialog, _setDialog] = useState(null);
   const [rutinaPrevia, setRutinaPrevia] = useState('');
+  const [entrenamientosMiembro, setEntrenamientosMiembro] = useState([]);
+
+  useEffect(() => {
+    if (!miembro?.id) return;
+    const q = query(collection(db, 'entrenamientos'), where('clienteId', '==', miembro.id));
+    const unsub = onSnapshot(q, (snap) => {
+      setEntrenamientosMiembro(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [miembro.id]);
 
   const handleDateClick = (arg) => {
     const date = new Date(arg.date);
@@ -68,15 +80,20 @@ const ModalExpedienteTrainer = ({ miembro, todosLosEntrenos, onClose }) => {
             .fc .fc-toolbar-title { color: white; font-weight: 900; text-transform: uppercase; font-size: 1.1rem; }
             .fc .fc-button-primary { background: #1e293b; border: 1px solid #334155; font-weight: 900; border-radius: 12px; text-transform: uppercase; font-size: 0.65rem; }
             .fc .fc-button-active { background: #f97316 !important; border-color: #f97316 !important; }
-            .fc-event { background: linear-gradient(to right, #f97316, #ef4444); border: none; padding: 5px 8px; border-radius: 8px; font-weight: 900; }
+            .fc-event { background: linear-gradient(to right, #f97316, #ef4444); border: none; padding: 4px 8px; border-radius: 8px; font-weight: 900; font-size: 0.7rem; letter-spacing: 0.03em; }
+            .fc-event:hover { filter: brightness(1.15); cursor: pointer; }
+            .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           `}</style>
           
           <FullCalendar
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
-            events={todosLosEntrenos.filter(c => c.clienteId === miembro.id).map(c => ({
-                id: c.id, title: c.title, start: c.fecha, extendedProps: { ...c }
+            events={entrenamientosMiembro.map(c => ({
+                id: c.id,
+                title: c.horaInicio ? `${c.horaInicio}  ${c.title}` : c.title,
+                start: c.fecha,
+                extendedProps: { ...c }
             }))}
             dateClick={handleDateClick}
             eventClick={(info) => setViewingEntreno(info.event.extendedProps)}
@@ -89,7 +106,7 @@ const ModalExpedienteTrainer = ({ miembro, todosLosEntrenos, onClose }) => {
             fecha={selectedDate} 
             miembro={miembro} 
             rutinaInicial={rutinaPrevia}
-            todosLosEntrenos={todosLosEntrenos}
+            todosLosEntrenos={entrenamientosMiembro}
             onClose={() => setSelectedDate(null)} 
             onSuccess={() => { setSelectedDate(null); setRutinaPrevia(''); }}
           />

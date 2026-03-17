@@ -4,12 +4,8 @@ import {
   getAllDietFiles,
   createDietFileRecord,
   deleteDietFileRecord,
-  createUser,
   deleteImage,
   getCurrentUser,
-  getUser,
-  getUserByAuthUid,
-  getUserByEmail,
   onAuthChanged,
   uploadDietDocument,
   downloadDietDocument
@@ -29,13 +25,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isPermissionDeniedError = (errorMessage = '') => {
   const msg = String(errorMessage || '').toLowerCase();
   return msg.includes('missing or insufficient permissions') || msg.includes('permission-denied');
-};
-
-const normalizeRole = (role) => String(role || '').trim().toLowerCase();
-
-const hasDietRepositoryRole = (userData) => {
-  const role = normalizeRole(userData?.role);
-  return role === 'admin' || role === 'trainer';
 };
 
 const ensureFirebaseTokenReady = async (user) => {
@@ -81,108 +70,9 @@ const waitForFirebaseUser = () => {
 
 const ensureAdminMirrorUser = async () => {
   const currentUser = await waitForFirebaseUser();
-  const currentEmail = String(currentUser?.email || '').trim();
-  const normalizedEmail = currentEmail.toLowerCase();
 
   if (!currentUser?.uid || !currentUser?.email) {
-    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar al panel admin.' };
-  }
-
-  const directUserResult = await getUser(currentUser.uid);
-  if (directUserResult.success && hasDietRepositoryRole(directUserResult.data)) {
-    return { success: true };
-  }
-
-  const authUidUserResult = await getUserByAuthUid(currentUser.uid);
-  if (authUidUserResult.success && hasDietRepositoryRole(authUidUserResult.data)) {
-    const resolvedRole = normalizeRole(authUidUserResult.data?.role) === 'trainer' ? 'trainer' : 'admin';
-    let createResult = await createUser(currentUser.uid, {
-      email: currentEmail,
-      displayName:
-        authUidUserResult.data?.displayName ||
-        authUidUserResult.data?.username ||
-        currentUser.displayName ||
-        currentEmail.split('@')[0],
-      username:
-        authUidUserResult.data?.username ||
-        authUidUserResult.data?.displayName ||
-        currentEmail.split('@')[0],
-      role: resolvedRole,
-      authUid: currentUser.uid
-    });
-
-    if (!createResult.success && isPermissionDeniedError(createResult.error)) {
-      await ensureFirebaseTokenReady(currentUser);
-      await sleep(350);
-      createResult = await createUser(currentUser.uid, {
-        email: currentEmail,
-        displayName:
-          authUidUserResult.data?.displayName ||
-          authUidUserResult.data?.username ||
-          currentUser.displayName ||
-          currentEmail.split('@')[0],
-        username:
-          authUidUserResult.data?.username ||
-          authUidUserResult.data?.displayName ||
-          currentEmail.split('@')[0],
-        role: resolvedRole,
-        authUid: currentUser.uid
-      });
-    }
-
-    if (!createResult.success) {
-      return { success: false, error: createResult.error || 'No se pudo habilitar el acceso para esta sesión.' };
-    }
-
-    return { success: true };
-  }
-
-  const emailUserResult = await getUserByEmail(currentEmail);
-  const emailUserResultNormalized = !emailUserResult.success && normalizedEmail !== currentEmail
-    ? await getUserByEmail(normalizedEmail)
-    : emailUserResult;
-
-  if (!emailUserResultNormalized.success || !hasDietRepositoryRole(emailUserResultNormalized.data)) {
-    if (normalizedEmail === 'admin@fitdata.gym') {
-      const bootstrapResult = await createUser(currentUser.uid, {
-        email: currentEmail,
-        displayName: currentUser.displayName || currentEmail.split('@')[0],
-        username: currentEmail.split('@')[0],
-        role: 'admin',
-        authUid: currentUser.uid
-      });
-
-      if (bootstrapResult.success) {
-        return { success: true };
-      }
-    }
-    return { success: false, error: 'La cuenta autenticada no tiene permisos para este módulo.' };
-  }
-
-  const sourceUser = emailUserResultNormalized.data;
-  const resolvedRole = normalizeRole(sourceUser?.role) === 'trainer' ? 'trainer' : 'admin';
-  let createResult = await createUser(currentUser.uid, {
-    email: currentEmail,
-    displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
-    username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
-    role: resolvedRole,
-    authUid: currentUser.uid
-  });
-
-  if (!createResult.success && isPermissionDeniedError(createResult.error)) {
-    await ensureFirebaseTokenReady(currentUser);
-    await sleep(350);
-    createResult = await createUser(currentUser.uid, {
-      email: currentEmail,
-      displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
-      username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
-      role: resolvedRole,
-      authUid: currentUser.uid
-    });
-  }
-
-  if (!createResult.success) {
-    return { success: false, error: createResult.error || 'No se pudo habilitar el acceso para esta sesión.' };
+    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar al portal.' };
   }
 
   return { success: true };
@@ -312,6 +202,23 @@ function DietRepositoryAdmin() {
     setSelectedFile(null);
   };
 
+  const resolveFileAccess = (fileItem) => {
+    const storagePath =
+      fileItem?.storagePath ||
+      fileItem?.path ||
+      fileItem?.storage_path ||
+      '';
+
+    const directUrl =
+      fileItem?.downloadURL ||
+      fileItem?.downloadUrl ||
+      fileItem?.url ||
+      fileItem?.fileUrl ||
+      '';
+
+    return { storagePath, directUrl };
+  };
+
   const handleFileChange = (event) => {
     const file = event.target.files?.[0] || null;
 
@@ -391,9 +298,11 @@ function DietRepositoryAdmin() {
   };
 
   const handleDownload = async (fileItem) => {
+    const { storagePath, directUrl } = resolveFileAccess(fileItem);
     const result = await downloadDietDocument(
-      fileItem.storagePath,
-      fileItem.originalFileName || fileItem.title || 'archivo'
+      storagePath,
+      fileItem.originalFileName || fileItem.title || 'archivo',
+      directUrl
     );
     if (!result.success) {
       setErrorModal({ open: true, message: 'No se pudo descargar el archivo. Intenta abrirlo directamente.' });
@@ -410,8 +319,9 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    if (fileItem.storagePath) {
-      await deleteImage(fileItem.storagePath);
+    const { storagePath } = resolveFileAccess(fileItem);
+    if (storagePath) {
+      await deleteImage(storagePath);
     }
 
     await loadData();
@@ -586,6 +496,7 @@ function DietRepositoryAdmin() {
             <div className="space-y-3">
               {filteredFiles.map((fileItem) => {
                 const date = fileItem.createdAt?.toDate?.() || fileItem.updatedAt?.toDate?.() || null;
+                const { directUrl } = resolveFileAccess(fileItem);
 
                 return (
                   <div key={fileItem.id} className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4">
@@ -608,14 +519,24 @@ function DietRepositoryAdmin() {
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        <a
-                          href={fileItem.downloadURL}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
-                        >
-                          Abrir
-                        </a>
+                        {directUrl ? (
+                          <a
+                            href={directUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                          >
+                            Abrir
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(fileItem)}
+                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                          >
+                            Ver
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleDownload(fileItem)}

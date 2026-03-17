@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   getAllMembers, 
   createTrainerNote, 
@@ -8,7 +8,7 @@ import {
   getCurrentUser 
 } from '../firebase';
 
-function BitacoraEntrenador() {
+function BitacoraEntrenador({ embedded = false }) {
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
   const [notes, setNotes] = useState([]);
@@ -19,12 +19,12 @@ function BitacoraEntrenador() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [currentTrainer, setCurrentTrainer] = useState(null);
 
-  const showMessage = (type, text) => {
+  const showMessage = useCallback((type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-  };
+  }, []);
 
-  const loadCurrentTrainer = () => {
+  const loadCurrentTrainer = useCallback(() => {
     const user = getCurrentUser();
     if (user) {
       setCurrentTrainer({
@@ -32,23 +32,23 @@ function BitacoraEntrenador() {
         email: user.email
       });
     }
-  };
+  }, []);
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     const result = await getAllMembers();
     if (result.success) {
       setMembers(result.data);
     } else {
       showMessage('error', 'Error al cargar miembros');
     }
-  };
+  }, [showMessage]);
 
   useEffect(() => {
     setTimeout(() => {
       loadMembers();
       loadCurrentTrainer();
     }, 0);
-  }, []);
+  }, [loadMembers, loadCurrentTrainer]);
 
   const loadNotes = async (memberId) => {
     setLoading(true);
@@ -145,7 +145,7 @@ function BitacoraEntrenador() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-gray-900 p-6">
+    <div className={embedded ? "w-full bg-linear-to-br from-gray-900/60 via-slate-900/60 to-gray-900/60 p-4 rounded-xl border border-slate-800" : "w-full min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-gray-900 p-6"}>
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-2">

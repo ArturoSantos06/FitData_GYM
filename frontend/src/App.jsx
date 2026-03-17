@@ -24,7 +24,6 @@ import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
-import VistaEntrenador from './components/VistaEntrenador';
 import RutinaEntrenador from './components/RutinaEntrenador';
 import EntrenadorLogin from './components/EntrenadorLogin';
 import { logoutUser, getCurrentUser, onAuthChanged } from './firebase';
@@ -63,7 +62,6 @@ function RequireTrainerAuth({ children }) {
 }
 
 //Componete para el entrenador//
-import TrainerClientUnlink from './components/TrainerClientUnlink';
 import TrainerPortal from './components/TrainerPortal';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
@@ -137,22 +135,16 @@ function AdminArea() {
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
 
           
-          {/* 8. Bitácora de Notas Privadas del Entrenador */}
-          <Route path="bitacora" element={<BitacoraEntrenador />} />
-          
-          {/* 9. Gestión de Entrenadores (RF-018) */}
+          {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
 
-          {/* 10. Fichas Médicas vista desde Entrenador (Health Profiles) */}
+          {/* 9. Fichas Médicas vista desde Entrenador (Health Profiles) */}
           <Route path="fichas-medicas-coach" element={<HealthProfilesCoach refreshTrigger={refreshHealthProfiles} />} />
 
-          {/* 11. Citas de Nutrición */}
+          {/* 10. Citas de Nutrición */}
           <Route path="citas-nutri" element={<CitasNutri />} />
 
-          {/* 12. Citas de Entrenamiento */}
-          <Route path="citas-trainer" element={<CitasTrainer />} />
-
-          {/* 13. Feedback y comunicación */}
+          {/* 11. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
 
           <Route path="*" element={<Navigate to="/admin" />} />
@@ -178,7 +170,7 @@ function App() {
           path="/entrenador"
           element={
             <RequireTrainerAuth>
-              <VistaEntrenador />
+              <TrainerPortal />
             </RequireTrainerAuth>
           }
         />
@@ -190,13 +182,26 @@ function App() {
             </RequireTrainerAuth>
           }
         />
+        <Route
+          path="/entrenador/citas"
+          element={
+            <RequireTrainerAuth>
+              <CitasTrainer />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/bitacora"
+          element={
+            <RequireTrainerAuth>
+              <BitacoraEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
 
         <Route path="/admin/*" element={<AdminArea />} />
 
-        {/* Ruta para el entrenador (ejemplo) */}
-        <Route path="/entrenador" element={<TrainerClientUnlink />} />
-
-        <Route path="/portal" element={<TrainerPortal />} />
+        <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
 
         {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />

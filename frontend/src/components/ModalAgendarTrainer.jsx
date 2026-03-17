@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { db } from "../firebase/config"; 
-import { collection, addDoc } from 'firebase/firestore';
+import { auth, db } from "../firebase/config"; 
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import DialogoSistemaNutri from './DialogoSistemaNutri';
 import { Clock, Calendar as CalIcon, Activity } from 'lucide-react';
 
@@ -35,15 +35,34 @@ const ModalAgendarTrainer = ({ fecha, miembro, rutinaInicial, todosLosEntrenos, 
     }
 
     try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          setDialog({
+            type: 'danger',
+            title: 'Sesion no valida',
+            message: 'No hay una sesion activa en Firebase. Cierra sesion e inicia de nuevo para guardar la cita.',
+            onConfirm: () => setDialog(null)
+          });
+          return;
+        }
+
+        const fullName = `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim();
+
         await addDoc(collection(db, "entrenamientos"), {
           clienteId: miembro.id,
-          nombreAtleta: `${miembro.nombre} ${miembro.apellido}`,
+          nombreAtleta: fullName,
           title: enfoque,
           fecha: fecha,
           horaInicio: horaInicio,
           horaFin: horaFin,
-          rutina: rutinaInicial,
-          fechaRegistro: new Date().toISOString()
+          rutina: rutinaInicial || '',
+          entrenadorId: currentUser?.uid || '',
+          ownerUid: currentUser?.uid || '',
+          entrenadorEmail: currentUser?.email || '',
+          createdBy: currentUser?.uid || '',
+          fechaRegistro: new Date().toISOString(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         });
 
         setDialog({ 
@@ -54,7 +73,13 @@ const ModalAgendarTrainer = ({ fecha, miembro, rutinaInicial, todosLosEntrenos, 
         });
     } catch (err) {
         console.error(err);
-        setDialog({ type: 'danger', title: 'Error', message: 'Fallo al guardar en la base de datos.', onConfirm: () => setDialog(null) });
+        const errCode = String(err?.code || '').toLowerCase();
+        const permissionError = errCode.includes('permission-denied');
+        const message = permissionError
+          ? 'No hay permisos para guardar esta cita. Inicia sesion de nuevo y verifica reglas de Firestore para entrenamientos.'
+          : `Fallo al guardar en la base de datos. ${err?.message || ''}`.trim();
+
+        setDialog({ type: 'danger', title: 'Error', message, onConfirm: () => setDialog(null) });
     }
   };
 

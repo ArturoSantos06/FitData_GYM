@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { checkInMember, checkOutMember, getAttendances } from '../firebase';
 
@@ -13,7 +13,7 @@ const CheckInOut = () => {
   const html5QrcodeRef = useRef(null);
 
   // Cargar asistencias recientes con filtros
-  const cargarAsistencias = async () => {
+  const cargarAsistencias = useCallback(async () => {
     try {
       const filters = {};
       if (dateFilter) filters.fecha = dateFilter;
@@ -26,15 +26,15 @@ const CheckInOut = () => {
     } catch (err) {
       console.error('Error cargando asistencias:', err);
     }
-  };
+  }, [dateFilter, searchTerm]);
 
   useEffect(() => {
     setTimeout(() => cargarAsistencias(), 0);
     const interval = setInterval(cargarAsistencias, 10000);
     return () => clearInterval(interval);
-  }, [dateFilter, searchTerm]);
+  }, [cargarAsistencias]);
 
-  const procesarQR = async (qrCode) => {
+  const procesarQR = useCallback(async (qrCode) => {
     if (!qrCode) return;
 
     setScanning(false);
@@ -69,10 +69,10 @@ const CheckInOut = () => {
       setError('Error de conexión. Intenta nuevamente.');
       console.error(err);
     }
-  };
+  }, [cargarAsistencias]);
 
   // Inicializar escáner cuando se activa
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (html5QrcodeRef.current?.isScanning) {
       try {
         await html5QrcodeRef.current.stop();
@@ -82,7 +82,7 @@ const CheckInOut = () => {
       }
     }
     setScanning(false);
-  };
+  }, []);
 
   useEffect(() => {
     const startScanner = async () => {
@@ -120,7 +120,7 @@ const CheckInOut = () => {
         html5QrcodeRef.current.stop().catch(console.error);
       }
     };
-  }, [scanning]);
+  }, [scanning, procesarQR, stopScanner]);
 
   const handleManualSubmit = (e) => {
     e.preventDefault();

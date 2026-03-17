@@ -86,6 +86,13 @@ export {
   deleteTrainerNote
 } from './firestore';
 
+// Export Diet File services (re-export from firestore)
+export {
+  getAllDietFiles,
+  createDietFileRecord,
+  deleteDietFileRecord
+} from './firestore';
+
 // Export Storage services
 export {
   uploadImage,
@@ -94,4 +101,9 @@ export {
   uploadMembershipImage,
   uploadMemberAvatar,
   uploadRoutineAttachment
+} from './storage';
+
+export {
+  uploadDietDocument,
+  downloadDietDocument
 } from './storage';

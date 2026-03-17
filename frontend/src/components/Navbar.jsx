@@ -57,9 +57,6 @@ function Navbar({ onLogout }) {
             <Link to="/admin/citas-nutri" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-nutri')}`}>
               Citas Nutriologo
             </Link>
-            <Link to="/admin/citas-trainer" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-trainer')}`}>
-              Citas Entrenador
-            </Link>
           </div>
 
           <div className="hidden md:flex">

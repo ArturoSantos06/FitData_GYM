@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { db } from "../firebase/config"; 
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import ModalExpedienteTrainer from './ModalExpedienteTrainer';
-import { User, Dumbbell, ChevronRight } from 'lucide-react';
+import { User, Dumbbell, ChevronRight, ArrowLeft } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const CitasTrainer = () => {
+const CitasTrainer = ({ embedded = false }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [miembros, setMiembros] = useState([]);
   const [selectedMiembro, setSelectedMiembro] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [entrenamientos, setEntrenamientos] = useState([]);
 
   useEffect(() => {
     const qMiembros = query(collection(db, "miembros"));
@@ -45,28 +47,38 @@ const CitasTrainer = () => {
     return () => { unsubMiembros(); unsubSalud(); };
   }, []);
 
-  useEffect(() => {
-    const q = query(collection(db, "entrenamientos"));
-    const unsubCitas = onSnapshot(q, (snap) => {
-      setEntrenamientos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsubCitas();
-  }, []);
+
+
+  const backPath = location.pathname.startsWith('/entrenador') ? '/entrenador' : '/admin';
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white p-8 font-sans">
-      <header className="mb-10 border-b border-slate-800 pb-6">
-        <h1 className="text-4xl font-black bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent italic tracking-tighter uppercase">
+    <div className={`${embedded ? 'rounded-xl border border-slate-800 bg-slate-900/40 p-4 md:p-6' : 'min-h-screen bg-linear-to-br from-slate-950 via-[#0c1c2b] to-slate-950 p-4 md:p-8'} text-white font-sans`}>
+      <header className="mb-8 border-b border-cyan-900/30 pb-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black bg-linear-to-r from-cyan-300 via-sky-400 to-blue-500 bg-clip-text text-transparent italic tracking-tighter uppercase">
           Gestión de Entrenamientos
-        </h1>
-        <p className="text-slate-500 mt-2 uppercase tracking-[0.3em] text-[10px] font-bold italic">FitData GYM • Protocolo de Alto Rendimiento</p>
+            </h1>
+            <p className="text-slate-400 mt-2 uppercase tracking-[0.28em] text-[10px] font-bold italic">FitData GYM • Planeación de sesiones</p>
+          </div>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={() => navigate(backPath)}
+              className="inline-flex items-center gap-2 self-start rounded-xl border border-cyan-800/40 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-cyan-200 hover:border-cyan-500/50 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={16} />
+              Volver
+            </button>
+          )}
+        </div>
       </header>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {miembros.map((miembro) => (
-          <div key={miembro.id} className="bg-[#1e293b] rounded-3xl border border-slate-800 p-6 hover:border-orange-500/30 transition-all group shadow-lg relative">
+          <div key={miembro.id} className="bg-[#122033] rounded-3xl border border-slate-800 p-6 hover:border-cyan-500/30 transition-all group shadow-lg relative">
             <div className="absolute top-4 right-6">
-              <span className="text-[11px] font-mono font-black text-orange-400 block uppercase">
+              <span className="text-[11px] font-mono font-black text-cyan-300 block uppercase">
                 ID: {miembro.id.slice(0, 8).toUpperCase()}
               </span>
             </div>
@@ -75,7 +87,7 @@ const CitasTrainer = () => {
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl" style={{ backgroundColor: miembro.displayColor }}>
                 <User size={28} strokeWidth={2.5} />
               </div>
-              <Dumbbell size={22} className="text-slate-700 group-hover:text-orange-500/50 transition-colors" />
+              <Dumbbell size={22} className="text-slate-700 group-hover:text-cyan-400/60 transition-colors" />
             </div>
             
             <h3 className="text-xl font-bold mb-1 truncate uppercase leading-none">
@@ -91,7 +103,7 @@ const CitasTrainer = () => {
             
             <button 
               onClick={() => { setSelectedMiembro(miembro); setIsModalOpen(true); }}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 font-black text-[10px] tracking-[0.2em] uppercase transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-linear-to-r from-cyan-500 to-blue-600 font-black text-[10px] tracking-[0.2em] uppercase transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
             >
               PLANIFICAR <ChevronRight size={14} />
             </button>
@@ -102,7 +114,6 @@ const CitasTrainer = () => {
       {isModalOpen && (
         <ModalExpedienteTrainer 
           miembro={selectedMiembro} 
-          todosLosEntrenos={entrenamientos}
           onClose={() => setIsModalOpen(false)} 
         />
       )}

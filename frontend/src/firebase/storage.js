@@ -76,6 +76,78 @@ export const deleteImage = async (path) => {
   }
 };
 
+// Subir documento de dieta (PDF, JPG, PNG — max 10 MB)
+export const uploadDietDocument = async (file, memberId) => {
+  try {
+    if (!file) throw new Error('No se seleccionó ningún archivo');
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) throw new Error('Solo se permiten PDF, JPG o PNG');
+    if (file.size > 10 * 1024 * 1024) throw new Error('El archivo supera el límite de 10 MB');
+
+    const safeName = sanitizeFileName(file.name);
+    const timestamp = Date.now();
+    const path = `dietFiles/${memberId}/${timestamp}_${safeName}`;
+    const metadata = {
+      contentType: file.type,
+      customMetadata: { uploadedAt: new Date().toISOString(), memberId: String(memberId || '') }
+    };
+
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadBytes(storageRef, file, metadata);
+    const url = await getDownloadURL(snapshot.ref);
+    return { success: true, url, path, fileName: safeName, contentType: file.type, size: file.size };
+  } catch (error) {
+    if (error?.code === 'storage/unauthorized') {
+      return { success: false, error: 'Sin permisos de Storage. Verifica las reglas de almacenamiento.' };
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+const triggerDirectDownload = (rawUrl, fileName) => {
+  const safeName = String(fileName || 'archivo').replace(/[\r\n]/g, ' ').trim() || 'archivo';
+  const disposition = encodeURIComponent(`attachment; filename="${safeName}"`);
+  const hasQuery = rawUrl.includes('?');
+  const hasDisposition = /response-content-disposition=/i.test(rawUrl);
+  const finalUrl = hasDisposition
+    ? rawUrl
+    : `${rawUrl}${hasQuery ? '&' : '?'}response-content-disposition=${disposition}`;
+
+  const a = document.createElement('a');
+  a.href = finalUrl;
+  a.download = safeName;
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+// Descargar documento de dieta (forzado, sin fetch para evitar CORS)
+export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = '') => {
+  try {
+    let url = '';
+
+    if (typeof storagePath === 'string' && storagePath.trim().startsWith('http')) {
+      url = storagePath.trim();
+    } else if (fallbackUrl) {
+      url = fallbackUrl;
+    } else if (storagePath) {
+      const storageRef = ref(storage, storagePath);
+      url = await getDownloadURL(storageRef);
+    }
+
+    if (!url) {
+      throw new Error('No se encontró una ruta o URL válida para descargar el archivo.');
+    }
+
+    triggerDirectDownload(url, fileName);
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Subir imagen de producto
 export const uploadProductImage = async (file, productId) => {
   const path = `productos/${productId}/${file.name}`;

@@ -274,7 +274,6 @@ function ClientMembership() {
             tipo: fallbackType,
             start_date: startDate,
             end_date: endDate,
-            time_remaining: calculateTimeRemaining(endDate),
             membership_name: fallbackType.name
           });
         } else {

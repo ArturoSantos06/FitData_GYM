@@ -1817,3 +1817,42 @@ export const deleteTrainerNote = async (noteId) => {
   }
 };
 
+// REPOSITORIO DE DIETAS
+export const getAllDietFiles = async () => {
+  try {
+    const q = query(collection(db, 'dietFiles'), orderBy('createdAt', 'desc'));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const createDietFileRecord = async (recordData) => {
+  try {
+    const ownerUid = String(auth.currentUser?.uid || '');
+    const docRef = await withAuthRetry(() =>
+      addDoc(collection(db, 'dietFiles'), {
+        ...recordData,
+        ownerUid,
+        uploadedByUid: ownerUid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    );
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteDietFileRecord = async (fileId) => {
+  try {
+    await withAuthRetry(() => deleteDoc(doc(db, 'dietFiles', fileId)));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+

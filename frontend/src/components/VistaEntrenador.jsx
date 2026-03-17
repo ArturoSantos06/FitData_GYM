@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, ArrowLeft, LogOut } from 'lucide-react';
+import { Search, Users, ArrowLeft, LogOut, CalendarDays, NotebookPen } from 'lucide-react';
 import { getAllMembers, logoutUser, ensureUserClaim } from '../firebase';
 
 function VistaEntrenador() {
@@ -94,6 +94,38 @@ function VistaEntrenador() {
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => navigate('/entrenador/citas')}
+            className="rounded-2xl border border-cyan-800/40 bg-linear-to-r from-slate-900 to-[#10253b] p-5 text-left hover:border-cyan-500/50 transition-all"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 font-bold mb-2">Agenda</p>
+                <h2 className="text-xl font-bold text-white">Citas Entrenador</h2>
+                <p className="text-sm text-slate-400 mt-2">Organiza sesiones y abre expedientes de entrenamiento.</p>
+              </div>
+              <CalendarDays className="text-cyan-400" size={28} />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/entrenador/bitacora')}
+            className="rounded-2xl border border-blue-800/40 bg-linear-to-r from-slate-900 to-[#1a2340] p-5 text-left hover:border-blue-500/50 transition-all"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-blue-300 font-bold mb-2">Seguimiento</p>
+                <h2 className="text-xl font-bold text-white">Bitácora Entrenador</h2>
+                <p className="text-sm text-slate-400 mt-2">Guarda notas privadas y seguimiento de cada alumno.</p>
+              </div>
+              <NotebookPen className="text-blue-400" size={28} />
+            </div>
+          </button>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6">

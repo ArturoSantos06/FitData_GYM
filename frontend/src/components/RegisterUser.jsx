@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, registerTrainerByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
+import { registerClientByAdmin, registerTrainerByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio, getUserByEmail, updateUser } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
@@ -164,6 +164,7 @@ function RegisterUser({ onUserRegistered }) {
     first_name: '',
     last_name: '',
     sexo: '',
+    contract_type: '',
     membership_id: '',
     payment_method: 'EFECTIVO'
   });
@@ -242,6 +243,9 @@ function RegisterUser({ onUserRegistered }) {
     if (formData.password !== formData.confirm_password) {
       return 'La contraseña y su confirmación no coinciden.';
     }
+    if (!formData.contract_type) {
+      return 'Selecciona el tipo de contrato del entrenador.';
+    }
     return null;
   };
 
@@ -307,6 +311,7 @@ function RegisterUser({ onUserRegistered }) {
           password: formData.password,
           firstName: formData.first_name,
           lastName: formData.last_name,
+          contractType: formData.contract_type,
         });
       } else {
         registerResult = await registerClientByAdmin({
@@ -343,6 +348,25 @@ function RegisterUser({ onUserRegistered }) {
       const saleFolio = registerResult?.data?.saleFolio || null;
       const selectedMembership = memberships.find(m => m.id.toString() === formData.membership_id);
       const shouldValidateSale = formData.user_type === 'CLIENTE' && selectedPriceNumber > 0;
+
+      if (formData.user_type === 'ENTRENADOR' && formData.contract_type) {
+        const trainerId = registeredUserId || registerResult?.data?.userId || null;
+
+        if (trainerId) {
+          await updateUser(String(trainerId), {
+            contractType: formData.contract_type,
+            tipoContrato: formData.contract_type,
+          });
+        } else {
+          const trainerUser = await getUserByEmail(formData.email);
+          if (trainerUser.success && trainerUser.data?.id) {
+            await updateUser(String(trainerUser.data.id), {
+              contractType: formData.contract_type,
+              tipoContrato: formData.contract_type,
+            });
+          }
+        }
+      }
 
       if (shouldValidateSale && saleFolio) {
         const saleCheck = await getSaleByFolio(saleFolio);
@@ -404,7 +428,7 @@ function RegisterUser({ onUserRegistered }) {
       // Limpieza
       setFormData({ 
           user_type: 'CLIENTE',
-          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', 
+          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
@@ -511,6 +535,23 @@ function RegisterUser({ onUserRegistered }) {
             <option value="F">Femenino</option>
           </select>
         </div>
+        {formData.user_type === 'ENTRENADOR' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Contrato</label>
+            <select
+              name="contract_type"
+              value={formData.contract_type}
+              onChange={handleChange}
+              className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+              required
+            >
+              <option value="">-- Selecciona --</option>
+              <option value="Asimilados a Salarios">Asimilados a Salarios</option>
+              <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
+              <option value="Comisiones">Comisiones</option>
+            </select>
+          </div>
+        )}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
           <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
