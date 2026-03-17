@@ -56,7 +56,7 @@ const CitasNutri = () => {
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-8 font-sans">
       <header className="mb-10 border-b border-slate-800 pb-6">
-        <h1 className="text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent italic tracking-tighter uppercase">
+        <h1 className="text-4xl font-black bg-linear-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent italic tracking-tighter uppercase">
           Gestión de Nutrición
         </h1>
         <p className="text-slate-500 mt-2 uppercase tracking-[0.3em] text-[10px] font-bold italic">FitData GYM • Protocolo de Salud</p>
@@ -91,7 +91,7 @@ const CitasNutri = () => {
             
             <button 
               onClick={() => { setSelectedMiembro(miembro); setIsModalOpen(true); }}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 font-black text-[10px] tracking-[0.2em] uppercase transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-linear-to-r from-indigo-600 to-cyan-600 font-black text-[10px] tracking-[0.2em] uppercase transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
             >
               EXPEDIENTE <ChevronRight size={14} />
             </button>

@@ -1,7 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import { auth, getUser, getMemberByUserId, getUserMemberships, getMembershipTypes } from '../firebase';
+import {
+  auth,
+  getUser,
+  getUserByAuthUid,
+  getUserByEmail,
+  getMemberByUserId,
+  getMemberByAuthUid,
+  getUserMemberships,
+  getUserMembershipsByAuthUid,
+  getMembershipTypes
+} from '../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -20,6 +30,7 @@ function ClientMembership() {
   const [loading, setLoading] = useState(true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardRatio, setCardRatio] = useState(1.58);
+  const [isFrontImageValid, setIsFrontImageValid] = useState(true);
   const [_tick, setTick] = useState(0);
   const qrRef = useRef(null);
   const cardBackRef = useRef(null);
@@ -211,37 +222,94 @@ function ClientMembership() {
   useEffect(() => {
     const loadMembershipData = async () => {
       try {
-        // Verificar usuario autenticado de Firebase
         const currentUser = auth.currentUser;
         if (!currentUser) {
           setLoading(false);
           return;
         }
 
-        // Obtener datos del usuario de Firestore
-        const userResult = await getUser(currentUser.uid);
-        if (userResult.success) {
+        let internalUser = null;
+
+        const userByAuthUid = await getUserByAuthUid(currentUser.uid);
+        if (userByAuthUid.success) {
+          internalUser = userByAuthUid.data;
+        } else {
+          const userByDocId = await getUser(currentUser.uid);
+          if (userByDocId.success) {
+            internalUser = userByDocId.data;
+          } else if (currentUser.email) {
+            const userByEmail = await getUserByEmail(currentUser.email);
+            if (userByEmail.success) {
+              internalUser = userByEmail.data;
+            }
+          }
+        }
+
+        const internalUserId = String(internalUser?.id || '');
+
+        if (internalUser) {
           const userData = {
-            id: currentUser.uid,
+            id: internalUserId || currentUser.uid,
             email: currentUser.email,
-            first_name: userResult.data.firstName || currentUser.displayName?.split(' ')[0] || '',
-            last_name: userResult.data.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
-            username: userResult.data.username || currentUser.email?.split('@')[0]
+            first_name: internalUser.firstName || currentUser.displayName?.split(' ')[0] || '',
+            last_name: internalUser.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            username: internalUser.username || currentUser.email?.split('@')[0]
           };
           setUser(userData);
+        } else {
+          setUser({
+            id: currentUser.uid,
+            email: currentUser.email,
+            first_name: currentUser.displayName?.split(' ')[0] || '',
+            last_name: currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            username: currentUser.email?.split('@')[0] || ''
+          });
         }
 
-        // Obtener miembro asociado
-        const memberResult = await getMemberByUserId(currentUser.uid);
-        if (memberResult.success) {
-          setMiembro(memberResult.data);
+        let memberData = null;
+        const memberByAuthUid = await getMemberByAuthUid(currentUser.uid);
+        if (memberByAuthUid.success) {
+          memberData = memberByAuthUid.data;
+        } else if (internalUserId) {
+          const memberByUserId = await getMemberByUserId(internalUserId);
+          if (memberByUserId.success) {
+            memberData = memberByUserId.data;
+          }
         }
 
-        // Obtener membresías del usuario
-        const membershipsResult = await getUserMemberships(currentUser.uid);
-        if (membershipsResult.success && membershipsResult.data.length > 0) {
-          // Ordenar por fecha de inicio (más reciente primero)
-          const sorted = membershipsResult.data.sort((a, b) => {
+        if (!memberData) {
+          const memberByCurrentUid = await getMemberByUserId(currentUser.uid);
+          if (memberByCurrentUid.success) {
+            memberData = memberByCurrentUid.data;
+          }
+        }
+
+        if (memberData) {
+          setMiembro(memberData);
+        }
+
+        const membershipsByUserId = internalUserId ? await getUserMemberships(internalUserId) : { success: true, data: [] };
+        const membershipsByAuth = await getUserMembershipsByAuthUid(currentUser.uid, currentUser.email || null);
+
+        const mergedMemberships = [];
+        const seenIds = new Set();
+
+        (membershipsByUserId.success ? membershipsByUserId.data : []).forEach((m) => {
+          if (!seenIds.has(m.id)) {
+            seenIds.add(m.id);
+            mergedMemberships.push(m);
+          }
+        });
+
+        (membershipsByAuth.success ? membershipsByAuth.data : []).forEach((m) => {
+          if (!seenIds.has(m.id)) {
+            seenIds.add(m.id);
+            mergedMemberships.push(m);
+          }
+        });
+
+        if (mergedMemberships.length > 0) {
+          const sorted = mergedMemberships.sort((a, b) => {
             const dateA = a.startDate ? new Date(a.startDate) : new Date(0);
             const dateB = b.startDate ? new Date(b.startDate) : new Date(0);
             return dateB - dateA;
@@ -254,14 +322,15 @@ function ClientMembership() {
             image: membership.membershipImage || membership.membershipTypeImage || membership.image || null
           };
 
-          if ((!fallbackType.image || !fallbackType.duration_days) && membership.membershipType) {
+          const membershipTypeId = String(membership.membershipTypeId || membership.membershipType || '');
+          if ((!fallbackType.image || !fallbackType.duration_days) && membershipTypeId) {
             const typeResult = await getMembershipTypes();
             if (typeResult.success) {
-              const currentType = typeResult.data.find((type) => type.id === membership.membershipType);
+              const currentType = typeResult.data.find((type) => String(type.id) === membershipTypeId);
               if (currentType) {
                 fallbackType.name = fallbackType.name || currentType.name || 'Membresía';
                 fallbackType.duration_days = fallbackType.duration_days ?? currentType.duration_days ?? null;
-                fallbackType.image = fallbackType.image || currentType.image || null;
+                fallbackType.image = fallbackType.image || currentType.image || currentType.imageUrl || currentType.image_url || null;
               }
             }
           }
@@ -287,7 +356,6 @@ function ClientMembership() {
       }
     };
 
-    // Esperar a que Firebase Auth esté listo
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         loadMembershipData();
@@ -303,6 +371,10 @@ function ClientMembership() {
     const interval = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    setIsFrontImageValid(true);
+  }, [membership?.tipo?.image]);
 
   if (loading) return <div className="text-slate-400 text-center">Cargando membresía...</div>;
   if (!membership) {
@@ -391,6 +463,8 @@ function ClientMembership() {
     progressPct = 5; 
   }
 
+  const showFrontImage = Boolean(membership.tipo?.image) && isFrontImageValid;
+
   // Barra fija con gradiente 
   const barClasses = 'h-full bg-linear-to-r from-purple-500 to-blue-500 transition-all duration-700';
 
@@ -415,20 +489,20 @@ function ClientMembership() {
             style={{ backfaceVisibility: 'hidden' }}
           >
             <div className="absolute inset-0 bg-slate-900">
-              {membership.tipo?.image ? (
+              {showFrontImage ? (
                 <>
                   <img 
                     src={membership.tipo.image}
                     alt={membershipType}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    className="absolute inset-0 w-full h-full object-cover"
                     onLoad={(e) => {
                       const w = e.currentTarget.naturalWidth || 1;
                       const h = e.currentTarget.naturalHeight || 1;
                       const ratio = w / h;
                       if (ratio > 0) setCardRatio(ratio);
                     }}
+                    onError={() => setIsFrontImageValid(false)}
                   />
-                  <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 via-slate-950/10 to-transparent"></div>
                 </>
               ) : (
                 <div className="absolute inset-0 bg-linear-to-br from-slate-900 via-purple-900/20 to-blue-900/20"></div>

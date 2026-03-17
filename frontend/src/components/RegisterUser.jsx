@@ -159,6 +159,7 @@ function RegisterUser({ onUserRegistered }) {
     user_type: 'CLIENTE',
     username: '',
     email: '',
+    phone: '',
     password: '',
     confirm_password: '',
     first_name: '',
@@ -285,6 +286,16 @@ function RegisterUser({ onUserRegistered }) {
         return;
     }
 
+    if (formData.user_type === 'CLIENTE') {
+      const normalizedPhone = String(formData.phone || '').replace(/\D/g, '').slice(0, 10);
+      if (!/^\d{10}$/.test(normalizedPhone)) {
+        setErrorTitle('Faltan Datos');
+        setErrorMessage('Ingresa un número de teléfono válido de 10 dígitos.');
+        setShowErrorModal(true);
+        return;
+      }
+    }
+
     // Validación de Efectivo
     const montoRecibidoNumber = toSafeNumber(montoRecibido, 0);
 
@@ -320,6 +331,7 @@ function RegisterUser({ onUserRegistered }) {
           password: formData.password,
           firstName: formData.first_name,
           lastName: formData.last_name,
+          phone: String(formData.phone || '').replace(/\D/g, '').slice(0, 10),
           sexo: formData.sexo,
           membershipTypeId: formData.membership_id,
           paymentMethod: formData.payment_method,
@@ -330,11 +342,18 @@ function RegisterUser({ onUserRegistered }) {
 
       if (!registerResult.success) {
         let mensaje = registerResult.error || 'Error al crear usuario';
-        if (mensaje.includes('email-already-in-use')) {
+        const normalizedMessage = String(mensaje).toLowerCase();
+
+        if (
+          normalizedMessage.includes('email-already-in-use') ||
+          normalizedMessage.includes('auth/email-already-in-use') ||
+          normalizedMessage.includes('email address is already in use') ||
+          normalizedMessage.includes('already in use by another account')
+        ) {
           mensaje = 'Este correo ya está registrado';
-        } else if (mensaje.includes('weak-password')) {
+        } else if (normalizedMessage.includes('weak-password')) {
           mensaje = 'La contraseña debe tener al menos 6 caracteres';
-        } else if (mensaje.includes('invalid-email')) {
+        } else if (normalizedMessage.includes('invalid-email')) {
           mensaje = 'El correo electrónico no es válido';
         }
 
@@ -428,7 +447,7 @@ function RegisterUser({ onUserRegistered }) {
       // Limpieza
       setFormData({ 
           user_type: 'CLIENTE',
-          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
+          username: '', email: '', phone: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
@@ -526,6 +545,20 @@ function RegisterUser({ onUserRegistered }) {
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Teléfono (10 dígitos)</label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+            placeholder="5512345678"
+            pattern="[0-9]{10}"
+            maxLength={10}
+            required={formData.user_type === 'CLIENTE'}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Sexo</label>

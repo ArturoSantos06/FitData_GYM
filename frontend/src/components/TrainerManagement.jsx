@@ -6,6 +6,7 @@ import { getAllMembers, ensureUserClaim } from '../firebase';
 import TrainerClientUnlink from './TrainerClientUnlink';
 import BitacoraEntrenador from './BitacoraEntrenador';
 import DietaRepositorio from './DietaRepositorio';
+import HealthProfilesCoach from './HealthProfilesCoach';
 
 function RoutineManagementPanel() {
   const navigate = useNavigate();
@@ -127,9 +128,7 @@ function TrainerManagement() {
 
         {/* Aquí mostramos el componente según lo que haya elegido */}
         {currentView === 'historial' && (
-          <div className="p-8 border border-slate-800 bg-slate-900/50 text-slate-400 rounded-xl text-center">
-             Aquí irá la Consulta de Historial Clínico 
-          </div>
+          <HealthProfilesCoach />
         )}
         
         {currentView === 'bitacora' && (

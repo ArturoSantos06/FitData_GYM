@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, LogIn, ArrowLeft } from 'lucide-react';
-import { loginUser, getUser, getUserByEmail } from '../firebase';
+import { loginUser, getUser, getUserByEmail, logoutUser } from '../firebase';
 
 function EntrenadorLogin() {
   const navigate = useNavigate();
@@ -9,6 +9,11 @@ function EntrenadorLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    localStorage.removeItem('trainer_token');
+    localStorage.removeItem('trainer_username');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,24 +29,22 @@ function EntrenadorLogin() {
       const firebaseUser = result.user;
 
       let role = null;
-      let roleLookupFailed = false;
       const byUid = await getUser(firebaseUser.uid);
       if (byUid.success) {
         role = String(byUid.data?.role || '').toLowerCase();
-      } else if (byUid.error) {
-        roleLookupFailed = true;
       }
 
       if (!role) {
         const byEmail = await getUserByEmail(firebaseUser.email || '');
         if (byEmail.success) {
           role = String(byEmail.data?.role || '').toLowerCase();
-        } else if (byEmail.error) {
-          roleLookupFailed = true;
         }
       }
 
-      if (!roleLookupFailed && role !== 'trainer' && role !== 'entrenador') {
+      if (role !== 'trainer' && role !== 'entrenador') {
+        await logoutUser();
+        localStorage.removeItem('trainer_token');
+        localStorage.removeItem('trainer_username');
         throw new Error('Tu cuenta no tiene permisos de entrenador');
       }
 
@@ -50,7 +53,20 @@ function EntrenadorLogin() {
       localStorage.setItem('trainer_username', firebaseUser.email || email);
       navigate('/entrenador');
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar sesión');
+      const msg = String(err?.message || '');
+      const friendlyError =
+        msg.includes('auth/invalid-credential') ||
+        msg.includes('auth/invalid-login-credentials') ||
+        msg.includes('auth/user-not-found') ||
+        msg.includes('auth/wrong-password')
+          ? 'Correo o contraseña incorrecta'
+          : msg.includes('auth/invalid-email')
+          ? 'Correo electrónico inválido'
+          : msg || 'No se pudo iniciar sesión';
+
+      setError(friendlyError);
+      localStorage.removeItem('trainer_token');
+      localStorage.removeItem('trainer_username');
       setIsLoading(false);
     }
   };

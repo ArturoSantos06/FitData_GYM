@@ -9,6 +9,23 @@ function UserMembershipList({ refreshTrigger }) {
   
   const [sortBy, setSortBy] = useState('recent');
 
+  const resolveUser = (item) => {
+    const keys = [
+      item.userId,
+      String(item.userId || '').trim(),
+      item.authUid,
+      String(item.authUid || '').trim(),
+      String(item.userEmail || '').trim().toLowerCase(),
+    ].filter(Boolean);
+
+    for (const key of keys) {
+      const direct = usersById[key];
+      if (direct) return direct;
+    }
+
+    return {};
+  };
+
   const isMembershipActive = (item) => {
     if (!item?.endDate) {
       return false;
@@ -73,7 +90,20 @@ function UserMembershipList({ refreshTrigger }) {
 
       const usersMap = {};
       usersSnapshot.docs.forEach(docSnap => {
-        usersMap[docSnap.id] = docSnap.data();
+        const data = docSnap.data();
+        const docId = docSnap.id;
+        const authUid = String(data.authUid || '').trim();
+        const legacyId = data.id;
+        const email = String(data.email || '').trim().toLowerCase();
+
+        usersMap[docId] = data;
+        if (authUid) usersMap[authUid] = data;
+        if (legacyId !== undefined && legacyId !== null) {
+          usersMap[String(legacyId)] = data;
+          const numericLegacy = Number(legacyId);
+          if (!Number.isNaN(numericLegacy)) usersMap[numericLegacy] = data;
+        }
+        if (email) usersMap[email] = data;
       });
 
       setAssignments(data);
@@ -92,9 +122,9 @@ function UserMembershipList({ refreshTrigger }) {
     const search = searchTerm.toLowerCase();
     const active = isMembershipActive(item);
     const estado = active ? 'activo' : 'vencido';
-    const userData = usersById[item.userId] || {};
-    const nombre = (item.userName || userData.username || '').toLowerCase();
-    const nombreCompleto = (item.userFullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim()).toLowerCase();
+    const userData = resolveUser(item);
+    const nombre = (userData.username || item.userName || '').toLowerCase();
+    const nombreCompleto = (`${userData.firstName || ''} ${userData.lastName || ''}`.trim() || item.userFullName || '').toLowerCase();
     const userId = item.userId ? item.userId.toString() : '';
     const membershipName = (item.membershipTypeName || item.membershipName || '').toLowerCase();
     
@@ -109,8 +139,8 @@ function UserMembershipList({ refreshTrigger }) {
 
   const sortedAssignments = [...filteredAssignments].sort((a, b) => {
     if (sortBy === 'name') {
-      const usernameA = (a.userName || usersById[a.userId]?.username || '').trim();
-      const usernameB = (b.userName || usersById[b.userId]?.username || '').trim();
+      const usernameA = (resolveUser(a).username || a.userName || '').trim();
+      const usernameB = (resolveUser(b).username || b.userName || '').trim();
       return usernameA.localeCompare(usernameB, 'es', { sensitivity: 'base' });
     } 
     if (sortBy === 'expiration') {
@@ -175,6 +205,13 @@ function UserMembershipList({ refreshTrigger }) {
           </thead>
           <tbody className="text-gray-200 text-sm font-light">
             {sortedAssignments.map((item) => (
+              (() => {
+                const userData = resolveUser(item);
+                const displayUsername = userData.username || item.userName || 'N/A';
+                const displayFullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || item.userFullName || '';
+                const displayEmail = userData.email || item.userEmail || 'N/A';
+
+                return (
               <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700 transition-colors">
                 <td className="py-3 px-6">
                   <span className="font-mono text-teal-400 font-semibold">{item.id}</span>
@@ -182,18 +219,18 @@ function UserMembershipList({ refreshTrigger }) {
                 <td className="py-3 px-6 text-left">
                   <div className="flex flex-col">
                     <span className="font-bold text-white text-sm">
-                      {item.userName || usersById[item.userId]?.username || 'N/A'}
+                      {displayUsername}
                     </span>
-                    {(item.userFullName || usersById[item.userId]?.firstName || usersById[item.userId]?.lastName) && (
+                    {displayFullName && (
                       <span className="text-xs text-gray-400 uppercase tracking-wide">
-                        {item.userFullName || `${usersById[item.userId]?.firstName || ''} ${usersById[item.userId]?.lastName || ''}`.trim()}
+                        {displayFullName}
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="py-3 px-6">
                   <span className="text-gray-300 text-sm">
-                    {item.userEmail || usersById[item.userId]?.email || 'N/A'}
+                    {displayEmail}
                   </span>
                 </td>
                 <td className="py-3 px-6">
@@ -222,6 +259,8 @@ function UserMembershipList({ refreshTrigger }) {
                   })()}
                 </td>
               </tr>
+                );
+              })()
             ))}
             
             {sortedAssignments.length === 0 && (

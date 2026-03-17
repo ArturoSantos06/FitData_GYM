@@ -114,6 +114,27 @@ export const ensureUserClaim = async () => {
   }
 };
 
+export const updateSelfProfile = async (payload) => {
+  try {
+    const fn = httpsCallable(functions, 'updateSelfProfile');
+    const result = await fn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en updateSelfProfile:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo actualizar el perfil';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null,
+    };
+  }
+};
+
 // Logout
 export const logoutUser = async () => {
   try {

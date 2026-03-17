@@ -13,7 +13,6 @@ import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
-import HealthProfilesCoach from './components/HealthProfilesCoach';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
 import CitasNutri from './components/CitasNutri';
@@ -26,17 +25,54 @@ import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/RutinaEntrenador';
 import EntrenadorLogin from './components/EntrenadorLogin';
-import { logoutUser, getCurrentUser, onAuthChanged } from './firebase';
+import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+  const [hasTrainerRole, setHasTrainerRole] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthChanged((user) => {
-      setHasFirebaseSession(Boolean(user));
-      setIsAuthReady(true);
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setHasFirebaseSession(false);
+        setHasTrainerRole(false);
+        setIsAuthReady(true);
+        return;
+      }
+
+      setHasFirebaseSession(true);
+
+      try {
+        let role = '';
+
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const isTrainer = role === 'trainer' || role === 'entrenador';
+        setHasTrainerRole(isTrainer);
+
+        if (!isTrainer) {
+          localStorage.removeItem('trainer_token');
+          localStorage.removeItem('trainer_username');
+        }
+      } catch {
+        setHasTrainerRole(false);
+        localStorage.removeItem('trainer_token');
+        localStorage.removeItem('trainer_username');
+      } finally {
+        setIsAuthReady(true);
+      }
     });
 
     return () => unsubscribe();
@@ -55,6 +91,10 @@ function RequireTrainerAuth({ children }) {
   }
 
   if (!hasFirebaseSession) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  if (!hasTrainerRole) {
     return <Navigate to="/entrenador/login" replace />;
   }
 
@@ -137,9 +177,6 @@ function AdminArea() {
           
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
-
-          {/* 9. Fichas Médicas vista desde Entrenador (Health Profiles) */}
-          <Route path="fichas-medicas-coach" element={<HealthProfilesCoach refreshTrigger={refreshHealthProfiles} />} />
 
           {/* 10. Citas de Nutrición */}
           <Route path="citas-nutri" element={<CitasNutri />} />

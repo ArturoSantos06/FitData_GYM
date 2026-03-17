@@ -25,7 +25,7 @@ export const uploadImage = async (file, path) => {
       throw new Error("Solo se permiten archivos de imagen");
     }
     
-    if (file.size > 5 * 1024 * 1024) { // 5MB límite
+    if (file.size > 5 * 1024 * 1024) { 
       throw new Error("La imagen es muy grande. Máximo 5MB");
     }
     
@@ -50,7 +50,6 @@ export const uploadImage = async (file, path) => {
   } catch (error) {
     console.error('❌ Error subiendo imagen:', error);
     
-    // Mensajes descriptivos según el tipo de error
     let errorMessage = error.message;
     
     if (error.code === 'storage/unauthorized') {
@@ -104,45 +103,115 @@ export const uploadDietDocument = async (file, memberId) => {
   }
 };
 
-const triggerDirectDownload = (rawUrl, fileName) => {
+const triggerBlobDownload = (blob, fileName) => {
   const safeName = String(fileName || 'archivo').replace(/[\r\n]/g, ' ').trim() || 'archivo';
-  const disposition = encodeURIComponent(`attachment; filename="${safeName}"`);
-  const hasQuery = rawUrl.includes('?');
-  const hasDisposition = /response-content-disposition=/i.test(rawUrl);
-  const finalUrl = hasDisposition
-    ? rawUrl
-    : `${rawUrl}${hasQuery ? '&' : '?'}response-content-disposition=${disposition}`;
-
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = finalUrl;
+  a.href = objectUrl;
   a.download = safeName;
   a.rel = 'noopener noreferrer';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
 };
 
-// Descargar documento de dieta (forzado, sin fetch para evitar CORS)
+const downloadFromDirectUrl = async (url, safeName) => {
+  if (!url) {
+    return { success: false, error: 'No hay URL disponible para descargar este archivo.' };
+  }
+
+  try {
+    const response = await fetch(url, { method: 'GET' });
+    if (!response.ok) {
+      throw new Error('No se pudo descargar el archivo desde su URL directa.');
+    }
+    const blob = await response.blob();
+    triggerBlobDownload(blob, safeName);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error?.message || 'No se pudo descargar automáticamente desde URL directa.' };
+  }
+};
+
+const getDietDownloadFunctionUrl = () => {
+  const customUrl = String(import.meta.env.VITE_DOWNLOAD_DIET_FILE_URL || '').trim();
+  if (customUrl) return customUrl;
+  const projectId = String(import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim();
+  if (!projectId) return '';
+  return `https://us-east1-${projectId}.cloudfunctions.net/downloadDietFile`;
+};
+
+const extractStoragePathFromUrl = (url) => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/o\/([^/]+)$/);
+    if (!match?.[1]) return '';
+    return decodeURIComponent(match[1]);
+  } catch {
+    return '';
+  }
+};
+
+const extractTokenFromUrl = (url) => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.get('token') || '';
+  } catch {
+    return '';
+  }
+};
+
+// Descargar documento de dieta 
 export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = '') => {
   try {
-    let url = '';
+    const safeName = String(fileName || 'archivo').trim() || 'archivo';
+    const explicitStoragePath = typeof storagePath === 'string' && !storagePath.trim().startsWith('http')
+      ? storagePath.trim()
+      : '';
+    const inferredStoragePath = extractStoragePathFromUrl(fallbackUrl);
+    const resolvedStoragePath = explicitStoragePath || inferredStoragePath;
+    const urlToken = extractTokenFromUrl(fallbackUrl);
 
-    if (typeof storagePath === 'string' && storagePath.trim().startsWith('http')) {
-      url = storagePath.trim();
-    } else if (fallbackUrl) {
-      url = fallbackUrl;
-    } else if (storagePath) {
-      const storageRef = ref(storage, storagePath);
-      url = await getDownloadURL(storageRef);
+    const fnUrl = getDietDownloadFunctionUrl();
+    if (fnUrl && resolvedStoragePath) {
+      try {
+        const requestUrl = `${fnUrl}?path=${encodeURIComponent(resolvedStoragePath)}&name=${encodeURIComponent(safeName)}${urlToken ? `&token=${encodeURIComponent(urlToken)}` : ''}`;
+        const response = await fetch(requestUrl, { method: 'GET' });
+        if (!response.ok) {
+          let serverMessage = '';
+          try {
+            const payload = await response.json();
+            serverMessage = payload?.error || '';
+          } catch {
+            serverMessage = '';
+          }
+          throw new Error(serverMessage || 'No se pudo descargar el archivo desde el servidor.');
+        }
+
+        const blob = await response.blob();
+        triggerBlobDownload(blob, safeName);
+        return { success: true };
+      } catch (fnError) {
+        const directResult = await downloadFromDirectUrl(fallbackUrl, safeName);
+        if (directResult.success) {
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          error: fnError?.message || directResult.error || 'No se pudo completar la descarga automática del archivo.'
+        };
+      }
     }
 
-    if (!url) {
-      throw new Error('No se encontró una ruta o URL válida para descargar el archivo.');
+    if (fallbackUrl) {
+      return await downloadFromDirectUrl(fallbackUrl, safeName);
     }
 
-    triggerDirectDownload(url, fileName);
-
-    return { success: true };
+    return { success: false, error: 'No se encontró la ruta segura para descargar este archivo.' };
   } catch (error) {
     return { success: false, error: error.message };
   }

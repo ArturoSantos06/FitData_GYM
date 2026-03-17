@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { checkInMember, checkOutMember, getAttendances } from '../firebase';
 
 const CheckInOut = () => {
   const [scanning, setScanning] = useState(false);
+  const [action, setAction] = useState('check-in'); 
   const [asistencias, setAsistencias] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -13,7 +14,7 @@ const CheckInOut = () => {
   const html5QrcodeRef = useRef(null);
 
   // Cargar asistencias recientes con filtros
-  const cargarAsistencias = useCallback(async () => {
+  const cargarAsistencias = async () => {
     try {
       const filters = {};
       if (dateFilter) filters.fecha = dateFilter;
@@ -26,15 +27,15 @@ const CheckInOut = () => {
     } catch (err) {
       console.error('Error cargando asistencias:', err);
     }
-  }, [dateFilter, searchTerm]);
+  };
 
   useEffect(() => {
-    setTimeout(() => cargarAsistencias(), 0);
+    cargarAsistencias();
     const interval = setInterval(cargarAsistencias, 10000);
     return () => clearInterval(interval);
-  }, [cargarAsistencias]);
+  }, [dateFilter, searchTerm]);
 
-  const procesarQR = useCallback(async (qrCode) => {
+  const procesarQR = async (qrCode) => {
     if (!qrCode) return;
 
     setScanning(false);
@@ -69,21 +70,9 @@ const CheckInOut = () => {
       setError('Error de conexión. Intenta nuevamente.');
       console.error(err);
     }
-  }, [cargarAsistencias]);
+  };
 
   // Inicializar escáner cuando se activa
-  const stopScanner = useCallback(async () => {
-    if (html5QrcodeRef.current?.isScanning) {
-      try {
-        await html5QrcodeRef.current.stop();
-        html5QrcodeRef.current = null;
-      } catch (err) {
-        console.error("Error deteniendo escáner:", err);
-      }
-    }
-    setScanning(false);
-  }, []);
-
   useEffect(() => {
     const startScanner = async () => {
       if (scanning && !html5QrcodeRef.current) {
@@ -103,7 +92,9 @@ const CheckInOut = () => {
               procesarQR(decodedText);
               stopScanner();
             },
-            () => { /* ignorar errores de no se encontró código */ }
+            (errorMessage) => {
+              // Ignorar errores de "no se encontró código"
+            }
           );
         } catch (err) {
           console.error("Error iniciando escáner:", err);
@@ -120,7 +111,19 @@ const CheckInOut = () => {
         html5QrcodeRef.current.stop().catch(console.error);
       }
     };
-  }, [scanning, procesarQR, stopScanner]);
+  }, [scanning]);
+
+  const stopScanner = async () => {
+    if (html5QrcodeRef.current?.isScanning) {
+      try {
+        await html5QrcodeRef.current.stop();
+        html5QrcodeRef.current = null;
+      } catch (err) {
+        console.error("Error deteniendo escáner:", err);
+      }
+    }
+    setScanning(false);
+  };
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -261,21 +264,17 @@ const CheckInOut = () => {
                         className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 border border-slate-700"
                         style={{ backgroundColor: asistencia.miembro_avatar_color || '#1D4ED8' }}
                       >
-                        {(asistencia.miembro_nombre || 'U').charAt(0).toUpperCase()}
+                        {asistencia.miembro_nombre.charAt(0).toUpperCase()}
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">
-                          {asistencia.miembro_nombre || 'N/A'}
+                          {asistencia.miembro_nombre}
                         </h3>
                         <div className="text-xs text-slate-400 space-y-0.5 mt-1">
                           <div className="flex items-center gap-2">
-                            {asistencia.fecha_hora_entrada ? (
-                              <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
-                            ) : (
-                              <span className="text-slate-400">🕐 Sin hora</span>
-                            )}
+                            <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                             {asistencia.fecha_hora_salida ? (
                               <span>→ 🚪 {new Date(asistencia.fecha_hora_salida).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                             ) : (
@@ -283,7 +282,7 @@ const CheckInOut = () => {
                             )}
                           </div>
                           <p className="text-blue-400 font-semibold text-xs">
-                            ⏱ {asistencia.tiempo_en_gym || 'En curso'}
+                            ⏱ {asistencia.tiempo_en_gym}
                           </p>
                         </div>
                       </div>

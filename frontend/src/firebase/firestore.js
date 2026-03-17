@@ -192,7 +192,15 @@ export const getUser = async (uid) => {
   try {
     const docSnap = await getDoc(doc(db, "users", uid));
     if (docSnap.exists()) {
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -206,7 +214,15 @@ export const getUserByEmail = async (email) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -220,7 +236,15 @@ export const getUserByAuthUid = async (authUid) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -230,11 +254,53 @@ export const getUserByAuthUid = async (authUid) => {
 
 export const updateUser = async (uid, userData) => {
   try {
-    await updateDoc(doc(db, "users", uid), {
+    const payload = {
       ...userData,
       updatedAt: serverTimestamp()
-    });
-    return { success: true };
+    };
+
+    const candidateDocIds = Array.from(new Set([
+      String(uid || '').trim(),
+      String(auth.currentUser?.uid || '').trim(),
+    ].filter(Boolean)));
+
+    for (const docId of candidateDocIds) {
+      try {
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    const currentAuthUid = String(auth.currentUser?.uid || '').trim();
+    const currentEmail = String(auth.currentUser?.email || '').trim().toLowerCase();
+
+    const fallbackQueries = [];
+    if (currentAuthUid) {
+      fallbackQueries.push(query(collection(db, "users"), where("authUid", "==", currentAuthUid), limit(1)));
+    }
+    if (currentEmail) {
+      fallbackQueries.push(query(collection(db, "users"), where("email", "==", currentEmail), limit(1)));
+    }
+
+    for (const q of fallbackQueries) {
+      try {
+        const snap = await getDocs(q);
+        if (snap.empty) continue;
+        const docId = snap.docs[0].id;
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    return { success: false, error: 'Missing or insufficient permissions.' };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -243,10 +309,14 @@ export const updateUser = async (uid, userData) => {
 export const getUsers = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
-    const users = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const users = querySnapshot.docs.map(doc => {
+      const userData = doc.data();
+      return {
+        ...userData,
+        legacyId: userData.id ?? null,
+        id: doc.id,
+      };
+    });
     return { success: true, data: users };
   } catch (error) {
     return { success: false, error: error.message };
@@ -297,6 +367,40 @@ export const getMemberByUserId = async (userId) => {
       };
     }
     return { success: false, error: "Miembro no encontrado" };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const updateMemberByUserId = async (userId, memberData = {}) => {
+  try {
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
+
+    const snapshots = await Promise.all(
+      candidates.map((candidate) =>
+        withAuthRetry(() => getDocs(query(collection(db, "miembros"), where("userId", "==", candidate), limit(1))))
+      )
+    );
+
+    const docSnap = snapshots.find((snap) => !snap.empty)?.docs?.[0];
+    if (!docSnap) {
+      return { success: false, error: "Miembro no encontrado" };
+    }
+
+    const payload = {};
+    if (memberData.telefono !== undefined) payload.telefono = memberData.telefono;
+    if (memberData.email !== undefined) payload.email = memberData.email;
+    if (memberData.nombre !== undefined) payload.nombre = memberData.nombre;
+    if (memberData.apellido !== undefined) payload.apellido = memberData.apellido;
+
+    await updateDoc(doc(db, "miembros", docSnap.id), {
+      ...payload,
+      updatedAt: serverTimestamp()
+    });
+
+    return { success: true, id: docSnap.id };
   } catch (error) {
     return { success: false, error: normalizeFirestoreError(error) };
   }

@@ -9,6 +9,7 @@ export {
   registerClientByAdmin,
   registerTrainerByAdmin,
   ensureUserClaim,
+  updateSelfProfile,
   logoutUser,
   onAuthChanged,
   getCurrentUser
@@ -28,6 +29,7 @@ export {
   getMembers,
   getAllMembers,
   getMemberByUserId,
+  updateMemberByUserId,
   getMemberByAuthUid,
   getMemberByEmail,
   createMember,

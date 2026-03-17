@@ -1,6 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import ProductCardClient from './ProductCardClient';
-import { getProducts, getUser, getSales, getCurrentUser } from '../firebase';
+import {
+  getProducts,
+  getUser,
+  getUserByAuthUid,
+  getUserByEmail,
+  getSales,
+  getCurrentUser,
+} from '../firebase';
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const resolveUserFromAuth = async (firebaseUser) => {
+  if (!firebaseUser) return null;
+
+  const byAuthUid = await getUserByAuthUid(firebaseUser.uid);
+  if (byAuthUid?.success && byAuthUid.data) return byAuthUid.data;
+
+  const byDocId = await getUser(firebaseUser.uid);
+  if (byDocId?.success && byDocId.data) return byDocId.data;
+
+  const email = normalizeEmail(firebaseUser.email);
+  if (email) {
+    const byEmail = await getUserByEmail(email);
+    if (byEmail?.success && byEmail.data) return byEmail.data;
+  }
+
+  return null;
+};
+
+const buildDate = (value) => value?.toDate?.() || new Date(value || 0);
 
 function ClientStore() {
   const [products, setProducts] = useState([]);
@@ -24,23 +53,59 @@ function ClientStore() {
         // Cargar usuario y ventas para historial
         const currentUser = getCurrentUser();
         if (currentUser) {
-          const userResult = await getUser(currentUser.uid);
-          if (userResult.success) {
-            // Cargar ventas del usuario
-            const salesResult = await getSales({
-              userId: currentUser.uid,
-              userEmail: userResult.data?.email || currentUser.email || null,
-              username: userResult.data?.username || null
+          const userData = await resolveUserFromAuth(currentUser);
+
+          const idCandidates = Array.from(
+            new Set([
+              String(currentUser.uid || '').trim(),
+              String(userData?.id || '').trim(),
+            ].filter(Boolean))
+          );
+
+          const emailCandidates = Array.from(
+            new Set([
+              String(currentUser.email || '').trim(),
+              normalizeEmail(currentUser.email),
+              String(userData?.email || '').trim(),
+              normalizeEmail(userData?.email),
+            ].filter(Boolean))
+          );
+
+          const usernameCandidates = Array.from(
+            new Set([
+              String(userData?.username || '').trim(),
+            ].filter(Boolean))
+          );
+
+          const salesRequests = [];
+          idCandidates.forEach((id) => {
+            salesRequests.push(getSales({ userId: id }));
+          });
+          emailCandidates.forEach((email) => {
+            salesRequests.push(getSales({ userEmail: email }));
+          });
+          usernameCandidates.forEach((username) => {
+            salesRequests.push(getSales({ username }));
+          });
+
+          const salesResults = await Promise.allSettled(salesRequests);
+          const mergedById = new Map();
+
+          salesResults.forEach((result) => {
+            if (result.status !== 'fulfilled') return;
+            if (!result.value?.success || !Array.isArray(result.value.data)) return;
+            result.value.data.forEach((sale) => {
+              if (sale?.id) mergedById.set(sale.id, sale);
             });
-            if (salesResult.success) {
-              const sorted = salesResult.data.sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-                return dateB - dateA;
-              });
-              setSales(sorted);
-            }
-          }
+          });
+
+          const sorted = Array.from(mergedById.values()).sort((a, b) => {
+            const dateA = buildDate(a.createdAt);
+            const dateB = buildDate(b.createdAt);
+            return dateB - dateA;
+          });
+
+          setSales(sorted);
         }
       } catch (error) {
         console.error('Error cargando datos:', error);
