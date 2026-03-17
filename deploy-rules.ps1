@@ -9,8 +9,8 @@ Write-Host "🚀 Desplegando Firebase Security Rules..." -ForegroundColor Cyan
 Write-Host "" 
 
 # Verificar si Firebase CLI está instalado
-$firebaseCheck = firebase --version 2>$null
-if ($LASTEXITCODE -ne 0) {
+$firebaseCmd = Get-Command firebase -ErrorAction SilentlyContinue
+if (-not $firebaseCmd) {
     Write-Host "❌ Firebase CLI no está instalado" -ForegroundColor Red
     Write-Host "📦 Instalando Firebase CLI..." -ForegroundColor Yellow
     npm install -g firebase-tools
