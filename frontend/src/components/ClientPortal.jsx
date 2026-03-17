@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import UserProfile from './UserProfile';
 import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
+import ClientRoutine from './ClientRoutine';
 import ClientNavbar from './ClientNavbar';
 
 function ClientPortal() {
@@ -34,6 +35,9 @@ function ClientPortal() {
         )}
         {activeTab === 'catalogo' && (
           <ClientStore />
+        )}
+        {activeTab === 'rutina' && (
+          <ClientRoutine />
         )}
         {activeTab === 'perfil' && (
           <UserProfile />

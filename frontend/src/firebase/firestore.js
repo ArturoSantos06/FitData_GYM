@@ -11,17 +11,167 @@ import {
   where,
   orderBy,
   limit,
+  onSnapshot,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore";
-import { db } from "./config";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "./config";
 
 const getLocalMXDate = () => {
+  // Store absolute current timestamp; presentation layer applies Mexico timezone.
   return Timestamp.now();
 };
 
 const getLocalMXDateISO = () => {
   return new Date().toISOString();
+};
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeText = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+const isPermissionDeniedError = (error) => {
+  const raw = String(error?.message || error || '');
+  const code = String(error?.code || '');
+  return /insufficient permissions|permission-denied/i.test(raw) || /permission-denied/i.test(code);
+};
+
+const isNotFoundError = (error) => {
+  const raw = String(error?.message || error || '');
+  const code = String(error?.code || '');
+  return /not-found|no document to update/i.test(raw) || /not-found/i.test(code);
+};
+
+const normalizeFirestoreError = (error) => {
+  const raw = String(error?.message || error || 'Error desconocido');
+  if (isPermissionDeniedError(error)) {
+    return 'No hay permisos para guardar esta rutina en Firestore. Revisa reglas de trainerRoutines.';
+  }
+  return raw;
+};
+
+const waitForAuthReady = (timeoutMs = 3500) =>
+  new Promise((resolve) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+
+    let settled = false;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      unsubscribe();
+      resolve(user || null);
+    });
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(auth.currentUser || null);
+    }, timeoutMs);
+  });
+
+const withAuthRetry = async (operation, maxAttempts = 4) => {
+  await waitForAuthReady();
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError || !auth.currentUser || attempt === maxAttempts) {
+        throw error;
+      }
+
+      await auth.currentUser.getIdToken(true);
+      await delay(800 * attempt);
+      await waitForAuthReady(1500 + attempt * 300);
+    }
+  }
+
+  throw lastError;
+};
+
+// CATALOGO GLOBAL — ejercisedb.dev v1 (gratis, sin clave)
+// Los 1500 ejercicios se cargan una vez y se cachean en memoria
+// CATALOGO GLOBAL — ejercisedb.dev v1 (gratis, sin clave)
+// Cache para búsqueda por texto
+let _exCache = null;
+let _exCachePromise = null;
+
+const _delay = (ms) => new Promise((r) => setTimeout(r, ms));
+const BASE_URL = 'https://exercisedb.dev/api/v1/exercises?limit=100&offset=';
+
+const loadAllExercises = () => {
+  if (_exCache) return Promise.resolve(_exCache);
+  if (_exCachePromise) return _exCachePromise;
+  // 5 lotes de 3 páginas con 400ms entre lotes para evitar rate limiting
+  _exCachePromise = (async () => {
+    const all = [];
+    for (let batch = 0; batch < 5; batch++) {
+      if (batch > 0) await _delay(400);
+      const offsets = [batch * 300, batch * 300 + 100, batch * 300 + 200].filter((o) => o < 1500);
+      const pages = await Promise.all(
+        offsets.map((offset) =>
+          fetch(`${BASE_URL}${offset}`)
+            .then((r) => (r.ok ? r.json() : { data: [] }))
+            .then((j) => (Array.isArray(j?.data) ? j.data : []))
+            .catch(() => [])
+        )
+      );
+      pages.forEach((p) => all.push(...p));
+    }
+    _exCache = all;
+    return _exCache;
+  })();
+  return _exCachePromise;
+};
+
+const mapExercise = (ex) => ({
+  id: ex.exerciseId || ex.id || '',
+  name: ex.name || '',
+  nameLower: normalizeText(ex.name),
+  movementPattern: (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) || '',
+  primaryMuscle: (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) || '',
+  secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
+  tags: Array.isArray(ex.equipments) ? ex.equipments : (ex.equipment ? [ex.equipment] : []),
+  gifUrl: ex.gifUrl || null,
+  instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
+});
+
+export const searchExerciseCatalog = async ({ text = '', bodyPart = '', movementPattern = '', limitCount = 8 } = {}) => {
+  try {
+    const bp = bodyPart || movementPattern;
+    const normalizedText = normalizeText(text);
+    const safeLimit = Math.max(1, Math.min(Number(limitCount) || 8, 100));
+
+    const all = await loadAllExercises();
+
+    const filtered = all
+      .filter((ex) => {
+        const bpMatch = !bp || (Array.isArray(ex.bodyParts) ? ex.bodyParts : [ex.bodyPart || ''])
+          .some((b) => normalizeText(b) === normalizeText(bp));
+        const nameMatch = !normalizedText || normalizeText(ex.name).includes(normalizedText);
+        return bpMatch && nameMatch;
+      })
+      .slice(0, safeLimit)
+      .map(mapExercise);
+
+    return { success: true, data: filtered };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 };
 
 // USUARIOS
@@ -106,17 +256,18 @@ export const getUsers = async () => {
 // MIEMBROS
 export const getMembers = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "miembros"));
+    const querySnapshot = await withAuthRetry(() => getDocs(collection(db, "miembros")));
     const members = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, data: members };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
+// Alias para compatibilidad
 export const getAllMembers = getMembers;
 
 export const getMemberByUserId = async (userId) => {
@@ -127,7 +278,7 @@ export const getMemberByUserId = async (userId) => {
 
     const snapshots = await Promise.all(
       candidates.map((candidate) =>
-        getDocs(query(collection(db, "miembros"), where("userId", "==", candidate)))
+        withAuthRetry(() => getDocs(query(collection(db, "miembros"), where("userId", "==", candidate))))
       )
     );
 
@@ -147,14 +298,14 @@ export const getMemberByUserId = async (userId) => {
     }
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
 export const getMemberByAuthUid = async (authUid) => {
   try {
     const q = query(collection(db, "miembros"), where("authUid", "==", authUid), limit(1));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await withAuthRetry(() => getDocs(q));
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
@@ -170,7 +321,7 @@ export const getMemberByAuthUid = async (authUid) => {
     }
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -195,71 +346,6 @@ export const createMember = async (memberData) => {
       updatedAt: serverTimestamp()
     });
     return { success: true, id: docRef.id };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const updateMemberPhoneByUserId = async (userId, telefono) => {
-  try {
-    const memberResult = await getMemberByUserId(userId);
-    if (!memberResult.success || !memberResult.data?.id) {
-      return { success: false, error: "Miembro no encontrado" };
-    }
-
-    await updateDoc(doc(db, "miembros", memberResult.data.id), {
-      telefono,
-      updatedAt: serverTimestamp()
-    });
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const updateMemberEmailByUserId = async (userId, email) => {
-  try {
-    const memberResult = await getMemberByUserId(userId);
-    if (!memberResult.success || !memberResult.data?.id) {
-      return { success: false, error: "Miembro no encontrado" };
-    }
-
-    await updateDoc(doc(db, "miembros", memberResult.data.id), {
-      email,
-      updatedAt: serverTimestamp()
-    });
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const updateMembershipEmailByUserId = async (userId, email) => {
-  try {
-    const candidates = [userId];
-    const numericId = Number(userId);
-    if (!Number.isNaN(numericId)) candidates.push(numericId);
-
-    const membershipQueries = [];
-    candidates.forEach((candidate) => {
-      membershipQueries.push(
-        query(collection(db, "memberships"), where("userId", "==", candidate)),
-        query(collection(db, "memberships"), where("user", "==", candidate))
-      );
-    });
-
-    const snapshots = await Promise.all(membershipQueries.map((q) => getDocs(q)));
-    const dedupDocs = new Map();
-    snapshots.forEach((snap) => snap.docs.forEach((d) => dedupDocs.set(d.id, d)));
-
-    const updates = Array.from(dedupDocs.values()).map((d) =>
-      updateDoc(doc(db, "memberships", d.id), { userEmail: email, updatedAt: serverTimestamp() })
-    );
-    await Promise.all(updates);
-
-    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -375,6 +461,7 @@ export const getUserMembershipsByAuthUid = async (authUid, userEmail = null) => 
 
 export const createMembership = async (membershipData) => {
   try {
+    // Obtener todos los documentos de memberships para encontrar el número máximo
     const querySnapshot = await getDocs(collection(db, "memberships"));
     let maxId = 0;
     
@@ -385,8 +472,10 @@ export const createMembership = async (membershipData) => {
       }
     });
     
+    // Generar el siguiente ID
     const newId = (maxId + 1).toString();
     
+    // Crear el documento con ID numérico
     await setDoc(doc(db, "memberships", newId), {
       ...membershipData,
       createdAt: serverTimestamp(),
@@ -458,6 +547,7 @@ export const assignMembership = async (assignmentData) => {
     const { userId, membershipTypeId, paymentMethod, montoRecibido, forceRenew } = assignmentData;
 
     const getMexicoDateOnly = () => {
+      // en-CA returns YYYY-MM-DD and avoids UTC day shifts in Americas
       return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
     };
 
@@ -468,6 +558,7 @@ export const assignMembership = async (assignmentData) => {
       return new Date(y, m - 1, d, 0, 0, 0, 0);
     };
     
+    // 1. Verificar si el usuario ya tiene membresía activa
     const existingMemberships = await getUserMemberships(userId);
     if (existingMemberships.success && existingMemberships.data.length > 0) {
       const todayLocal = parseDateOnly(getMexicoDateOnly()) || new Date();
@@ -491,6 +582,7 @@ export const assignMembership = async (assignmentData) => {
       }
     }
     
+    // 2. Obtener tipo de membresía para calcular fechas
     const membershipTypeDoc = await getDoc(doc(db, "membershipTypes", membershipTypeId));
     if (!membershipTypeDoc.exists()) {
       return { success: false, error: "Tipo de membresía no encontrado" };
@@ -498,11 +590,13 @@ export const assignMembership = async (assignmentData) => {
     
     const membershipType = membershipTypeDoc.data();
 
+    // 2.1 Obtener datos de usuario para mostrar en listados
     const userDoc = await getDoc(doc(db, "users", userId));
     const userData = userDoc.exists() ? userDoc.data() : {};
     const userFullName = [userData.firstName, userData.lastName].filter(Boolean).join(" ").trim();
     const userName = userData.username || userFullName || (userData.email ? userData.email.split("@")[0] : "");
     
+    // 3. Calcular fechas de vigencia
     const startDate = getMexicoDateOnly();
     const endDate = parseDateOnly(startDate) || new Date();
     const durationDays = Number(membershipType.duration_days || 0);
@@ -513,10 +607,12 @@ export const assignMembership = async (assignmentData) => {
     }
     const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
     
+    // 4. Crear o actualizar membresía existente del usuario
     const membershipData = {
       user: userId,
       membershipType: membershipTypeId,
       userId: userId,
+      authUid: userData.authUid || userId,
       userName: userName || "",
       userFullName: userFullName || "",
       userEmail: userData.email || "",
@@ -580,7 +676,6 @@ export const assignMembership = async (assignmentData) => {
         cliente_username: userName || userData.username || userData.email || "Cliente anónimo",
         cliente_email: userData.email || null,
         clienteEmail: userData.email || null,
-        cliente_auth_uid: userData.authUid || null,
         clienteNombre: userFullName || userName || userData.email || "Cliente",
         metodo_pago: payMethod,
         total: membershipPrice,
@@ -616,8 +711,10 @@ export const getProducts = async () => {
     const querySnapshot = await getDocs(collection(db, "productos"));
     const products = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      // Normalizar el campo de imagen (puede ser 'imagen' o 'image')
       const imageUrl = data.imagen || data.image;
       
+      // Log para diagnóstico
       if (!imageUrl || imageUrl.trim() === '') {
         console.warn(`⚠️ Producto "${data.nombre}" sin imagen URL`);
       } else if (!imageUrl.startsWith('http')) {
@@ -627,8 +724,8 @@ export const getProducts = async () => {
       return {
         id: doc.id,
         ...data,
-        imagen: imageUrl, 
-        image: imageUrl  
+        imagen: imageUrl, // Garantizar que el campo se llame 'imagen'
+        image: imageUrl   // También disponible como 'image' para compatibilidad
       };
     });
     
@@ -705,6 +802,7 @@ export const createInventoryEntry = async (entryData) => {
   try {
     const { productoId, cantidad, usuarioNombre } = entryData;
     
+    // 1. Obtener producto actual
     const productDoc = await getDoc(doc(db, "productos", productoId));
     if (!productDoc.exists()) {
       return { success: false, error: "Producto no encontrado" };
@@ -713,10 +811,12 @@ export const createInventoryEntry = async (entryData) => {
     const productData = productDoc.data();
     const newStock = (productData.stock || 0) + cantidad;
     
+    // 2. Actualizar stock del producto
     await updateDoc(doc(db, "productos", productoId), {
       stock: newStock
     });
     
+    // 3. Crear registro de entrada
     const entryRecord = {
       producto: productoId,
       producto_nombre: productData.nombre,
@@ -829,6 +929,7 @@ export const getMemberByQRCode = async (qrCode) => {
 
 export const checkInMember = async (qrCode) => {
   try {
+    // 1. Buscar miembro por QR
     const memberResult = await getMemberByQRCode(qrCode);
     if (!memberResult.success) {
       return { success: false, error: "Código QR no válido" };
@@ -836,6 +937,7 @@ export const checkInMember = async (qrCode) => {
     
     const member = memberResult.data;
     
+    // 2. Verificar si ya tiene check-in activo hoy (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -864,6 +966,7 @@ export const checkInMember = async (qrCode) => {
       };
     }
     
+    // 3. Verificar membresía activa
     const membershipsQuery = query(
       collection(db, "memberships"),
       where("userId", "==", member.userId)
@@ -885,6 +988,7 @@ export const checkInMember = async (qrCode) => {
       };
     }
     
+    // 4. Crear registro de asistencia
     const attendanceData = {
       memberId: member.id,
       userId: member.userId,
@@ -913,6 +1017,7 @@ export const checkInMember = async (qrCode) => {
 
 export const checkOutMember = async (qrCode) => {
   try {
+    // 1. Buscar miembro por QR
     const memberResult = await getMemberByQRCode(qrCode);
     if (!memberResult.success) {
       return { success: false, error: "Código QR no válido" };
@@ -920,6 +1025,7 @@ export const checkOutMember = async (qrCode) => {
     
     const member = memberResult.data;
     
+    // 2. Buscar check-in activo del día (sin requerir índice compuesto)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -947,6 +1053,7 @@ export const checkOutMember = async (qrCode) => {
       };
     }
     
+    // 3. Actualizar con hora de salida y calcular tiempo
     const checkInData = activeCheckIn.data();
     const checkInTime = new Date(checkInData.fecha_hora_entrada);
     const checkOutTime = new Date();
@@ -1018,6 +1125,7 @@ export const getAttendances = async (filters = {}) => {
       };
     });
 
+    // Filtro por fecha (client-side, compatible con ambos formatos)
     if (filters.fecha) {
       const [year, month, day] = String(filters.fecha).split("-").map(Number);
       const startDate = new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
@@ -1030,6 +1138,7 @@ export const getAttendances = async (filters = {}) => {
       });
     }
 
+    // Filtro de búsqueda por nombre (client-side)
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       attendances = attendances.filter(att =>
@@ -1037,6 +1146,7 @@ export const getAttendances = async (filters = {}) => {
       );
     }
 
+    // Ordenar por fecha descendente (client-side)
     attendances.sort((a, b) => {
       const dateA = a.fecha_hora_entrada ? new Date(a.fecha_hora_entrada) : new Date(0);
       const dateB = b.fecha_hora_entrada ? new Date(b.fecha_hora_entrada) : new Date(0);
@@ -1060,6 +1170,7 @@ export const createSale = async (saleData) => {
   try {
     const { cliente_id, metodo_pago, total, productos, monto_recibido } = saleData;
     
+    // 1. Validar y actualizar stock de cada producto
     for (const item of productos) {
       const productDoc = await getDoc(doc(db, "productos", item.id));
       if (!productDoc.exists()) {
@@ -1071,18 +1182,20 @@ export const createSale = async (saleData) => {
         return { success: false, error: `Stock insuficiente para ${item.nombre}` };
       }
       
+      // Actualizar stock
       const newStock = productData.stock - item.cantidad;
       await updateDoc(doc(db, "productos", item.id), {
         stock: newStock
       });
     }
     
+    // 2. Generar folio único (timestamp + random)
     const folio = generateSaleFolio();
     
+    // 3. Obtener información del cliente si existe
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
-    let cliente_auth_uid = null;
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", cliente_id));
       if (userDoc.exists()) {
@@ -1092,11 +1205,11 @@ export const createSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
-        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
     
+    // 4. Crear registro de venta
     const ventaData = {
       folio: folio,
       cliente: cliente_id || null,
@@ -1104,7 +1217,6 @@ export const createSale = async (saleData) => {
       cliente_username: cliente_username,
       cliente_email: cliente_email,
       clienteEmail: cliente_email,
-      cliente_auth_uid: cliente_auth_uid,
       clienteNombre: clienteNombre,
       metodo_pago: metodo_pago,
       total: total,
@@ -1142,7 +1254,6 @@ export const createMembershipSale = async (saleData) => {
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
-    let cliente_auth_uid = null;
 
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
@@ -1153,7 +1264,6 @@ export const createMembershipSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
-        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
@@ -1171,7 +1281,6 @@ export const createMembershipSale = async (saleData) => {
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
-      cliente_auth_uid: cliente_auth_uid,
       clienteNombre,
       metodo_pago: payMethod,
       total: totalNumber,
@@ -1233,15 +1342,8 @@ export const getSales = async (filters = {}) => {
 
     let sales = [];
 
-    if (filters.userId || filters.userEmail || filters.username || filters.authUid) {
+    if (filters.userId || filters.userEmail || filters.username) {
       const fieldQueries = [];
-
-      if (filters.authUid) {
-        fieldQueries.push(
-          query(collection(db, "ventas"), where("cliente_auth_uid", "==", filters.authUid), limit(limitValue)),
-          query(collection(db, "ventas"), where("authUid", "==", filters.authUid), limit(limitValue))
-        );
-      }
 
       if (filters.userId) {
         const userIdCandidates = [filters.userId];
@@ -1326,13 +1428,7 @@ export const createHealthProfile = async (healthData) => {
     }
 
     const profileRef = doc(db, "healthProfiles", canonicalId);
-    let wasExisting = false;
-    try {
-      const existingCanonical = await getDoc(profileRef);
-      wasExisting = existingCanonical.exists();
-    } catch (err) {
-      console.warn('No se pudo validar existencia de ficha, se intentará guardar directo:', err);
-    }
+    const existingCanonical = await getDoc(profileRef);
 
     const normalizedPayload = {
       ...completedData,
@@ -1348,13 +1444,31 @@ export const createHealthProfile = async (healthData) => {
       return localDate;
     };
 
+    if (existingCanonical.exists()) {
+      await updateDoc(profileRef, {
+        ...normalizedPayload,
+        updatedAt: getLocalMXDate()
+      });
+      return { success: true, id: canonicalId, updated: true };
+    }
+
+    const qMember = query(collection(db, "healthProfiles"), where("memberId", "==", normalizedPayload.memberId));
+    const memberSnapshot = await getDocs(qMember);
+    const qUser = query(collection(db, "healthProfiles"), where("userId", "==", normalizedPayload.userId));
+    const userSnapshot = await getDocs(qUser);
+    const legacyProfileDoc = memberSnapshot.docs[0] || userSnapshot.docs[0] || null;
+
     await setDoc(profileRef, {
       ...normalizedPayload,
-      createdAt: getLocalMXDate(),
+      createdAt: legacyProfileDoc ? (legacyProfileDoc.data().createdAt || getLocalMXDate()) : getLocalMXDate(),
       updatedAt: getLocalMXDate()
     }, { merge: true });
 
-    return { success: true, id: canonicalId, updated: wasExisting };
+    if (legacyProfileDoc && legacyProfileDoc.id !== canonicalId) {
+      await deleteDoc(doc(db, "healthProfiles", legacyProfileDoc.id));
+    }
+
+    return { success: true, id: canonicalId, updated: Boolean(legacyProfileDoc) };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -1396,6 +1510,246 @@ export const getMemberByEmail = async (email) => {
 
 // NOTAS PRIVADAS DEL ENTRENADOR
 
+export const createOrUpdateTrainerRoutine = async (routineData) => {
+  try {
+    const memberId = String(routineData?.memberId || '').trim();
+    const trainerUid = String(routineData?.createdBy || '').trim();
+    if (!memberId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const canonicalRef = doc(db, 'trainerRoutines', memberId);
+    const memberRoutineRef = doc(db, 'memberRoutines', memberId);
+    const trainerScopedId = trainerUid ? `${memberId}_${trainerUid}` : '';
+    const trainerScopedRef = trainerScopedId ? doc(db, 'trainerRoutines', trainerScopedId) : null;
+
+    const payload = {
+      memberId,
+      memberName: routineData.memberName || '',
+      memberEmail: routineData.memberEmail || '',
+      memberAuthUid: routineData.memberAuthUid || '',
+      memberUserId: routineData.memberUserId || '',
+      routineName: routineData.routineName || '',
+      days: Array.isArray(routineData.days) ? routineData.days : [],
+      steps: Array.isArray(routineData.steps) ? routineData.steps : [],
+      files: Array.isArray(routineData.files) ? routineData.files : [],
+      createdBy: routineData.createdBy || '',
+      trainerEmail: routineData.trainerEmail || '',
+      ownerUid: trainerUid,
+      updatedAt: serverTimestamp(),
+    };
+
+    const upsertRoutineDoc = async (routineRef) => {
+      try {
+        await withAuthRetry(() => updateDoc(routineRef, payload));
+        return;
+      } catch (error) {
+        if (!isNotFoundError(error)) {
+          throw error;
+        }
+      }
+
+      await withAuthRetry(() =>
+        setDoc(
+          routineRef,
+          {
+            ...payload,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      );
+    };
+
+    try {
+      await upsertRoutineDoc(canonicalRef);
+      await upsertRoutineDoc(memberRoutineRef);
+      return { success: true, id: memberId };
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError || !trainerScopedRef) {
+        // Ultimo fallback para evitar bloquear el flujo por reglas en trainerRoutines.
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
+      }
+
+      try {
+        await upsertRoutineDoc(trainerScopedRef);
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: trainerScopedId, fallback: true };
+      } catch {
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
+      }
+    }
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const getTrainerRoutineByMember = async (memberId) => {
+  try {
+    const canonicalId = String(memberId || '').trim();
+    if (!canonicalId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const authUid = String(auth.currentUser?.uid || '').trim();
+    const docCandidates = [canonicalId];
+    if (authUid) {
+      docCandidates.unshift(`${canonicalId}_${authUid}`);
+    }
+
+    for (const candidateId of docCandidates) {
+      try {
+        const routineRef = doc(db, 'trainerRoutines', candidateId);
+        const routineSnap = await withAuthRetry(() => getDoc(routineRef));
+        if (routineSnap.exists()) {
+          return { success: true, data: { id: routineSnap.id, ...routineSnap.data() } };
+        }
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    try {
+      const memberRoutineSnap = await withAuthRetry(() => getDoc(doc(db, 'memberRoutines', canonicalId)));
+      if (memberRoutineSnap.exists()) {
+        return { success: true, data: { id: memberRoutineSnap.id, ...memberRoutineSnap.data() } };
+      }
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError) throw error;
+    }
+
+    const queryCandidates = [
+      query(collection(db, 'trainerRoutines'), where('memberId', '==', canonicalId), limit(1)),
+    ];
+
+    for (const q of queryCandidates) {
+      try {
+        const querySnapshot = await withAuthRetry(() => getDocs(q));
+        if (!querySnapshot.empty) {
+          const routineDoc = querySnapshot.docs[0];
+          return { success: true, data: { id: routineDoc.id, ...routineDoc.data() } };
+        }
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    return { success: false, error: 'Rutina no encontrada' };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const subscribeTrainerRoutineByMember = (memberId, onRoutineChange) => {
+  const canonicalId = String(memberId || '').trim();
+  if (!canonicalId || typeof onRoutineChange !== 'function') {
+    return () => {};
+  }
+
+  const routineRef = doc(db, 'trainerRoutines', canonicalId);
+  const memberRoutineRef = doc(db, 'memberRoutines', canonicalId);
+
+  const emitFallbackRoutine = async () => {
+    try {
+      const memberRoutineSnap = await getDoc(memberRoutineRef);
+      if (memberRoutineSnap.exists()) {
+        onRoutineChange({ id: memberRoutineSnap.id, ...memberRoutineSnap.data() });
+        return;
+      }
+
+      const q = query(collection(db, 'trainerRoutines'), where('memberId', '==', canonicalId), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const routineDoc = querySnapshot.docs[0];
+        onRoutineChange({ id: routineDoc.id, ...routineDoc.data() });
+        return;
+      }
+
+      onRoutineChange(null);
+    } catch {
+      onRoutineChange(null);
+    }
+  };
+
+  return onSnapshot(
+    routineRef,
+    async (routineSnap) => {
+      try {
+        if (routineSnap.exists()) {
+          onRoutineChange({ id: routineSnap.id, ...routineSnap.data() });
+          return;
+        }
+
+        await emitFallbackRoutine();
+      } catch {
+        await emitFallbackRoutine();
+      }
+    },
+    async () => {
+      await emitFallbackRoutine();
+    }
+  );
+};
+
+export const getAllTrainerRoutines = async () => {
+  try {
+    const q = query(collection(db, 'trainerRoutines'), orderBy('updatedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const routines = querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    }));
+    return { success: true, data: routines };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTrainerRoutineByMember = async (memberId) => {
+  try {
+    const canonicalId = String(memberId || '').trim();
+    if (!canonicalId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const authUid = String(auth.currentUser?.uid || '').trim();
+    const targetIds = authUid ? [`${canonicalId}_${authUid}`, canonicalId] : [canonicalId];
+
+    let deletedAny = false;
+    for (const targetId of targetIds) {
+      try {
+        await withAuthRetry(() => deleteDoc(doc(db, 'trainerRoutines', targetId)));
+        deletedAny = true;
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error) || isNotFoundError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    try {
+      await withAuthRetry(() => deleteDoc(doc(db, 'memberRoutines', canonicalId)));
+      deletedAny = true;
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error) || isNotFoundError(error);
+      if (!isPermissionError) throw error;
+    }
+
+    if (!deletedAny) {
+      return { success: false, error: 'No se encontro una rutina eliminable para este entrenador.' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
 export const createTrainerNote = async (noteData) => {
   try {
     const docRef = await addDoc(collection(db, "trainerNotes"), {
@@ -1423,31 +1777,6 @@ export const getTrainerNotesByMember = async (memberId) => {
     }));
     return { success: true, data: notes };
   } catch (error) {
-    const isIndexError =
-      String(error?.code || '').includes('failed-precondition') ||
-      String(error?.message || '').toLowerCase().includes('requires an index');
-
-    if (isIndexError) {
-      try {
-        const fallbackQuery = query(
-          collection(db, "trainerNotes"),
-          where("memberId", "==", memberId)
-        );
-        const fallbackSnapshot = await getDocs(fallbackQuery);
-        const notes = fallbackSnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .sort((a, b) => {
-            const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
-            const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
-            return bTime - aTime;
-          });
-
-        return { success: true, data: notes };
-      } catch (fallbackError) {
-        return { success: false, error: fallbackError.message };
-      }
-    }
-
     return { success: false, error: error.message };
   }
 };
@@ -1482,71 +1811,6 @@ export const updateTrainerNote = async (noteId, noteData) => {
 export const deleteTrainerNote = async (noteId) => {
   try {
     await deleteDoc(doc(db, "trainerNotes", noteId));
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-// REPOSITORIO DIGITAL DE DIETAS
-
-export const createDietFileRecord = async (fileData) => {
-  try {
-    const docRef = await addDoc(collection(db, "dietFiles"), {
-      ...fileData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return { success: true, id: docRef.id };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const getAllDietFiles = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, "dietFiles"));
-    const files = querySnapshot.docs
-      .map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }))
-      .sort((a, b) => {
-        const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
-        const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
-    return { success: true, data: files };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const getDietFilesByMember = async (memberId) => {
-  try {
-    const q = query(collection(db, "dietFiles"), where("memberId", "==", String(memberId)));
-    const querySnapshot = await getDocs(q);
-    const files = querySnapshot.docs
-      .map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }))
-      .sort((a, b) => {
-        const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
-        const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
-    return { success: true, data: files };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const deleteDietFileRecord = async (fileId) => {
-  try {
-    await deleteDoc(doc(db, "dietFiles", fileId));
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

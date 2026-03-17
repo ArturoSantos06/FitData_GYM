@@ -12,13 +12,11 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
         return imageUrl;
     };
 
-    const imgSrc = getInitialUrl(producto.imagen || producto.image);
+    const [imgSrc, setImgSrc] = useState(getInitialUrl(producto.imagen || producto.image));
 
     const incrementar = () => { if (cantidad < producto.stock) setCantidad(cantidad + 1); };
     const decrementar = () => { if (cantidad > 1) setCantidad(cantidad - 1); };
-    const handleImageError = (event) => {
-        event.currentTarget.src = "https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen";
-    };
+    const handleImageError = () => { setImgSrc("https://placehold.co/150x150/1e293b/ffffff?text=Sin+Imagen"); };
 
     return (
         <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 md:p-5 flex flex-col h-full shadow-xl relative transition-transform hover:-translate-y-1 duration-300 group overflow-hidden">

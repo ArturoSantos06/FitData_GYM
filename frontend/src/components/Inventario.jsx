@@ -35,9 +35,7 @@ function Inventario() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      cargarDatos();
-    }, 0);
+    setTimeout(() => cargarDatos(), 0);
     
     // Cargar nombre del usuario actual
     const loadUser = async () => {
@@ -50,7 +48,6 @@ function Inventario() {
       }
     };
     loadUser();
-    return () => clearTimeout(timer);
   }, []);
 
   const abrirModal = (prod) => {

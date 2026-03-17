@@ -5,6 +5,7 @@ import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCu
 const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado }) => {
     const [datos, setDatos] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (producto) {
@@ -26,6 +27,7 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         
         try {
             // 1. Actualizar datos del producto
@@ -77,8 +79,10 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
             onProductoActualizado();
             onClose(); 
             setShowSuccess(true);
+            setIsLoading(false);
         } catch (error) { 
             alert('Error: ' + error.message);
+            setIsLoading(false);
         }
     };
 

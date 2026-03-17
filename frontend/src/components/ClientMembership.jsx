@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import { auth, getUser, getUserByAuthUid, getMemberByUserId, getMemberByAuthUid, getUserMemberships, getUserMembershipsByAuthUid, getMembershipTypes } from '../firebase';
+import { auth, getUser, getMemberByUserId, getUserMemberships, getMembershipTypes } from '../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -60,6 +60,44 @@ function ClientMembership() {
     if (days > 0) return `${days} día${days > 1 ? 's' : ''} ${hours}h`;
     if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''} ${minutes} min`;
     return `${minutes} min`;
+  };
+
+  const calculateTimeRemaining = (endDateStr, options = {}) => {
+    if (!endDateStr) return 'Sin fecha';
+
+    const { isDayPass = false, dayPassBaseDate = null } = options;
+    const now = new Date();
+
+    if (isDayPass) {
+      const baseDateStr = dayPassBaseDate || endDateStr;
+      const todayWindow = getGymWindowForDateStr(baseDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      if (now <= todayWindow.start) return formatRemaining(todayWindow.end - todayWindow.start);
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
+
+    if (
+      now.getFullYear() === endDate.getFullYear() &&
+      now.getMonth() === endDate.getMonth() &&
+      now.getDate() === endDate.getDate()
+    ) {
+      const todayWindow = getGymWindowForDateStr(endDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    if (now < endDate) {
+      const endDayWindow = getGymWindowForDateStr(endDateStr);
+      if (!endDayWindow) return 'Vigente';
+      if (now >= endDayWindow.end) return 'Vencida';
+      return formatRemaining(endDayWindow.end - now);
+    }
+    
+    return 'Vencida';
   };
 
   const downloadQR = async () => {
@@ -170,95 +208,39 @@ function ClientMembership() {
     }
   };
 
-  function calculateTimeRemaining(endDateStr, options = {}) {
-    if (!endDateStr) return 'Sin fecha';
-
-    const { isDayPass = false, dayPassBaseDate = null } = options;
-    const now = new Date();
-
-    if (isDayPass) {
-      const baseDateStr = dayPassBaseDate || endDateStr;
-      const todayWindow = getGymWindowForDateStr(baseDateStr);
-      if (!todayWindow) return 'Gimnasio cerrado';
-      if (now >= todayWindow.end) return 'Vencida';
-      if (now <= todayWindow.start) return formatRemaining(todayWindow.end - todayWindow.start);
-      return formatRemaining(todayWindow.end - now);
-    }
-
-    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
-
-    if (
-      now.getFullYear() === endDate.getFullYear() &&
-      now.getMonth() === endDate.getMonth() &&
-      now.getDate() === endDate.getDate()
-    ) {
-      const todayWindow = getGymWindowForDateStr(endDateStr);
-      if (!todayWindow) return 'Gimnasio cerrado';
-      if (now >= todayWindow.end) return 'Vencida';
-      return formatRemaining(todayWindow.end - now);
-    }
-
-    if (now < endDate) {
-      const endDayWindow = getGymWindowForDateStr(endDateStr);
-      if (!endDayWindow) return 'Vigente';
-      if (now >= endDayWindow.end) return 'Vencida';
-      return formatRemaining(endDayWindow.end - now);
-    }
-    
-    return 'Vencida';
-  }
-
   useEffect(() => {
     const loadMembershipData = async () => {
       try {
+        // Verificar usuario autenticado de Firebase
         const currentUser = auth.currentUser;
         if (!currentUser) {
           setLoading(false);
           return;
         }
 
-        let internalUserId = currentUser.uid;
-        let resolvedUserData = null;
-
+        // Obtener datos del usuario de Firestore
         const userResult = await getUser(currentUser.uid);
         if (userResult.success) {
-          resolvedUserData = userResult.data;
-        } else {
-          const authUidUserResult = await getUserByAuthUid(currentUser.uid);
-          if (authUidUserResult.success) {
-            internalUserId = authUidUserResult.data.id;
-            resolvedUserData = authUidUserResult.data;
-          }
-        }
-
-        if (resolvedUserData) {
           const userData = {
-            id: internalUserId,
+            id: currentUser.uid,
             email: currentUser.email,
-            first_name: resolvedUserData.firstName || currentUser.displayName?.split(' ')[0] || '',
-            last_name: resolvedUserData.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
-            username: resolvedUserData.username || currentUser.email?.split('@')[0]
+            first_name: userResult.data.firstName || currentUser.displayName?.split(' ')[0] || '',
+            last_name: userResult.data.lastName || currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            username: userResult.data.username || currentUser.email?.split('@')[0]
           };
           setUser(userData);
         }
 
         // Obtener miembro asociado
-        const memberResult = await getMemberByUserId(internalUserId);
+        const memberResult = await getMemberByUserId(currentUser.uid);
         if (memberResult.success) {
           setMiembro(memberResult.data);
-        } else {
-          const memberByAuthUidResult = await getMemberByAuthUid(currentUser.uid);
-          if (memberByAuthUidResult.success) {
-            setMiembro(memberByAuthUidResult.data);
-          }
         }
 
-        let membershipsResult = await getUserMemberships(internalUserId);
-        if (!membershipsResult.success || membershipsResult.data.length === 0) {
-          membershipsResult = await getUserMembershipsByAuthUid(currentUser.uid, currentUser.email || null);
-        }
-
+        // Obtener membresías del usuario
+        const membershipsResult = await getUserMemberships(currentUser.uid);
         if (membershipsResult.success && membershipsResult.data.length > 0) {
+          // Ordenar por fecha de inicio (más reciente primero)
           const sorted = membershipsResult.data.sort((a, b) => {
             const dateA = a.startDate ? new Date(a.startDate) : new Date(0);
             const dateB = b.startDate ? new Date(b.startDate) : new Date(0);
@@ -272,18 +254,10 @@ function ClientMembership() {
             image: membership.membershipImage || membership.membershipTypeImage || membership.image || null
           };
 
-          const membershipTypeRef =
-            membership.membershipTypeId ||
-            membership.membershipType ||
-            membership.membership_type ||
-            null;
-
-          if ((!fallbackType.image || !fallbackType.duration_days) && membershipTypeRef) {
+          if ((!fallbackType.image || !fallbackType.duration_days) && membership.membershipType) {
             const typeResult = await getMembershipTypes();
             if (typeResult.success) {
-              const currentType = typeResult.data.find(
-                (type) => String(type.id) === String(membershipTypeRef)
-              );
+              const currentType = typeResult.data.find((type) => type.id === membership.membershipType);
               if (currentType) {
                 fallbackType.name = fallbackType.name || currentType.name || 'Membresía';
                 fallbackType.duration_days = fallbackType.duration_days ?? currentType.duration_days ?? null;
@@ -296,7 +270,7 @@ function ClientMembership() {
           const endDate = membership.endDate || membership.end_date;
 
           setMembership({
-            user: internalUserId,
+            user: currentUser.uid,
             tipo: fallbackType,
             start_date: startDate,
             end_date: endDate,
@@ -314,6 +288,7 @@ function ClientMembership() {
       }
     };
 
+    // Esperar a que Firebase Auth esté listo
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         loadMembershipData();

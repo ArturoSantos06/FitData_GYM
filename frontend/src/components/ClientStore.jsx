@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCardClient from './ProductCardClient';
-import { getProducts, getUser, getUserByAuthUid, getUserByEmail, getSales, onAuthChanged } from '../firebase';
+import { getProducts, getUser, getSales, getCurrentUser } from '../firebase';
 
 function ClientStore() {
   const [products, setProducts] = useState([]);
@@ -8,12 +8,10 @@ function ClientStore() {
   const [sales, setSales] = useState([]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadProducts = async () => {
+    const loadData = async () => {
       try {
         const productsResult = await getProducts();
-        if (isMounted && productsResult.success) {
+        if (productsResult.success) {
           const mapped = productsResult.data.map(p => ({
             title: p.nombre || 'Producto',
             price: parseFloat(p.precio || 0),
@@ -22,72 +20,36 @@ function ClientStore() {
           }));
           setProducts(mapped);
         }
-      } catch (error) {
-        console.error('Error cargando productos:', error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    const loadSalesForUser = async (currentUser) => {
-      try {
-        if (!currentUser) {
-          if (isMounted) {
-            setSales([]);
-          }
-          return;
-        }
-
-          let resolvedUser = null;
-          let internalUserId = currentUser.uid;
-
-          const userByUid = await getUser(currentUser.uid);
-          if (userByUid.success && userByUid.data) {
-            resolvedUser = userByUid.data;
-            internalUserId = userByUid.data.id || currentUser.uid;
-          } else {
-            const userByAuthUid = await getUserByAuthUid(currentUser.uid);
-            if (userByAuthUid.success && userByAuthUid.data) {
-              resolvedUser = userByAuthUid.data;
-              internalUserId = userByAuthUid.data.id;
-            } else if (currentUser.email) {
-              const userByEmail = await getUserByEmail(currentUser.email);
-              if (userByEmail.success && userByEmail.data) {
-                resolvedUser = userByEmail.data;
-                internalUserId = userByEmail.data.id;
-              }
+        
+        // Cargar usuario y ventas para historial
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          const userResult = await getUser(currentUser.uid);
+          if (userResult.success) {
+            // Cargar ventas del usuario
+            const salesResult = await getSales({
+              userId: currentUser.uid,
+              userEmail: userResult.data?.email || currentUser.email || null,
+              username: userResult.data?.username || null
+            });
+            if (salesResult.success) {
+              const sorted = salesResult.data.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                return dateB - dateA;
+              });
+              setSales(sorted);
             }
           }
-
-          const salesResult = await getSales({
-            authUid: currentUser.uid,
-            userId: internalUserId,
-            userEmail: (resolvedUser?.email || currentUser.email || null),
-            username: (resolvedUser?.username || null)
-          });
-
-          if (isMounted && salesResult.success) {
-            const sorted = salesResult.data.sort((a, b) => {
-              const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-              const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-              return dateB - dateA;
-            });
-            setSales(sorted);
-          }
+        }
       } catch (error) {
-        console.error('Error cargando ventas del cliente:', error);
+        console.error('Error cargando datos:', error);
+      } finally {
+        setLoading(false);
       }
     };
-
-    loadProducts();
-    const unsubscribe = onAuthChanged((firebaseUser) => {
-      loadSalesForUser(firebaseUser);
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
+    
+    loadData();
   }, []);
 
   if (loading) {
@@ -120,10 +82,8 @@ function ClientStore() {
             try {
               const parsed = JSON.parse(String(s.detalle_productos || '[]').replace(/'/g, '"'));
               if (Array.isArray(parsed)) items = parsed;
-            } catch {
-              items = [];
-            }
-            const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || Date.now());
+            } catch { /* ignorar parse error */ }
+            const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || 0);
             const fechaStr = fechaObj.toLocaleDateString('es-MX');
             const horaStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return items.map((it, idx) => (

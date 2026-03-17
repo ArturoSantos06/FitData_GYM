@@ -67,6 +67,7 @@ function MembershipAdmin() {
   
 
   const [activeCardId, setActiveCardId] = useState(null);
+  const [, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchMemberships();
@@ -98,6 +99,7 @@ function MembershipAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     
     try {
       const dataToSend = {
@@ -142,9 +144,11 @@ function MembershipAdmin() {
       }
       
       handleCancel();
+      setIsLoading(false);
     } catch (error) { 
       console.error('Error:', error);
       alert("Error al guardar: " + error.message);
+      setIsLoading(false);
     }
   };
 

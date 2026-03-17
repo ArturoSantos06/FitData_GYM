@@ -1,13 +1,17 @@
 import { 
+  getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
   deleteObject
 } from "firebase/storage";
-import { storage, auth } from "./config";
+import app, { storage } from "./config";
 
-const DIET_ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-const DIET_MAX_FILE_SIZE = 10 * 1024 * 1024;
+const sanitizeFileName = (value) => {
+  return String(value || 'archivo')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_');
+};
 
 // Subir imagen
 export const uploadImage = async (file, path) => {
@@ -90,81 +94,71 @@ export const uploadMemberAvatar = async (file, memberId) => {
   return await uploadImage(file, path);
 };
 
-export const uploadDietDocument = async (file, memberId) => {
+// Subir adjuntos de rutina (PDF o imagen)
+export const uploadRoutineAttachment = async (file, memberId, trainerUid) => {
   try {
     if (!file) {
-      throw new Error("No se seleccionó ningún archivo");
+      throw new Error('No se selecciono ningun archivo');
     }
 
-    if (!DIET_ALLOWED_TYPES.includes(file.type)) {
-      throw new Error("Solo se permiten archivos PDF, JPG o PNG");
+    const isImage = file.type?.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+    if (!isImage && !isPdf) {
+      throw new Error('Solo se permiten imagenes o PDF');
     }
 
-    if (file.size > DIET_MAX_FILE_SIZE) {
-      throw new Error("El archivo es muy grande. Máximo 10MB");
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('El archivo es muy grande. Maximo 10MB');
     }
 
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `dietas/${memberId}/${Date.now()}_${sanitizedName}`;
-    const storageRef = ref(storage, path);
+    const safeName = sanitizeFileName(file.name);
+    const timestamp = Date.now();
+    const path = `trainerRoutines/${memberId}/${timestamp}_${safeName}`;
     const metadata = {
       contentType: file.type,
       customMetadata: {
         uploadedAt: new Date().toISOString(),
-        memberId: String(memberId)
+        memberId: String(memberId || ''),
+        trainerUid: String(trainerUid || ''),
+      },
+    };
+
+    const bucketFromEnv = String(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim();
+    const bucketCandidates = [];
+    if (bucketFromEnv) {
+      bucketCandidates.push(bucketFromEnv);
+      if (bucketFromEnv.endsWith('.firebasestorage.app')) {
+        bucketCandidates.push(bucketFromEnv.replace('.firebasestorage.app', '.appspot.com'));
+      } else if (bucketFromEnv.endsWith('.appspot.com')) {
+        bucketCandidates.push(bucketFromEnv.replace('.appspot.com', '.firebasestorage.app'));
       }
-    };
-
-    const snapshot = await uploadBytes(storageRef, file, metadata);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-
-    return {
-      success: true,
-      url: downloadURL,
-      path,
-      fileName: file.name,
-      contentType: file.type,
-      size: file.size
-    };
-  } catch (error) {
-    let errorMessage = error.message;
-
-    if (error.code === 'storage/unauthorized') {
-      errorMessage = 'No tienes permisos para subir archivos al expediente';
     }
 
-    return { success: false, error: errorMessage };
-  }
-};
+    const uniqueBuckets = [...new Set(bucketCandidates.filter(Boolean))];
+    const storageInstances = [storage, ...uniqueBuckets.map((bucket) => getStorage(app, `gs://${bucket}`))];
 
-export const downloadDietDocument = async (storagePath, fileName) => {
-  try {
-    const user = auth.currentUser;
-    if (!user) throw new Error("No hay sesión activa");
-
-    const token = await user.getIdToken();
-    const url = `https://us-east1-fitdatagym-f347a.cloudfunctions.net/downloadDietFile?path=${encodeURIComponent(storagePath)}&name=${encodeURIComponent(fileName || 'archivo')}`;
-
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `Error ${response.status}`);
+    let lastError = null;
+    for (const storageInstance of storageInstances) {
+      try {
+        const storageRef = ref(storageInstance, path);
+        const snapshot = await uploadBytes(storageRef, file, metadata);
+        const url = await getDownloadURL(snapshot.ref);
+        return { success: true, url, path };
+      } catch (error) {
+        lastError = error;
+      }
     }
 
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = blobUrl;
-    anchor.download = fileName || 'archivo';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(blobUrl);
-    return { success: true };
+    throw lastError || new Error('No se pudo subir el archivo al bucket de Storage.');
   } catch (error) {
-    return { success: false, error: error.message };
+    if (error?.code === 'storage/unauthorized') {
+      return {
+        success: false,
+        code: 'storage/unauthorized',
+        error: 'No hay permisos de Storage para adjuntar archivos. La rutina se guardara sin esos adjuntos.',
+      };
+    }
+
+    return { success: false, code: error?.code || null, error: error.message };
   }
 };

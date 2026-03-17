@@ -15,18 +15,51 @@ import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
-import DietaRepositorio from './components/DietaRepositorio';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
+import VistaEntrenador from './components/VistaEntrenador';
+import RutinaEntrenador from './components/RutinaEntrenador';
+import EntrenadorLogin from './components/EntrenadorLogin';
+import { logoutUser, getCurrentUser, onAuthChanged } from './firebase';
 
-// --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
+function RequireTrainerAuth({ children }) {
+  const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged((user) => {
+      setHasFirebaseSession(Boolean(user));
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isTrainerAuthenticated) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">
+        Cargando sesión...
+      </div>
+    );
+  }
+
+  if (!hasFirebaseSession) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  return children;
+}
+
 function AdminArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return Boolean(localStorage.getItem('firebaseUser'));
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
@@ -42,8 +75,10 @@ function AdminArea() {
 
   const handleLogin = () => setIsAuthenticated(true);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('token');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
     window.location.href = "/"; 
@@ -97,9 +132,6 @@ function AdminArea() {
           
           {/* 9. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
-
-          {/* 10. Repositorio Digital de Dietas (RF-027) */}
-          <Route path="repositorio-dietas" element={<DietaRepositorio />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
@@ -119,6 +151,23 @@ function App() {
 
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+        <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+        <Route
+          path="/entrenador"
+          element={
+            <RequireTrainerAuth>
+              <VistaEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/rutina/:memberId"
+          element={
+            <RequireTrainerAuth>
+              <RutinaEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
 
         <Route path="/admin/*" element={<AdminArea />} />
 

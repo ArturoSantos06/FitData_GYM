@@ -9,27 +9,12 @@ function UserMembershipList({ refreshTrigger }) {
   
   const [sortBy, setSortBy] = useState('recent');
 
-  const parseDateOnly = (value) => {
-    if (!value) return null;
-    if (typeof value === 'string') {
-      const [y, m, d] = value.split('-').map(Number);
-      if (y && m && d) return new Date(y, m - 1, d, 0, 0, 0, 0);
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  };
-
-  const formatDateOnly = (value) => {
-    const date = parseDateOnly(value);
-    return date ? date.toLocaleDateString('es-MX') : 'N/A';
-  };
-
   const isMembershipActive = (item) => {
     if (!item?.endDate) {
       return false;
     }
 
-    const endDate = parseDateOnly(item.endDate);
+    const endDate = new Date(item.endDate);
     if (Number.isNaN(endDate.getTime())) {
       return false;
     }
@@ -62,6 +47,7 @@ function UserMembershipList({ refreshTrigger }) {
           return acc;
         }
 
+        // Comparar por fecha de inicio, creación, o última actualización
         const currentDate = new Date(
           current.startDate || 
           current.updatedAt?.toDate?.() || 
@@ -98,11 +84,7 @@ function UserMembershipList({ refreshTrigger }) {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchAssignments();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    setTimeout(() => fetchAssignments(), 0);
   }, [refreshTrigger]);
 
 
@@ -132,22 +114,17 @@ function UserMembershipList({ refreshTrigger }) {
       return usernameA.localeCompare(usernameB, 'es', { sensitivity: 'base' });
     } 
     if (sortBy === 'expiration') {
-      return (parseDateOnly(a.endDate)?.getTime() || 0) - (parseDateOnly(b.endDate)?.getTime() || 0);
+      return new Date(a.endDate) - new Date(b.endDate);
     }
-    return (parseDateOnly(b.startDate)?.getTime() || 0) - (parseDateOnly(a.startDate)?.getTime() || 0);
+    return new Date(b.startDate) - new Date(a.startDate);
   });
 
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-teal-500 text-gray-100">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
-            Estado de Membresías
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            {sortedAssignments.length}{searchTerm && assignments.length !== sortedAssignments.length ? ` de ${assignments.length}` : ''} registros
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-teal-400 to-green-400">
+          Estado de Membresías
+        </h2>
         
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
             
@@ -223,10 +200,10 @@ function UserMembershipList({ refreshTrigger }) {
                   {item.membershipTypeName || item.membershipName || 'N/A'}
                 </td>
                 <td className="py-3 px-6">
-                  {formatDateOnly(item.startDate)}
+                  {new Date(item.startDate).toLocaleDateString()}
                 </td>
                 <td className="py-3 px-6 font-mono text-slate-300">
-                  {formatDateOnly(item.endDate)}
+                  {new Date(item.endDate).toLocaleDateString()}
                 </td>
                 <td className="py-3 px-6 text-center">
                   {(() => {

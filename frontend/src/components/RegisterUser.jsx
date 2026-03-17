@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
+import { registerClientByAdmin, registerTrainerByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
@@ -155,18 +155,14 @@ function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
 }
 
 function RegisterUser({ onUserRegistered }) {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|hotmail\.com|yahoo\.com|icloud\.com)$/i;
-  const nameRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/;
-  const phoneRegex = /^\d{10}$/;
-
   const [formData, setFormData] = useState({
+    user_type: 'CLIENTE',
     username: '',
     email: '',
     password: '',
     confirm_password: '',
     first_name: '',
     last_name: '',
-    phone: '',
     membership_id: '',
     payment_method: 'EFECTIVO'
   });
@@ -188,6 +184,7 @@ function RegisterUser({ onUserRegistered }) {
   const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
+  const [, setRegistrationCompleted] = useState(false);
 
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);
@@ -211,62 +208,72 @@ function RegisterUser({ onUserRegistered }) {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'phone') {
-      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
-      setFormData({ ...formData, phone: digitsOnly });
-      return;
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const onlyLettersRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+$/;
+  const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateTrainerRegistration = () => {
+    const username = formData.username.trim();
+    const firstName = formData.first_name.trim();
+    const lastName = formData.last_name.trim();
+    const email = formData.email.trim();
+
+    if (!onlyLettersRegex.test(username)) {
+      return 'El nombre de usuario debe contener solo letras y sin espacios.';
     }
-    setFormData({ ...formData, [name]: value });
+    if (!onlyLettersRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y sin espacios.';
+    }
+    if (!onlyLettersRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y sin espacios.';
+    }
+    if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
+      return 'El correo no debe tener espacios en blanco.';
+    }
+    if (!validEmailRegex.test(email)) {
+      return 'Ingresa un correo electrónico válido.';
+    }
+    if (!formData.confirm_password) {
+      return 'Confirma la contraseña.';
+    }
+    if (formData.password !== formData.confirm_password) {
+      return 'La contraseña y su confirmación no coinciden.';
+    }
+    return null;
+  };
+
+  const toSafeNumber = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   };
 
   // Calcular precio seleccionado
   const selectedPrice = memberships.find(m => m.id.toString() === formData.membership_id)?.price || 0;
+  const selectedPriceNumber = toSafeNumber(selectedPrice, 0);
 
   // Efecto para calcular cambio
   useEffect(() => {
-    const recibido = parseFloat(montoRecibido) || 0;
-    const precio = parseFloat(selectedPrice) || 0;
+    const recibido = toSafeNumber(montoRecibido, 0);
+    const precio = selectedPriceNumber;
     setCambio(recibido - precio);
-  }, [montoRecibido, selectedPrice]);
+  }, [montoRecibido, selectedPriceNumber]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const normalizedEmail = formData.email.trim().toLowerCase();
-    const normalizedFirstName = formData.first_name.trim();
-    const normalizedLastName = formData.last_name.trim();
-    const normalizedPhone = formData.phone.trim();
-
-    if (!emailRegex.test(normalizedEmail)) {
-      setErrorTitle('Correo no válido');
-      setErrorMessage('Usa un correo válido como usuario@gmail.com o usuario@outlook.com.');
-      setShowErrorModal(true);
-      return;
+    if (formData.user_type === 'ENTRENADOR') {
+      const trainerValidationError = validateTrainerRegistration();
+      if (trainerValidationError) {
+        setErrorTitle('Validación de Registro');
+        setErrorMessage(trainerValidationError);
+        setShowErrorModal(true);
+        return;
+      }
     }
 
-    if (!nameRegex.test(normalizedFirstName) || !nameRegex.test(normalizedLastName)) {
-      setErrorTitle('Nombre no válido');
-      setErrorMessage('Nombre(s) y apellidos solo pueden contener letras y espacios.');
-      setShowErrorModal(true);
-      return;
-    }
-
-    if (!phoneRegex.test(normalizedPhone)) {
-      setErrorTitle('Teléfono no válido');
-      setErrorMessage('Ingresa un número de teléfono válido de 10 dígitos.');
-      setShowErrorModal(true);
-      return;
-    }
-
-    if (formData.password !== formData.confirm_password) {
-      setErrorTitle('Contraseña no coincide');
-      setErrorMessage('La contraseña y su confirmación deben ser iguales.');
-      setShowErrorModal(true);
-      return;
-    }
-
-    if (!formData.membership_id) {
+    if (formData.user_type === 'CLIENTE' && !formData.membership_id) {
         setErrorTitle('Faltan Datos');
         setErrorMessage('Por favor selecciona una membresía.');
         setShowErrorModal(true);
@@ -274,7 +281,13 @@ function RegisterUser({ onUserRegistered }) {
     }
 
     // Validación de Efectivo
-    if (formData.payment_method === 'EFECTIVO' && (parseFloat(montoRecibido) < parseFloat(selectedPrice))) {
+    const montoRecibidoNumber = toSafeNumber(montoRecibido, 0);
+
+    if (
+      formData.user_type === 'CLIENTE' &&
+      formData.payment_method === 'EFECTIVO' &&
+      (montoRecibidoNumber < selectedPriceNumber)
+    ) {
         setErrorTitle('Pago Insuficiente');
         setErrorMessage('El monto recibido es menor al costo de la membresía.');
         setShowErrorModal(true);
@@ -284,27 +297,36 @@ function RegisterUser({ onUserRegistered }) {
     setIsLoading(true);
 
     try {
-      const registerResult = await registerClientByAdmin({
-        username: formData.username,
-        email: normalizedEmail,
-        password: formData.password,
-        firstName: normalizedFirstName,
-        lastName: normalizedLastName,
-        phone: normalizedPhone,
-        membershipTypeId: formData.membership_id,
-        paymentMethod: formData.payment_method,
-        montoRecibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : selectedPrice,
-      });
+      let registerResult;
+
+      if (formData.user_type === 'ENTRENADOR') {
+        registerResult = await registerTrainerByAdmin({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+        });
+      } else {
+        registerResult = await registerClientByAdmin({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+          membershipTypeId: formData.membership_id,
+          paymentMethod: formData.payment_method,
+          montoRecibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
+        });
+      }
 
       if (!registerResult.success) {
         let mensaje = registerResult.error || 'Error al crear usuario';
-        const mensajeLower = String(mensaje).toLowerCase();
-
-        if (mensajeLower.includes('email-already-in-use') || mensajeLower.includes('already in use')) {
+        if (mensaje.includes('email-already-in-use')) {
           mensaje = 'Este correo ya está registrado';
-        } else if (mensajeLower.includes('weak-password')) {
+        } else if (mensaje.includes('weak-password')) {
           mensaje = 'La contraseña debe tener al menos 6 caracteres';
-        } else if (mensajeLower.includes('invalid-email')) {
+        } else if (mensaje.includes('invalid-email')) {
           mensaje = 'El correo electrónico no es válido';
         }
 
@@ -317,7 +339,7 @@ function RegisterUser({ onUserRegistered }) {
       const registeredUserId = registerResult?.data?.id || null;
       const saleFolio = registerResult?.data?.saleFolio || null;
       const selectedMembership = memberships.find(m => m.id.toString() === formData.membership_id);
-      const shouldValidateSale = Number(selectedPrice) > 0;
+      const shouldValidateSale = formData.user_type === 'CLIENTE' && selectedPriceNumber > 0;
 
       if (shouldValidateSale && saleFolio) {
         const saleCheck = await getSaleByFolio(saleFolio);
@@ -325,9 +347,9 @@ function RegisterUser({ onUserRegistered }) {
           const fallbackSaleByFolio = await createMembershipSale({
             cliente_id: String(registeredUserId || ''),
             metodo_pago: formData.payment_method,
-            total: Number(selectedPrice),
+            total: selectedPriceNumber,
             membership_name: selectedMembership?.name || 'Membresía',
-            monto_recibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : Number(selectedPrice),
+            monto_recibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
             tipo_venta: 'ALTA_MEMBRESIA'
           });
 
@@ -341,9 +363,9 @@ function RegisterUser({ onUserRegistered }) {
         const fallbackSale = await createMembershipSale({
           cliente_id: String(registeredUserId),
           metodo_pago: formData.payment_method,
-          total: Number(selectedPrice),
+          total: selectedPriceNumber,
           membership_name: selectedMembership?.name || 'Membresía',
-          monto_recibido: formData.payment_method === 'EFECTIVO' ? parseFloat(montoRecibido) : Number(selectedPrice),
+          monto_recibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
           tipo_venta: 'ALTA_MEMBRESIA'
         });
 
@@ -353,23 +375,33 @@ function RegisterUser({ onUserRegistered }) {
       }
 
       // --- ÉXITO ---
-      console.log('🎉 [REGISTRO] ¡REGISTRO EXITOSO! Todos los datos guardados correctamente.');
-      setSuccessMessage('¡Cliente Registrado Exitosamente!');
-      
-      const ticketInfo = '✅ Cuenta creada y membresía asignada';
-      const cambioInfo = formData.payment_method === 'EFECTIVO'
-        ? ` • 💰 Cambio: $${cambio.toFixed(2)}`
-        : '';
-      setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
+      if (formData.user_type === 'ENTRENADOR') {
+        setSuccessMessage('¡Entrenador Registrado Exitosamente!');
+        setSuccessSubMessage('Usuario y contraseña creados correctamente.');
+      } else {
+        setSuccessMessage('¡Cliente Registrado Exitosamente!');
+        const ticketInfo = '📧 Comprobante enviado al correo';
+        const cambioInfo = formData.payment_method === 'EFECTIVO'
+          ? ` • 💰 Cambio: $${cambio.toFixed(2)}`
+          : '';
+        setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
+      }
       setShowSuccessModal(true);
+      setRegistrationCompleted(true);
 
-      // Guardar email para ficha y mostrar formulario salud
-        setRecentEmail(normalizedEmail);
-      setShowHealthForm(true);
+        // Guardar email para ficha y mostrar formulario salud solo para cliente
+        if (formData.user_type === 'CLIENTE') {
+          setRecentEmail(formData.email);
+          setShowHealthForm(true);
+        } else {
+          setRecentEmail('');
+          setShowHealthForm(false);
+        }
 
       // Limpieza
       setFormData({ 
-          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', phone: '',
+          user_type: 'CLIENTE',
+          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', 
           membership_id: '', payment_method: 'EFECTIVO' 
       });
       setMontoRecibido('');
@@ -433,10 +465,23 @@ function RegisterUser({ onUserRegistered }) {
       </SuccessModal>
 
       <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-blue-400">
-        Registrar Nuevo Cliente
+        Registro
       </h2>
       
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Registro</label>
+          <select
+            name="user_type"
+            value={formData.user_type}
+            onChange={handleChange}
+            className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+          >
+            <option value="CLIENTE">Cliente</option>
+            <option value="ENTRENADOR">Entrenador</option>
+          </select>
+        </div>
         
         {/* DATOS PERSONALES */}
         <div>
@@ -455,22 +500,17 @@ function RegisterUser({ onUserRegistered }) {
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
-        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Número de Teléfono</label>
-            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" placeholder="10 dígitos" maxLength={10} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
-            <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" maxLength={20} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
-            <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" maxLength={20} required />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
+          <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
+          <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
 
         {/* SECCIÓN DE PAGO Y MEMBRESÍA */}
+        {formData.user_type === 'CLIENTE' && (
         <div className="md:col-span-2 border-t border-gray-700 pt-4 mt-2">
             <h3 className="text-lg font-bold text-cyan-400 mb-4">Asignación Inicial</h3>
             
@@ -539,6 +579,7 @@ function RegisterUser({ onUserRegistered }) {
                 </div>
             )}
         </div>
+          )}
 
         <div className="md:col-span-2 mt-4">
           <button 
@@ -555,7 +596,7 @@ function RegisterUser({ onUserRegistered }) {
                 <span>Procesando...</span>
               </>
             ) : (
-              "Registrar y Asignar"
+              formData.user_type === 'ENTRENADOR' ? 'Registrar Entrenador' : 'Registrar y Asignar'
             )}
           </button>
         </div>

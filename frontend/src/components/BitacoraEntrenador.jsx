@@ -7,9 +7,6 @@ import {
   deleteTrainerNote,
   getCurrentUser 
 } from '../firebase';
-import ConfirmModal from './ConfirmModal';
-import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal';
 
 function BitacoraEntrenador() {
   const [members, setMembers] = useState([]);
@@ -19,10 +16,13 @@ function BitacoraEntrenador() {
   const [editingNote, setEditingNote] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
-  const [errorModal, setErrorModal] = useState({ open: false, title: '', message: '' });
+  const [message, setMessage] = useState({ type: '', text: '' });
   const [currentTrainer, setCurrentTrainer] = useState(null);
-  const [pendingDeleteNote, setPendingDeleteNote] = useState(null);
+
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
 
   const loadCurrentTrainer = () => {
     const user = getCurrentUser();
@@ -39,21 +39,15 @@ function BitacoraEntrenador() {
     if (result.success) {
       setMembers(result.data);
     } else {
-      setErrorModal({
-        open: true,
-        title: 'No se pudo completar la acción',
-        message: `Error al cargar miembros${result.error ? `: ${result.error}` : ''}`
-      });
+      showMessage('error', 'Error al cargar miembros');
     }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    setTimeout(() => {
       loadMembers();
       loadCurrentTrainer();
     }, 0);
-
-    return () => clearTimeout(timer);
   }, []);
 
   const loadNotes = async (memberId) => {
@@ -62,11 +56,7 @@ function BitacoraEntrenador() {
     if (result.success) {
       setNotes(result.data);
     } else {
-      setErrorModal({
-        open: true,
-        title: 'No se pudo completar la acción',
-        message: `Error al cargar notas${result.error ? `: ${result.error}` : ''}`
-      });
+      showMessage('error', 'Error al cargar notas');
     }
     setLoading(false);
   };
@@ -81,7 +71,7 @@ function BitacoraEntrenador() {
   const handleSaveNote = async (e) => {
     e.preventDefault();
     if (!noteText.trim()) {
-      setErrorModal({ open: true, title: 'No se pudo completar la acción', message: 'La nota no puede estar vacía' });
+      showMessage('error', 'La nota no puede estar vacía');
       return;
     }
 
@@ -97,12 +87,12 @@ function BitacoraEntrenador() {
     if (editingNote) {
       result = await updateTrainerNote(editingNote.id, { note: noteText });
       if (result.success) {
-        setSuccessModal({ open: true, title: 'Nota actualizada', message: 'La nota se actualizo correctamente' });
+        showMessage('success', '✅ Nota actualizada correctamente');
       }
     } else {
       result = await createTrainerNote(noteData);
       if (result.success) {
-        setSuccessModal({ open: true, title: 'Nota guardada', message: 'La nota se guardo correctamente' });
+        showMessage('success', '✅ Nota guardada correctamente');
       }
     }
 
@@ -111,7 +101,7 @@ function BitacoraEntrenador() {
       setEditingNote(null);
       loadNotes(selectedMember.id);
     } else {
-      setErrorModal({ open: true, title: 'No se pudo completar la acción', message: 'Error al guardar la nota' });
+      showMessage('error', 'Error al guardar la nota');
     }
   };
 
@@ -120,22 +110,16 @@ function BitacoraEntrenador() {
     setNoteText(note.note);
   };
 
-  const handleDeleteNote = (note) => {
-    setPendingDeleteNote(note);
-  };
+  const handleDeleteNote = async (noteId) => {
+    if (!confirm('¿Estás seguro de eliminar esta nota?')) return;
 
-  const handleConfirmDeleteNote = async () => {
-    if (!pendingDeleteNote?.id) return;
-
-    const result = await deleteTrainerNote(pendingDeleteNote.id);
+    const result = await deleteTrainerNote(noteId);
     if (result.success) {
-      setSuccessModal({ open: true, title: 'Nota eliminada', message: 'La nota se elimino correctamente' });
+      showMessage('success', '🗑️ Nota eliminada');
       loadNotes(selectedMember.id);
     } else {
-      setErrorModal({ open: true, title: 'No se pudo completar la acción', message: 'Error al eliminar la nota' });
+      showMessage('error', 'Error al eliminar la nota');
     }
-
-    setPendingDeleteNote(null);
   };
 
   const handleCancelEdit = () => {
@@ -169,6 +153,16 @@ function BitacoraEntrenador() {
           </h1>
           <p className="text-slate-400">Sistema de seguimiento técnico - Uso exclusivo de entrenadores</p>
         </div>
+
+        {message.text && (
+          <div className={`mb-4 p-4 rounded-lg border ${
+            message.type === 'success' 
+              ? 'bg-green-900/20 border-green-500 text-green-400' 
+              : 'bg-red-900/20 border-red-500 text-red-400'
+          }`}>
+            {message.text}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
@@ -306,7 +300,7 @@ function BitacoraEntrenador() {
                                 ✏️
                               </button>
                               <button
-                                onClick={() => handleDeleteNote(note)}
+                                onClick={() => handleDeleteNote(note.id)}
                                 className="text-red-400 hover:text-red-300 transition-colors p-2"
                                 title="Eliminar nota"
                               >
@@ -314,8 +308,8 @@ function BitacoraEntrenador() {
                               </button>
                             </div>
                           </div>
-                          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700 overflow-x-hidden">
-                            <p className="text-white whitespace-pre-wrap wrap-anywhere leading-relaxed">{note.note}</p>
+                          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <p className="text-white whitespace-pre-wrap leading-relaxed">{note.note}</p>
                           </div>
                         </div>
                       ))}
@@ -339,32 +333,6 @@ function BitacoraEntrenador() {
           </div>
         </div>
       </div>
-
-      <ConfirmModal
-        isOpen={Boolean(pendingDeleteNote)}
-        onClose={() => setPendingDeleteNote(null)}
-        onConfirm={handleConfirmDeleteNote}
-        title="Eliminar nota"
-        message={
-          pendingDeleteNote
-            ? `¿Estás seguro de eliminar esta nota? ${String(pendingDeleteNote.note || '').slice(0, 80)}${String(pendingDeleteNote.note || '').length > 80 ? '...' : ''}`
-            : ''
-        }
-      />
-
-      <SuccessModal
-        isOpen={successModal.open}
-        title={successModal.title}
-        message={successModal.message}
-        onClose={() => setSuccessModal({ open: false, title: '', message: '' })}
-      />
-
-      <ErrorModal
-        isOpen={errorModal.open}
-        title={errorModal.title || 'No se pudo completar la acción'}
-        message={errorModal.message}
-        onClose={() => setErrorModal({ open: false, title: '', message: '' })}
-      />
 
     
     </div>

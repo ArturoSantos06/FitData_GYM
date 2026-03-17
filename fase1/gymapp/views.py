@@ -417,6 +417,10 @@ MÉTODO DE PAGO:     {nueva_venta.metodo_pago}
 @api_view(['POST'])
 def register_user_with_membership(request):
     data = request.data
+    user_type = str(data.get('user_type', 'CLIENTE')).upper()
+
+    if user_type not in ['CLIENTE', 'ENTRENADOR']:
+        return Response({'error': 'Tipo de registro inválido'}, status=status.HTTP_400_BAD_REQUEST)
     
     # Validaciones previas
     user_serializer = UserSerializer(data=data)
@@ -428,15 +432,22 @@ def register_user_with_membership(request):
             # 1. Crear Usuario
             user = user_serializer.save()
 
-            # 2. Datos de Membresía y Pago
+            # 2. Si es entrenador, no requiere membresía ni venta
+            if user_type == 'ENTRENADOR':
+                return Response({'status': 'Entrenador creado exitosamente'}, status=201)
+
+            if not data.get('membership_id'):
+                return Response({'error': 'membership_id es requerido para clientes'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 3. Datos de Membresía y Pago
             membership = MembershipType.objects.get(id=data['membership_id'])
             payment_method = data.get('payment_method', 'EFECTIVO')
             monto_recibido = float(data.get('monto_recibido', 0)) # Nuevo dato
 
-            # 3. Calcular fecha de vencimiento
+            # 4. Calcular fecha de vencimiento
             fecha_vencimiento = timezone.now().date() + timedelta(days=membership.duration_days)
 
-            # 4. Crear Miembro (para check-in/QR) con fecha de vencimiento
+            # 5. Crear Miembro (para check-in/QR) con fecha de vencimiento
             Miembro.objects.create(
                 nombre=user.first_name,
                 apellido=user.last_name,
@@ -445,10 +456,10 @@ def register_user_with_membership(request):
                 user=user
             )
 
-            # 5. Asignar Membresía
+            # 6. Asignar Membresía
             UserMembership.objects.create(user=user, membership_type=membership)
 
-            # 5. Registrar Venta (Solo si tiene precio)
+            # 7. Registrar Venta (Solo si tiene precio)
             if membership.price > 0:
                 nueva_venta = Venta.objects.create(
                     cliente=user,
@@ -457,7 +468,7 @@ def register_user_with_membership(request):
                     detalle_productos=f"[{{'nombre': 'Membresía: {membership.name}', 'precio': {membership.price}, 'cantidad': 1}}]"
                 )
 
-                # --- 6. ENVIAR TICKET POR CORREO ---
+                # --- 8. ENVIAR TICKET POR CORREO ---
                 if user.email:
                     try:
                         fecha_local = timezone.localtime(nueva_venta.fecha)

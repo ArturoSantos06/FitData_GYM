@@ -29,15 +29,9 @@ const CheckInOut = () => {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      cargarAsistencias();
-    }, 0);
-
+    setTimeout(() => cargarAsistencias(), 0);
     const interval = setInterval(cargarAsistencias, 10000);
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [dateFilter, searchTerm]);
 
   const procesarQR = async (qrCode) => {
@@ -77,6 +71,7 @@ const CheckInOut = () => {
     }
   };
 
+  // Inicializar escáner cuando se activa
   const stopScanner = async () => {
     if (html5QrcodeRef.current?.isScanning) {
       try {
@@ -89,7 +84,6 @@ const CheckInOut = () => {
     setScanning(false);
   };
 
-  // Inicializar escáner cuando se activa
   useEffect(() => {
     const startScanner = async () => {
       if (scanning && !html5QrcodeRef.current) {
@@ -109,9 +103,7 @@ const CheckInOut = () => {
               procesarQR(decodedText);
               stopScanner();
             },
-            () => {
-              // Ignorar errores de "no se encontró código"
-            }
+            () => { /* ignorar errores de no se encontró código */ }
           );
         } catch (err) {
           console.error("Error iniciando escáner:", err);
