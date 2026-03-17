@@ -7,7 +7,7 @@ import { getFunctions } from "firebase/functions";
 const readEnv = (key) => {
   const raw = import.meta.env[key];
   if (!raw) return "";
-  return String(raw).trim().replace(/^['\"]|['\"]$/g, "");
+  return String(raw).trim().replace(/^['"]|['"]$/g, "");
 };
 
 const firebaseConfig = {

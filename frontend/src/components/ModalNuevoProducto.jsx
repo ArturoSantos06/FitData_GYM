@@ -6,7 +6,6 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
 
@@ -20,7 +19,6 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
         setShowError('');
         
         try {
@@ -65,11 +63,9 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
             setTimeout(() => {
                 setShowSuccess(false);
                 onClose();
-                setIsLoading(false);
             }, 1800);
         } catch (error) { 
             setShowError(error.message || 'Error al crear producto');
-            setIsLoading(false);
         }
     };
 

@@ -247,7 +247,11 @@ function DietRepositoryAdmin() {
   };
 
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const normalizedMembers = useMemo(() => {

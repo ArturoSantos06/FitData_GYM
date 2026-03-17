@@ -123,7 +123,7 @@ function PuntoDeVenta() {
             } else {
                 alert("Error al eliminar: " + result.error);
             }
-        } catch (error) { alert("Error al eliminar"); }
+        } catch { alert("Error al eliminar"); }
     };
 
     // --- Eliminación Carrito ---

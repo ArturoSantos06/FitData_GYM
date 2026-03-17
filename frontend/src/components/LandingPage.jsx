@@ -595,7 +595,7 @@ function ContactSection() {
       } else {
         setMessage('Hubo un error al enviar el mensaje. Por favor intenta de nuevo.');
       }
-    } catch (error) {
+    } catch {
       setMessage('Error de conexión. Por favor intenta más tarde.');
     } finally {
       setSending(false);

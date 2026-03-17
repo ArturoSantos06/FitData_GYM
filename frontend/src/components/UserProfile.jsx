@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-import { auth, getUser, getUserByAuthUid, getUserByEmail, getMemberByUserId, getMemberByAuthUid, createHealthProfile, getHealthProfileByMemberId, updateUser, updateMemberPhoneByUserId, updateMemberEmailByUserId, updateMembershipEmailByUserId, updateClientEmailInAuth, getCurrentUser } from '../firebase';
+import { getUser, getUserByAuthUid, getUserByEmail, getMemberByUserId, getMemberByAuthUid, createHealthProfile, getHealthProfileByMemberId, updateUser, updateMemberPhoneByUserId, updateClientEmailInAuth, getCurrentUser } from '../firebase';
 import SuccessModal from './SuccessModal';
 import ErrorModal from './ErrorModal';
 
@@ -469,19 +469,6 @@ const PersonalData = ({ user, onSave, onBack }) => {
         const [saving, setSaving] = useState(false);
         const [errorMsg, setErrorMsg] = useState('');
         const [successMsg, setSuccessMsg] = useState('');
-        const [miembroId, setMiembroId] = useState(null);
-
-        useEffect(() => {
-            const loadMiembro = async () => {
-                try {
-                    const memberResult = await getMemberByUserId(editForm.id);
-                    if (memberResult.success && memberResult.data) {
-                        setMiembroId(memberResult.data.id);
-                    }
-                } catch (err) { console.error(err); }
-            };
-            if (editForm.id) loadMiembro();
-        }, [editForm.id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -631,7 +618,6 @@ const HealthSection = ({ onBack }) => {
 function UserProfile() {
     const [currentView, setCurrentView] = useState('menu');
     const [user, setUser] = useState(null);
-    const [miembro, setMiembro] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [profileSuccessModal, setProfileSuccessModal] = useState({ isOpen: false, title: '', message: '' });
@@ -691,7 +677,6 @@ function UserProfile() {
                         memberResult = await getMemberByAuthUid(currentUser.uid);
                     }
                     if (memberResult.success && memberResult.data) {
-                        setMiembro(memberResult.data);
                         setUser(prev => ({
                             ...prev,
                             telefono: memberResult.data.telefono || prev.telefono

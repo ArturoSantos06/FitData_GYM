@@ -6,7 +6,6 @@ function ClientStore() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,7 +33,6 @@ function ClientStore() {
       try {
         if (!currentUser) {
           if (isMounted) {
-            setUser(null);
             setSales([]);
           }
           return;
@@ -59,10 +57,6 @@ function ClientStore() {
                 internalUserId = userByEmail.data.id;
               }
             }
-          }
-
-          if (isMounted && resolvedUser) {
-            setUser(resolvedUser);
           }
 
           const salesResult = await getSales({
@@ -126,7 +120,9 @@ function ClientStore() {
             try {
               const parsed = JSON.parse(String(s.detalle_productos || '[]').replace(/'/g, '"'));
               if (Array.isArray(parsed)) items = parsed;
-            } catch {}
+            } catch {
+              items = [];
+            }
             const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || Date.now());
             const fechaStr = fechaObj.toLocaleDateString('es-MX');
             const horaStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

@@ -24,11 +24,6 @@ function BitacoraEntrenador() {
   const [currentTrainer, setCurrentTrainer] = useState(null);
   const [pendingDeleteNote, setPendingDeleteNote] = useState(null);
 
-  useEffect(() => {
-    loadMembers();
-    loadCurrentTrainer();
-  }, []);
-
   const loadCurrentTrainer = () => {
     const user = getCurrentUser();
     if (user) {
@@ -51,6 +46,15 @@ function BitacoraEntrenador() {
       });
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMembers();
+      loadCurrentTrainer();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const loadNotes = async (memberId) => {
     setLoading(true);

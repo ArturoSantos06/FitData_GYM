@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, getProducts, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
+import { registerClientByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
@@ -188,7 +188,6 @@ function RegisterUser({ onUserRegistered }) {
   const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
-  const [registrationCompleted, setRegistrationCompleted] = useState(false);
 
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);
@@ -363,7 +362,6 @@ function RegisterUser({ onUserRegistered }) {
         : '';
       setSuccessSubMessage(`${ticketInfo}${cambioInfo}`);
       setShowSuccessModal(true);
-      setRegistrationCompleted(true);
 
       // Guardar email para ficha y mostrar formulario salud
         setRecentEmail(normalizedEmail);

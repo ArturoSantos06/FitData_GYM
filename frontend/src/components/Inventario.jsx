@@ -16,22 +16,6 @@ function Inventario() {
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUserName, setCurrentUserName] = useState('Sistema');
 
-  useEffect(() => {
-    cargarDatos();
-    
-    // Cargar nombre del usuario actual
-    const loadUser = async () => {
-      const user = getCurrentUser();
-      if (user) {
-        const userResult = await getUser(user.uid);
-        if (userResult.success) {
-          setCurrentUserName(userResult.data.username || userResult.data.email || 'Sistema');
-        }
-      }
-    };
-    loadUser();
-  }, []);
-
   const cargarDatos = async () => {
     try {
       // 1. Cargar Productos 
@@ -49,6 +33,25 @@ function Inventario() {
       console.error(error); 
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      cargarDatos();
+    }, 0);
+    
+    // Cargar nombre del usuario actual
+    const loadUser = async () => {
+      const user = getCurrentUser();
+      if (user) {
+        const userResult = await getUser(user.uid);
+        if (userResult.success) {
+          setCurrentUserName(userResult.data.username || userResult.data.email || 'Sistema');
+        }
+      }
+    };
+    loadUser();
+    return () => clearTimeout(timer);
+  }, []);
 
   const abrirModal = (prod) => {
     setSelectedProduct(prod);
@@ -154,7 +157,7 @@ function Inventario() {
                     <tr><td colSpan="4" className="text-center py-4 italic">No hay registros aún.</td></tr>
                 ) : (
                     historial.map((item) => {
-                      const fechaObj = item.fecha?.toDate?.() || new Date(item.fecha || Date.now());
+                      const fechaObj = item.fecha?.toDate?.() || new Date(item.fecha || 0);
                       return (
                         <tr key={item.id} className="border-b border-slate-700 hover:bg-slate-700/50">
                             <td className="px-4 py-3 text-xs">

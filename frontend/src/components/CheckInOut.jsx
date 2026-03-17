@@ -4,7 +4,6 @@ import { checkInMember, checkOutMember, getAttendances } from '../firebase';
 
 const CheckInOut = () => {
   const [scanning, setScanning] = useState(false);
-  const [action, setAction] = useState('check-in'); // 'check-in' o 'check-out'
   const [asistencias, setAsistencias] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -30,9 +29,15 @@ const CheckInOut = () => {
   };
 
   useEffect(() => {
-    cargarAsistencias();
+    const timer = setTimeout(() => {
+      cargarAsistencias();
+    }, 0);
+
     const interval = setInterval(cargarAsistencias, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [dateFilter, searchTerm]);
 
   const procesarQR = async (qrCode) => {
@@ -72,6 +77,18 @@ const CheckInOut = () => {
     }
   };
 
+  const stopScanner = async () => {
+    if (html5QrcodeRef.current?.isScanning) {
+      try {
+        await html5QrcodeRef.current.stop();
+        html5QrcodeRef.current = null;
+      } catch (err) {
+        console.error("Error deteniendo escáner:", err);
+      }
+    }
+    setScanning(false);
+  };
+
   // Inicializar escáner cuando se activa
   useEffect(() => {
     const startScanner = async () => {
@@ -92,7 +109,7 @@ const CheckInOut = () => {
               procesarQR(decodedText);
               stopScanner();
             },
-            (errorMessage) => {
+            () => {
               // Ignorar errores de "no se encontró código"
             }
           );
@@ -112,18 +129,6 @@ const CheckInOut = () => {
       }
     };
   }, [scanning]);
-
-  const stopScanner = async () => {
-    if (html5QrcodeRef.current?.isScanning) {
-      try {
-        await html5QrcodeRef.current.stop();
-        html5QrcodeRef.current = null;
-      } catch (err) {
-        console.error("Error deteniendo escáner:", err);
-      }
-    }
-    setScanning(false);
-  };
 
   const handleManualSubmit = (e) => {
     e.preventDefault();

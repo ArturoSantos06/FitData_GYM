@@ -2,7 +2,6 @@ import {
   ref,
   uploadBytes,
   getDownloadURL,
-  getBlob,
   deleteObject
 } from "firebase/storage";
 import { storage, auth } from "./config";

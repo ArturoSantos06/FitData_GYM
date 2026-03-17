@@ -37,7 +37,6 @@ function AssignMembership({ onSuccess }) {
 
   // Estados de UI
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [conflictData, setConflictData] = useState(null);
   
   // Modal de Éxito
@@ -115,7 +114,6 @@ function AssignMembership({ onSuccess }) {
 
   const submitAssignment = async (forceRenew = false) => {
     setError('');
-    setMessage('');
     
     if (!selectedUser || !selectedMembership) {
       setError('Selecciona cliente y membresía.'); return;

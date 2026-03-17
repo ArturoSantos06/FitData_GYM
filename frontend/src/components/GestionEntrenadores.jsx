@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase/config';
 import { Users, Calendar, TrendingUp, DollarSign, Clock, Search, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
 
 function GestionEntrenadores() {
