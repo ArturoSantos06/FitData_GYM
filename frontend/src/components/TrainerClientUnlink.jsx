@@ -130,8 +130,8 @@ function TrainerClientUnlink() {
              </button>
          </div>            
 
-        {/* Tabla */} 
-        <div className="overflow-x-auto">
+         {/* Tabla */} 
+         <div className="overflow-x-auto">
             <table className="w-full border-collapse mt-2">
                 <thead>
                     <tr className="bg-gray-700 text-left text-gray-300 uppercase text-xs tracking-wider">

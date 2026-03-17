@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
+import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
 
 // Herramientas exactas de Firebase //
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -65,119 +65,110 @@ const ClientCoachView = () => {
     };
 
     if (loading) {
-        return <div className="text-gray-300 text-center mt-10 font-bold">Cargando información de tu entrenador...</div>;
+        return <div className="text-slate-400 text-center mt-10 font-medium flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+            Cargando estado del servicio...
+        </div>;
     }
 
     if (!clienteId) {
         return (
-            <div className="bg-gray-800 p-8 rounded-xl max-w-md mx-auto mt-10 text-center border border-red-500">
+            <div className="bg-slate-900 p-8 rounded-xl max-w-md mx-auto text-center border border-red-500/30">
                 <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
                 <h2 className="text-xl text-white font-bold mb-2">Acceso Denegado</h2>
-                <p className="text-gray-400">Por favor, inicia sesión para ver la información de tu entrenador.</p>
+                <p className="text-slate-400">Por favor, inicia sesión para gestionar tus servicios.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-purple-400 text-gray-100 font-sans max-w-3xl mx-auto">
-            {/* Header */}
-            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-purple-400 to-blue-400 mb-4">
-                Mi entrenador
-            </h2>
-            
-            {/* Card de información del entrenador */}
-            <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <div className="w-24 h-24 rounded-full flex items-center justify-center text-slate-500 border-2 border-slate-600 shadow-inner shrink-0">
-                    <User size={48} />
+        <div className="w-full flex justify-center animate-fade-in">
+            <div className="relative w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">
+                
+                {/* LÍNEA SUPERIOR DEGRADADA */}
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-red-500 to-orange-400"></div>
+                
+                <div className="text-center md:text-left mb-8">
+                    <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-red-400 to-orange-400">
+                        Gestión de Servicio
+                    </h2>
+                    <p className="text-slate-400 font-medium mt-1.5">
+                        Administra tu suscripción al área de entrenamiento.
+                    </p>
                 </div>
-                <div className="text-center sm:text-left flex-1">
-                    <h3 className="text-2xl font-bold text-white"> Entrenador </h3> 
-                    <p className="text-sm text-gray-400 mt-1.5"> Especialidad</p>              
+
+                {/* CONTENIDO PRINCIPAL: ESTADO DEL SERVICIO */}
+                <div className="bg-slate-900 rounded-xl border border-slate-700 p-8 text-center flex flex-col items-center">
                     
-                    <div className="mt-4">
-                        {serviceStatus === 'active' ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border bg-green-900/20 text-green-400 border-green-500/50">
-                                <span className="w-2 h-2 rounded-full mr-2 bg-green-500 animate-pulse"></span>
-                                Entrenador activo
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border bg-gray-900/50 text-gray-400 border-gray-600">
-                               <span className="w-2 h-2 rounded-full mr-2 bg-gray-500"></span>
-                                Servicio Detenido                  
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Resumen de plan */}
-            <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 mb-8">
-                <h4 className="text-lg font-semibold text-gray-200 mb-4 flex items-center justify-center sm:justify-start gap-2">
-                    <Calendar size={20} className="text-blue-400"/> Resumen de tu Plan
-                </h4>
-                <ul className="text-sm text-gray-400 space-y-3">
-                    <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        <strong className="text-gray-300">Próximo corte:</strong> 15 de Abril, 2026
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        <strong className="text-gray-300">Rutinas asignadas:</strong> 3 rutinas activas esta semana
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        <strong className="text-gray-300">Mensualidad:</strong> Pagada al corriente
-                    </li>
-                </ul>
-            </div>
-
-            {/* Botones de acción */}
-            {serviceStatus === 'active' && (
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <button className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg font-bold transition-all border border-slate-600">
-                        <RefreshCw size={18} />
-                        Cambiar de Entrenador
-                    </button>
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex-1 flex items-center justify-center gap-2 bg-red-900/40 hover:bg-red-600 text-red-400 hover:text-white py-3 px-4 rounded-lg font-bold transition-all border border-red-700/50 hover:border-red-600"
-                    >
-                        <XCircle size={18} />
-                        Detener Servicio
-                    </button>
-                </div>
-            )}
-
-            {/* Modal para confirmar */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
-                        <div className="flex items-center gap-3 text-red-400 mb-4">
-                            <AlertTriangle size={28} />
-                            <h3 className="text-xl font-bold">¿Desvincular Entrenador?</h3>
-                        </div>
-                        <p className="text-gray-300 text-sm mb-6 leading-relaxed">
-                            Al detener el servicio, perderás el acceso inmediato a tus rutinas personalizadas y tu historial con el Coach Roberto. 
-                            <br/><br/>
-                            <span className="text-gray-400 italic">Esta acción se notificará al entrenador automáticamente.</span>
-                        </p>
-                        <div className="flex justify-end gap-3">
+                    {serviceStatus === 'active' ? (
+                        <>
+                            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-4 border border-green-500/20">
+                                <CheckCircle2 size={40} className="text-green-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Servicio de Entrenador Activo</h3>
+                            <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8 leading-relaxed">
+                                Actualmente estás vinculado a un entrenador. Si decides detener el servicio, se notificará a la administración y no se te cobrará el próximo mes.
+                            </p>
+                            
                             <button 
-                                onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all text-sm"
+                                onClick={() => setIsModalOpen(true)}
+                                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-red-900/40 hover:bg-red-600 text-red-400 hover:text-white font-bold transition-all border border-red-700/50 hover:border-red-600 flex items-center justify-center gap-2"
                             >
-                                Cancelar
+                                <XCircle size={20} />
+                                Detener Servicio
                             </button>
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4 border border-slate-600">
+                                <XCircle size={40} className="text-slate-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Servicio Detenido</h3>
+                            <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8 leading-relaxed">
+                                Actualmente no estás recibiendo el servicio de entrenamiento personalizado.
+                            </p>
                             <button 
-                                onClick={handleCancelService}
-                                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-all shadow-lg shadow-red-900/50 text-sm"
+                                onClick={() => alert("Próximamente: Podrás volver a contratar el servicio desde la Tienda.")}
+                                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all border border-slate-600"
                             >
-                                Sí, detener servicio
+                                Reactivar Servicio
                             </button>
+                        </>
+                    )}
+
+                </div>
+
+                {/* MODAL PARA CONFIRMAR CANCELACIÓN */}
+                {isModalOpen && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl animate-fade-in">
+                            <div className="flex items-center gap-3 text-red-400 mb-4">
+                                <AlertTriangle size={28} />
+                                <h3 className="text-xl font-bold">¿Detener Servicio?</h3>
+                            </div>
+                            <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                                Al confirmar, perderás el acceso a tus rutinas personalizadas y se cortará la comunicación con tu entrenador. 
+                                <br/><br/>
+                                <span className="text-slate-400 italic">Esta acción no puede deshacerse desde esta pantalla.</span>
+                            </p>
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-6 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all w-full sm:w-auto"
+                                >
+                                    No, regresar
+                                </button>
+                                <button 
+                                    onClick={handleCancelService}
+                                    className="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-all shadow-lg shadow-red-900/50 w-full sm:w-auto"
+                                >
+                                    Sí, detener servicio
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

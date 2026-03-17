@@ -2,29 +2,29 @@ import React from 'react';
 import { QrCode, ShoppingBag, Dumbbell, User, LogOut, MessageSquare } from 'lucide-react';
 
 const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
+  // Solo las 5 pestañas principales para un UX perfecto en móvil
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
-    { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
-    { id: 'rutina', label: 'Rutina', icon: Dumbbell },
-    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare }, // <-- Nueva pestaña de mensajería
+    { id: 'plan', label: 'Mi Plan', icon: Dumbbell }, // <-- Agrupa Rutina, Entrenador y Nutriólogo
+    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare }, 
+    { id: 'tienda', label: 'Tienda', icon: ShoppingBag }, // <-- Agrupa Catálogo y Servicios
     { id: 'perfil', label: 'Perfil', icon: User },
-    { id: 'servicios', label: 'Servicios', icon: User },
-
   ];
 
   return (
     <>
-      {/* --- Menú de Escritorio --- */}
-      <header className="hidden md:flex fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 z-50 h-20 items-center px-8 justify-center shadow-2xl">
-        <div className="flex items-center gap-5">
-          <span className="text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400 mr-4 cursor-pointer">
+      {/* --- MENÚ DE ESCRITORIO --- */}
+      <header className="hidden md:flex fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 z-50 h-20 items-center px-8 justify-between shadow-2xl">
+        <div className="flex items-center gap-8">
+          {/* Logo */}
+          <span className="text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400 cursor-pointer">
             FitData <span className="text-white">GYM</span>
           </span>
 
-          <nav className="flex items-center gap-4">
+          {/* Navegación Centrada */}
+          <nav className="flex items-center gap-2">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
-              // Eliminé const Icon = tab.icon; de aquí porque no se usa en escritorio
               return (
                 <button
                   key={tab.id}
@@ -42,19 +42,33 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
           </nav>
         </div>
 
+        {/* Botón Salir (Escritorio) */}
         <div className="pl-8 border-l border-slate-800/50">
           <button
             onClick={onLogout}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-md shadow-lg shadow-red-600/20 transition-transform active:scale-95 text-sm"
+            className="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2 rounded-md shadow-lg shadow-red-900/50 transition-transform active:scale-95 text-sm"
           >
             Salir
           </button>
         </div>
       </header>
 
-      {/* --- Menú Móvil --- */}
+      {/* --- HEADER MÓVIL (Logo y Salir) --- */}
+      {/* Esto permite que la barra inferior tenga solo 5 botones sin amontonarse */}
+      <header className="md:hidden fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 z-50 h-16 flex items-center justify-between px-4">
+        <span className="text-lg font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400">
+          FitData <span className="text-white">GYM</span>
+        </span>
+        <button
+          onClick={onLogout}
+          className="text-red-400 hover:text-red-300 p-2 flex items-center gap-2"
+        >
+          <LogOut size={20} />
+        </button>
+      </header>
+
+      {/* --- MENÚ MÓVIL INFERIOR (Las 5 Pestañas) --- */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        {/* Cambié grid-cols-4 a grid-cols-5 para acomodar el nuevo tab */}
         <div className="grid grid-cols-5 h-full"> 
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -64,28 +78,18 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center justify-center gap-1 ${
-                  isActive ? 'text-blue-400' : 'text-slate-500'
+                  isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 <div className={`w-6 h-6 transition-all ${
-                  isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''
+                  isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : ''
                 }`}>
-                  <Icon size={24} />
+                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </button>
             );
           })}
-          
-          <button
-            onClick={onLogout}
-            className="flex flex-col items-center justify-center gap-1 text-red-400"
-          >
-            <div className="w-6 h-6">
-              <LogOut size={24} />
-            </div>
-            <span className="text-[10px] font-medium">Salir</span>
-          </button>
         </div>
       </nav>
     </>

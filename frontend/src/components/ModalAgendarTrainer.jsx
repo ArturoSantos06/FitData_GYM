@@ -83,47 +83,55 @@ const ModalAgendarTrainer = ({ fecha, miembro, rutinaInicial, todosLosEntrenos, 
     }
   };
 
+  // --- CAMBIOS DE DISEÑO ---
   return (
-    <div className="absolute inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
       {dialog && <DialogoSistemaNutri {...dialog} />}
       
-      <div className="bg-[#1e293b] border border-orange-500/30 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md">
+      {/* Borde exterior ahora  */}
+      <div className="bg-[#1e293b] border border-cyan-500/30 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md">
         <h3 className="text-xl font-black italic mb-6 uppercase text-white tracking-tighter">Programar Entrenamiento</h3>
         
         <div className="space-y-5">
+            {/* Icono de Calendario  */}
             <div className="flex items-center gap-3 bg-[#0f172a] p-4 rounded-2xl border border-slate-800">
-                <CalIcon size={18} className="text-orange-400" />
+                <CalIcon size={18} className="text-cyan-400" />
                 <span className="text-xs font-black uppercase text-slate-300">{fecha}</span>
             </div>
 
+            {/* Input de Enfoque */}
             <div className="relative">
-                <Activity size={18} className="absolute left-4 top-4 text-orange-400/50" />
+                <Activity size={18} className="absolute left-4 top-4 text-cyan-400/50" />
                 <input 
                   placeholder="Enfoque (ej. Tren Inferior)"
-                  className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-12 text-white outline-none font-bold focus:ring-1 focus:ring-orange-500"
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-12 text-white outline-none font-bold focus:ring-1 focus:border-cyan-500 focus:ring-cyan-500 transition-all"
                   value={enfoque} onChange={(e) => setEnfoque(e.target.value)}
                 />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+                {/* Input Hora Inicio */}
                 <div className="relative">
-                    <Clock size={14} className="absolute left-4 top-4 text-orange-400" />
+                    <Clock size={14} className="absolute left-4 top-4 text-cyan-400" />
                     <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none" />
+                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:border-cyan-500 focus:ring-cyan-500 transition-all" />
                 </div>
+                {/* Input Hora Fin  */}
                 <div className="relative">
-                    <Clock size={14} className="absolute left-4 top-4 text-red-400" />
+                    <Clock size={14} className="absolute left-4 top-4 text-blue-400" />
                     <input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none" />
+                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500 transition-all" />
                 </div>
             </div>
         </div>
 
         <div className="flex gap-3 mt-8">
-          <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-transparent border border-red-500/50 text-red-500 font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all">
+          {/* Botón Cancelar ) */}
+          <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-transparent border border-slate-600 text-slate-400 font-black text-[10px] uppercase hover:bg-slate-800 hover:text-white transition-all">
             Cancelar
           </button>
-          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 text-white font-black text-[10px] uppercase shadow-lg shadow-orange-900/40">
+          {/* Botón Confirmar  */}
+          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40 transition-all">
             Confirmar Plan
           </button>
         </div>

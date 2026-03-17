@@ -111,7 +111,7 @@ function BitacoraEntrenador({ embedded = false }) {
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!confirm('¿Estás seguro de eliminar esta nota?')) return;
+    if (!window.confirm('¿Estás seguro de eliminar esta nota?')) return;
 
     const result = await deleteTrainerNote(noteId);
     if (result.success) {
@@ -145,17 +145,22 @@ function BitacoraEntrenador({ embedded = false }) {
   };
 
   return (
-    <div className={embedded ? "w-full bg-linear-to-br from-gray-900/60 via-slate-900/60 to-gray-900/60 p-4 rounded-xl border border-slate-800" : "w-full min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-gray-900 p-6"}>
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-2">
-            📝 Bitácora de Notas
-          </h1>
-          <p className="text-slate-400">Sistema de seguimiento técnico - Uso exclusivo de entrenadores</p>
-        </div>
+    <div className={embedded ? "w-full" : "min-h-screen bg-slate-950 p-4 md:p-8"}>
+      
+      {/* CAJA PRINCIPAL UNIFICADA  */}
+      <div className={`bg-gray-800 p-6 rounded-xl shadow-xl border-t-4 border-purple-500 text-gray-100 font-sans max-w-[1400px] mx-auto ${!embedded && 'mt-6'}`}>
+        
+        <header className="mb-8 border-b border-gray-700 pb-5">
+          <div>
+            <h1 className="text-3xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent pb-1.5 flex items-center gap-3">
+              📝 Bitácora de Notas
+            </h1>
+            <p className="text-slate-400 font-medium mt-1.5">Sistema de seguimiento técnico - Uso exclusivo de entrenadores</p>
+          </div>
+        </header>
 
         {message.text && (
-          <div className={`mb-4 p-4 rounded-lg border ${
+          <div className={`mb-6 p-4 rounded-lg border font-bold ${
             message.type === 'success' 
               ? 'bg-green-900/20 border-green-500 text-green-400' 
               : 'bg-red-900/20 border-red-500 text-red-400'
@@ -165,11 +170,12 @@ function BitacoraEntrenador({ embedded = false }) {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* COLUMNA IZQUIERDA: LISTA DE CLIENTES */}
           <div className="lg:col-span-1">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
-              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">👥</span>
-                Clientes
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl h-full">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span className="text-2xl">👥</span> Clientes
               </h2>
               
               <input
@@ -177,60 +183,64 @@ function BitacoraEntrenador({ embedded = false }) {
                 placeholder="Buscar cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:border-purple-500 outline-none mb-4"
+                className="w-full bg-slate-950 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:border-purple-500 outline-none mb-4 transition-colors"
               />
 
-              <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto custom-scrollbar">
+              <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto custom-scrollbar pr-2">
                 {filteredMembers.map(member => (
                   <button
                     key={member.id}
                     onClick={() => handleSelectMember(member)}
-                    className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                    className={`w-full text-left p-3 rounded-lg transition-all duration-200 border ${
                       selectedMember?.id === member.id
-                        ? 'bg-linear-to-r from-purple-600 to-blue-600 text-white shadow-lg transform scale-105'
-                        : 'bg-slate-900/50 border border-slate-700 text-slate-300 hover:border-purple-500 hover:bg-slate-800'
+                        ? 'bg-linear-to-r from-purple-600 to-blue-600 text-white shadow-lg transform scale-[1.02] border-transparent'
+                        : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:border-purple-500/50 hover:bg-slate-800'
                     }`}
                   >
-                    <p className="font-medium">{member.nombre}</p>
-                    <p className="text-xs opacity-70">{member.email}</p>
+                    <p className="font-bold">{member.nombre}</p>
+                    <p className={`text-xs ${selectedMember?.id === member.id ? 'text-purple-200' : 'text-slate-500'}`}>
+                      {member.email}
+                    </p>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
+          {/* COLUMNA DERECHA: NOTAS DEL CLIENTE */}
           <div className="lg:col-span-2">
             {selectedMember ? (
               <div className="space-y-6">
-                <div className="bg-linear-to-r from-purple-900/50 to-blue-900/50 backdrop-blur-sm border border-purple-500/30 rounded-xl p-6 shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-white mb-1">{selectedMember.nombre}</h2>
-                      <p className="text-slate-300 text-sm">{selectedMember.email}</p>
-                      {selectedMember.telefono && (
-                        <p className="text-slate-400 text-sm">📞 {selectedMember.telefono}</p>
-                      )}
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
-                      <p className="text-xs text-slate-300">Total de notas</p>
-                      <p className="text-2xl font-bold text-white text-center">{notes.length}</p>
-                    </div>
+                
+                {/* TARJETA DE RESUMEN DEL CLIENTE  */}
+                <div className="bg-linear-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-xl p-6 shadow-xl flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-1">{selectedMember.nombre}</h2>
+                    <p className="text-slate-300 text-sm">{selectedMember.email}</p>
+                    {selectedMember.telefono && (
+                      <p className="text-slate-400 text-sm mt-1">📞 {selectedMember.telefono}</p>
+                    )}
+                  </div>
+                  <div className="bg-black/20 rounded-lg px-6 py-3 border border-white/10 shadow-inner">
+                    <p className="text-xs text-slate-300 font-bold uppercase tracking-wider mb-1">Total Notas</p>
+                    <p className="text-3xl font-black text-white text-center">{notes.length}</p>
                   </div>
                 </div>
 
-                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
+                {/* FORMULARIO DE NUEVA NOTA */}
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl">
                   <form onSubmit={handleSaveNote}>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         {editingNote ? '✏️ Editar Nota' : '➕ Nueva Observación'}
                       </h3>
                       {editingNote && (
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="text-sm text-slate-400 hover:text-white transition-colors"
+                          className="text-sm font-bold text-red-400 hover:text-red-300 transition-colors"
                         >
-                          ❌ Cancelar
+                          ❌ Cancelar Edición
                         </button>
                       )}
                     </div>
@@ -239,14 +249,14 @@ function BitacoraEntrenador({ embedded = false }) {
                       value={noteText}
                       onChange={(e) => setNoteText(e.target.value)}
                       placeholder="Escribe tus observaciones técnicas aquí..."
-                      className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 outline-none min-h-[120px] resize-y"
+                      className="w-full bg-slate-950 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 outline-none min-h-[120px] resize-y transition-colors"
                       required
                     />
 
                     <div className="flex justify-end mt-4">
                       <button
                         type="submit"
-                        className="bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-purple-500/50 transform hover:scale-105"
+                        className="bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold px-6 py-2.5 rounded-lg transition-all shadow-lg shadow-purple-900/50 flex items-center gap-2 transform hover:scale-105"
                       >
                         {editingNote ? '💾 Actualizar Nota' : '💾 Guardar Nota'}
                       </button>
@@ -254,91 +264,86 @@ function BitacoraEntrenador({ embedded = false }) {
                   </form>
                 </div>
 
-                {/* Historial de Notas */}
-                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <span>📋</span>
-                    Historial de Notas
+                {/* HISTORIAL DE NOTAS */}
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-3">
+                    <span>📋</span> Historial de Notas
                   </h3>
 
                   {loading ? (
                     <div className="text-center py-8 text-slate-400">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
-                      <p className="mt-4">Cargando notas...</p>
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mx-auto"></div>
+                      <p className="mt-4 font-medium">Cargando notas...</p>
                     </div>
                   ) : notes.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400">
-                      <p className="text-4xl mb-2">📝</p>
-                      <p>No hay notas registradas para este cliente</p>
-                      <p className="text-sm mt-2">Agrega la primera observación usando el formulario de arriba</p>
+                    <div className="text-center py-10 bg-slate-950 rounded-lg border border-dashed border-purple-900/50">
+                      <p className="text-4xl mb-3 opacity-50">📝</p>
+                      <p className="text-slate-300 font-bold">Sin registros previos</p>
+                      <p className="text-sm text-slate-500 mt-1">Agrega la primera observación usando el formulario de arriba.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                       {notes.map(note => (
                         <div
                           key={note.id}
-                          className="bg-slate-900/70 border border-slate-600 rounded-lg p-4 hover:border-purple-500 transition-colors"
+                          className="bg-slate-800 border border-slate-700 rounded-lg p-5 hover:border-purple-500/50 transition-colors shadow-md"
                         >
-                          <div className="flex justify-between items-start mb-3">
+                          <div className="flex justify-between items-start mb-4 border-b border-slate-700/50 pb-3">
                             <div className="flex-1">
-                              <p className="text-xs text-slate-400 mb-1">
+                              <p className="text-xs font-bold text-purple-400 mb-1 tracking-wider uppercase">
                                 📅 {formatDate(note.createdAt)}
                                 {note.updatedAt && note.updatedAt !== note.createdAt && (
-                                  <span className="ml-2 text-blue-400">(editado: {formatDate(note.updatedAt)})</span>
+                                  <span className="ml-2 text-slate-500 normal-case font-normal">(Editado: {formatDate(note.updatedAt)})</span>
                                 )}
                               </p>
-                              <p className="text-xs text-slate-500">
-                                👤 Por: {note.trainerEmail || 'Entrenador'}
+                              <p className="text-xs text-slate-400 font-medium">
+                                👤 Por: <span className="text-slate-300">{note.trainerEmail || 'Entrenador'}</span>
                               </p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                               <button
                                 onClick={() => handleEditNote(note)}
-                                className="text-blue-400 hover:text-blue-300 transition-colors p-2"
+                                className="text-slate-400 hover:text-blue-400 transition-colors"
                                 title="Editar nota"
                               >
                                 ✏️
                               </button>
                               <button
                                 onClick={() => handleDeleteNote(note.id)}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                className="text-slate-400 hover:text-pink-400 transition-colors"
                                 title="Eliminar nota"
                               >
                                 🗑️
                               </button>
                             </div>
                           </div>
-                          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                            <p className="text-white whitespace-pre-wrap leading-relaxed">{note.note}</p>
+                          <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+                            <p className="text-gray-300 whitespace-pre-wrap leading-relaxed text-sm">{note.note}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
+
               </div>
             ) : (
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-12 shadow-xl text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="text-6xl mb-4">👈</div>
-                  <h3 className="text-2xl font-semibold text-white mb-2">
-                    Selecciona un Cliente
-                  </h3>
-                  <p className="text-slate-400">
-                    Selecciona un cliente de la lista para ver y gestionar sus notas privadas
-                  </p>
-                </div>
+              // PANTALLA VACÍA CUANDO NO HAY CLIENTE SELECCIONADO
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-12 shadow-xl text-center h-full flex flex-col items-center justify-center min-h-[400px]">
+                <div className="text-6xl mb-6 opacity-80">👈</div>
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Selecciona un Cliente
+                </h3>
+                <p className="text-slate-400 max-w-sm mx-auto">
+                  Selecciona un cliente de la lista lateral para ver y gestionar sus notas privadas.
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
-
-    
     </div>
   );
 }
 
 export default BitacoraEntrenador;
-
-//http://localhost:5173/admin/bitacora

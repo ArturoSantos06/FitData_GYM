@@ -2,27 +2,44 @@ import React from 'react';
 
 function HomeTrainer() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="p-6 md:p-8 border border-slate-800 rounded-xl bg-slate-900/60 text-slate-300">
-        <h2 className="text-2xl font-bold text-white mb-2">Portal del Entrenador</h2>
-        <p className="text-slate-400">Bienvenido al panel de trabajo FitData GYM. Desde aquí puedes gestionar tus alumnos y su progreso.</p>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 text-gray-100 animate-fade-in">
+      
+      {/* Logo y Bienvenida */}
+      <div className="mb-10 mt-4">
+        <img 
+          src="/fitdata-logo.png" 
+          alt="FitData GYM Logo" 
+          className="mx-auto h-24 md:h-32 mb-6 drop-shadow-lg" 
+        />
+        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-cyan-400 via-blue-400 to-teal-400 tracking-tight leading-tight mb-2">
+          Portal del Entrenador
+        </h1>
+        <p className="text-xl md:text-2xl text-gray-400 mt-3">
+          GESTIONA Y POTENCIA A TUS ALUMNOS
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-cyan-800/40 bg-linear-to-br from-slate-900 to-[#10253b] p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 font-bold mb-3">Misión</p>
-          <p className="text-slate-200 leading-relaxed">
+      {/* Tarjetas de Misión y Visión */}
+      <div className="grid md:grid-cols-2 gap-10 max-w-5xl w-full">
+        {/* Tarjeta Misión */}
+        <div className="bg-slate-800 p-8 rounded-xl shadow-xl border border-cyan-800/40 hover:shadow-2xl hover:shadow-cyan-900/20 transition-all duration-300 transform hover:-translate-y-1">
+          <p className="text-sm uppercase tracking-[0.2em] text-cyan-300 font-bold mb-2">Misión</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Nuestro Propósito</h2>
+          <p className="text-gray-300 leading-relaxed text-lg">
             Acompañar a cada alumno con planes de entrenamiento personalizados, seguimiento constante y una atención profesional que impulse resultados reales de forma segura.
           </p>
         </div>
 
-        <div className="rounded-xl border border-blue-800/40 bg-linear-to-br from-slate-900 to-[#1a2340] p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-blue-300 font-bold mb-3">Visión</p>
-          <p className="text-slate-200 leading-relaxed">
+        {/* Tarjeta Visión */}
+        <div className="bg-slate-800 p-8 rounded-xl shadow-xl border border-blue-800/40 hover:shadow-2xl hover:shadow-blue-900/20 transition-all duration-300 transform hover:-translate-y-1">
+          <p className="text-sm uppercase tracking-[0.2em] text-cyan-300 font-bold mb-2">Visión</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Nuestra Meta</h2>
+          <p className="text-gray-300 leading-relaxed text-lg">
             Ser el equipo de entrenamiento referente en FitData GYM, destacando por disciplina, innovación y transformación integral de nuestros alumnos.
           </p>
         </div>
       </div>
+      
     </div>
   );
 }

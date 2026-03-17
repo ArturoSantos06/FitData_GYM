@@ -78,7 +78,7 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
   };
 
   return (
-    <div className="absolute inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-100 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
       {/* El Dialogo vive aquí dentro para estar en el nivel más alto de este modal */}
       {dialog && <DialogoSistemaNutri {...dialog} />}
       
@@ -115,7 +115,7 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
           <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-transparent border border-red-500/50 text-red-500 font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all">
             Cancelar
           </button>
-          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40">
+          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-lineal-to-r from-cyan-600 to-indigo-600 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40">
             Confirmar Cita
           </button>
         </div>
