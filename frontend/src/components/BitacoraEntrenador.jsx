@@ -19,10 +19,10 @@ function BitacoraEntrenador() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [currentTrainer, setCurrentTrainer] = useState(null);
 
-  useEffect(() => {
-    loadMembers();
-    loadCurrentTrainer();
-  }, []);
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
 
   const loadCurrentTrainer = () => {
     const user = getCurrentUser();
@@ -42,6 +42,13 @@ function BitacoraEntrenador() {
       showMessage('error', 'Error al cargar miembros');
     }
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      loadMembers();
+      loadCurrentTrainer();
+    }, 0);
+  }, []);
 
   const loadNotes = async (memberId) => {
     setLoading(true);
@@ -118,11 +125,6 @@ function BitacoraEntrenador() {
   const handleCancelEdit = () => {
     setEditingNote(null);
     setNoteText('');
-  };
-
-  const showMessage = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
   const filteredMembers = members.filter(m => 

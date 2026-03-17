@@ -84,7 +84,7 @@ function UserMembershipList({ refreshTrigger }) {
   };
 
   useEffect(() => {
-    fetchAssignments();
+    setTimeout(() => fetchAssignments(), 0);
   }, [refreshTrigger]);
 
 

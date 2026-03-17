@@ -62,6 +62,44 @@ function ClientMembership() {
     return `${minutes} min`;
   };
 
+  const calculateTimeRemaining = (endDateStr, options = {}) => {
+    if (!endDateStr) return 'Sin fecha';
+
+    const { isDayPass = false, dayPassBaseDate = null } = options;
+    const now = new Date();
+
+    if (isDayPass) {
+      const baseDateStr = dayPassBaseDate || endDateStr;
+      const todayWindow = getGymWindowForDateStr(baseDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      if (now <= todayWindow.start) return formatRemaining(todayWindow.end - todayWindow.start);
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
+
+    if (
+      now.getFullYear() === endDate.getFullYear() &&
+      now.getMonth() === endDate.getMonth() &&
+      now.getDate() === endDate.getDate()
+    ) {
+      const todayWindow = getGymWindowForDateStr(endDateStr);
+      if (!todayWindow) return 'Gimnasio cerrado';
+      if (now >= todayWindow.end) return 'Vencida';
+      return formatRemaining(todayWindow.end - now);
+    }
+
+    if (now < endDate) {
+      const endDayWindow = getGymWindowForDateStr(endDateStr);
+      if (!endDayWindow) return 'Vigente';
+      if (now >= endDayWindow.end) return 'Vencida';
+      return formatRemaining(endDayWindow.end - now);
+    }
+    
+    return 'Vencida';
+  };
+
   const downloadQR = async () => {
     try {
       console.log('Generando tarjeta de membresía...');
@@ -261,44 +299,6 @@ function ClientMembership() {
 
     return () => unsubscribe();
   }, []);
-
-  const calculateTimeRemaining = (endDateStr, options = {}) => {
-    if (!endDateStr) return 'Sin fecha';
-
-    const { isDayPass = false, dayPassBaseDate = null } = options;
-    const now = new Date();
-
-    if (isDayPass) {
-      const baseDateStr = dayPassBaseDate || endDateStr;
-      const todayWindow = getGymWindowForDateStr(baseDateStr);
-      if (!todayWindow) return 'Gimnasio cerrado';
-      if (now >= todayWindow.end) return 'Vencida';
-      if (now <= todayWindow.start) return formatRemaining(todayWindow.end - todayWindow.start);
-      return formatRemaining(todayWindow.end - now);
-    }
-
-    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
-
-    if (
-      now.getFullYear() === endDate.getFullYear() &&
-      now.getMonth() === endDate.getMonth() &&
-      now.getDate() === endDate.getDate()
-    ) {
-      const todayWindow = getGymWindowForDateStr(endDateStr);
-      if (!todayWindow) return 'Gimnasio cerrado';
-      if (now >= todayWindow.end) return 'Vencida';
-      return formatRemaining(todayWindow.end - now);
-    }
-
-    if (now < endDate) {
-      const endDayWindow = getGymWindowForDateStr(endDateStr);
-      if (!endDayWindow) return 'Vigente';
-      if (now >= endDayWindow.end) return 'Vencida';
-      return formatRemaining(endDayWindow.end - now);
-    }
-    
-    return 'Vencida';
-  };
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 60000);

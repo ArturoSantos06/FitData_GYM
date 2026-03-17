@@ -4,7 +4,6 @@ import { checkInMember, checkOutMember, getAttendances } from '../firebase';
 
 const CheckInOut = () => {
   const [scanning, setScanning] = useState(false);
-  const [action, setAction] = useState('check-in'); // 'check-in' o 'check-out'
   const [asistencias, setAsistencias] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +29,7 @@ const CheckInOut = () => {
   };
 
   useEffect(() => {
-    cargarAsistencias();
+    setTimeout(() => cargarAsistencias(), 0);
     const interval = setInterval(cargarAsistencias, 10000);
     return () => clearInterval(interval);
   }, [dateFilter, searchTerm]);
@@ -73,6 +72,18 @@ const CheckInOut = () => {
   };
 
   // Inicializar escáner cuando se activa
+  const stopScanner = async () => {
+    if (html5QrcodeRef.current?.isScanning) {
+      try {
+        await html5QrcodeRef.current.stop();
+        html5QrcodeRef.current = null;
+      } catch (err) {
+        console.error("Error deteniendo escáner:", err);
+      }
+    }
+    setScanning(false);
+  };
+
   useEffect(() => {
     const startScanner = async () => {
       if (scanning && !html5QrcodeRef.current) {
@@ -92,9 +103,7 @@ const CheckInOut = () => {
               procesarQR(decodedText);
               stopScanner();
             },
-            (errorMessage) => {
-              // Ignorar errores de "no se encontró código"
-            }
+            () => { /* ignorar errores de no se encontró código */ }
           );
         } catch (err) {
           console.error("Error iniciando escáner:", err);
@@ -112,18 +121,6 @@ const CheckInOut = () => {
       }
     };
   }, [scanning]);
-
-  const stopScanner = async () => {
-    if (html5QrcodeRef.current?.isScanning) {
-      try {
-        await html5QrcodeRef.current.stop();
-        html5QrcodeRef.current = null;
-      } catch (err) {
-        console.error("Error deteniendo escáner:", err);
-      }
-    }
-    setScanning(false);
-  };
 
   const handleManualSubmit = (e) => {
     e.preventDefault();

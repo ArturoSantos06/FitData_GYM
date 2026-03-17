@@ -37,7 +37,7 @@ function AssignMembership({ onSuccess }) {
 
   // Estados de UI
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [, setMessage] = useState('');
   const [conflictData, setConflictData] = useState(null);
   
   // Modal de Éxito

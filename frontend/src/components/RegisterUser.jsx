@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, registerTrainerByAdmin, getProducts, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
+import { registerClientByAdmin, registerTrainerByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
@@ -184,7 +184,7 @@ function RegisterUser({ onUserRegistered }) {
   const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
-  const [registrationCompleted, setRegistrationCompleted] = useState(false);
+  const [, setRegistrationCompleted] = useState(false);
 
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);

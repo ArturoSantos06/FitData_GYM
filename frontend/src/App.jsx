@@ -60,7 +60,6 @@ function RequireTrainerAuth({ children }) {
 
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
-  const [isLoading, setIsLoading] = useState(false);
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
@@ -74,12 +73,6 @@ function AdminArea() {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
-  useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (firebaseUser) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
-
   const handleLogin = () => setIsAuthenticated(true);
   
   const handleLogout = async () => {
@@ -90,8 +83,6 @@ function AdminArea() {
     // Al salir, redirigir a la Landing Page
     window.location.href = "/"; 
   };
-
-  if (isLoading) return <div className="text-white bg-gray-900 h-screen flex items-center justify-center">Cargando...</div>;
 
   // Si NO está autenticado, mostramos el Login del Admin
   if (!isAuthenticated) {

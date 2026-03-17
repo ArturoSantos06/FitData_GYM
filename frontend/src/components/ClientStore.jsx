@@ -6,7 +6,6 @@ function ClientStore() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -27,8 +26,6 @@ function ClientStore() {
         if (currentUser) {
           const userResult = await getUser(currentUser.uid);
           if (userResult.success) {
-            setUser(userResult.data);
-            
             // Cargar ventas del usuario
             const salesResult = await getSales({
               userId: currentUser.uid,
@@ -85,8 +82,8 @@ function ClientStore() {
             try {
               const parsed = JSON.parse(String(s.detalle_productos || '[]').replace(/'/g, '"'));
               if (Array.isArray(parsed)) items = parsed;
-            } catch {}
-            const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || Date.now());
+            } catch { /* ignorar parse error */ }
+            const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || 0);
             const fechaStr = fechaObj.toLocaleDateString('es-MX');
             const horaStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return items.map((it, idx) => (
