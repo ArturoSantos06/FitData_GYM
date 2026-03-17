@@ -5,6 +5,7 @@ import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
 import ClientRoutine from './ClientRoutine';
 import ClientNavbar from './ClientNavbar';
+import ClientCoachView from './ClientCoachView';
 
 function ClientPortal() {
   const navigate = useNavigate();
@@ -38,6 +39,9 @@ function ClientPortal() {
         )}
         {activeTab === 'rutina' && (
           <ClientRoutine />
+        )}  
+        {activeTab === 'servicios' && (
+          <ClientCoachView />
         )}
         {activeTab === 'perfil' && (
           <UserProfile />

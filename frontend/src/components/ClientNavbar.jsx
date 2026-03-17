@@ -7,6 +7,8 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
     { id: 'rutina', label: 'Rutina', icon: Dumbbell },
     { id: 'perfil', label: 'Perfil', icon: User },
+    { id: 'servicios', label: 'Servicios', icon: User },
+
   ];
 
   return (
@@ -17,7 +19,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
             FitData <span className="text-white">GYM</span>
           </span>
 
-          <nav className="flex items-center gap-5">
+          <nav className="flex items-center gap-4">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;

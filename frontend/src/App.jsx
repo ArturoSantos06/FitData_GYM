@@ -58,6 +58,11 @@ function RequireTrainerAuth({ children }) {
   return children;
 }
 
+//Componete para el entrenador//
+import TrainerClientUnlink from './components/TrainerClientUnlink';
+import TrainerPortal from './components/TrainerPortal';
+
+// --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
   
@@ -126,6 +131,7 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
+
           
           {/* 8. Bitácora de Notas Privadas del Entrenador */}
           <Route path="bitacora" element={<BitacoraEntrenador />} />
@@ -171,6 +177,12 @@ function App() {
 
         <Route path="/admin/*" element={<AdminArea />} />
 
+        {/* Ruta para el entrenador (ejemplo) */}
+        <Route path="/entrenador" element={<TrainerClientUnlink />} />
+
+        <Route path="/portal" element={<TrainerPortal />} />
+
+        {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
