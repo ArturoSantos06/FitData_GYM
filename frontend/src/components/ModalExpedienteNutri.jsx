@@ -19,7 +19,6 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
     today.setHours(0,0,0,0);
 
     if (date < today || date.getDay() === 0) {
-        // El feedback visual ya lo da el cursor, pero mantenemos la lógica de bloqueo
         return;
     }
     setSelectedDate(arg.dateStr);
@@ -62,38 +61,13 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
           </div>
         </div>
 
-        {/* CALENDARIO PERSONALIZADO */}
         <div className="flex-1 p-8 bg-[#0f172a] overflow-y-auto">
           <style>{`
-            /* 1. Bordes oscuros y sutiles */
             .fc td, .fc th, .fc .fc-scrollgrid { border-color: #1e293b !important; }
-            
-            /* 2. Números de fecha brillantes */
-            .fc-daygrid-day-number { 
-                color: #e2e8f0 !important; 
-                font-weight: 900 !important; 
-                padding: 12px !important;
-                font-family: 'Inter', sans-serif;
-                font-size: 0.9rem !important;
-            }
-
-            /* 3. Hovers de selección */
-            .fc-daygrid-day:hover { 
-                background-color: rgba(6, 182, 212, 0.1) !important; 
-                cursor: pointer;
-            }
-
-            /* 4. Domingo con hover naranja */
-            .fc-day-sun:hover { 
-                background-color: rgba(249, 115, 22, 0.1) !important; 
-            }
-
-            /* 5. Cursor prohibido para días pasados y domingos */
-            .fc-day-past:hover, .fc-day-sun:hover { 
-                cursor: not-allowed !important; 
-            }
-
-            /* Estética General */
+            .fc-daygrid-day-number { color: #e2e8f0 !important; font-weight: 900 !important; padding: 12px !important; font-family: 'Inter', sans-serif; font-size: 0.9rem !important;}
+            .fc-daygrid-day:hover { background-color: rgba(6, 182, 212, 0.1) !important; cursor: pointer;}
+            .fc-day-sun:hover { background-color: rgba(249, 115, 22, 0.1) !important; }
+            .fc-day-past:hover { cursor: not-allowed !important; }
             .fc .fc-toolbar-title { color: white; font-weight: 900; text-transform: uppercase; font-size: 1.1rem; letter-spacing: -0.05em; }
             .fc .fc-button-primary { background: #1e293b; border: 1px solid #334155; font-weight: 900; border-radius: 12px; text-transform: uppercase; font-size: 0.65rem; padding: 8px 16px; }
             .fc .fc-button-active { background: #06b6d4 !important; border-color: #06b6d4 !important; }

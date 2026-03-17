@@ -5,7 +5,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { X, User, Zap } from 'lucide-react';
 import ModalAgendarTrainer from './ModalAgendarTrainer';
 import ModalDetalleTrainer from './ModalDetalleTrainer';
-import DialogoSistemaNutri from './DialogoSistemaNutri'; // Reutilizamos el diálogo de sistema
+import DialogoSistemaNutri from './DialogoSistemaNutri';
 
 const ModalExpedienteTrainer = ({ miembro, todosLosEntrenos, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);
