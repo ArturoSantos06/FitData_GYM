@@ -13,8 +13,12 @@ import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
+import HealthProfilesCoach from './components/HealthProfilesCoach';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
+import CitasNutri from './components/CitasNutri';
+import CitasTrainer from './components/CitasTrainer';
+import FeedbackClie from './components/FeedbackClie';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -138,7 +142,19 @@ function AdminArea() {
           
           {/* 9. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
-          
+
+          {/* 10. Fichas Médicas vista desde Entrenador (Health Profiles) */}
+          <Route path="fichas-medicas-coach" element={<HealthProfilesCoach refreshTrigger={refreshHealthProfiles} />} />
+
+          {/* 11. Citas de Nutrición */}
+          <Route path="citas-nutri" element={<CitasNutri />} />
+
+          {/* 12. Citas de Entrenamiento */}
+          <Route path="citas-trainer" element={<CitasTrainer />} />
+
+          {/* 13. Feedback y comunicación */}
+          <Route path="feedback" element={<FeedbackClie />} />
+
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </main>

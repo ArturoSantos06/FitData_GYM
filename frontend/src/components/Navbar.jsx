@@ -45,11 +45,20 @@ function Navbar({ onLogout }) {
             <Link to="/admin/fichas-medicas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/fichas-medicas')}`}>
               Fichas Médicas
             </Link>
+            <Link to="/admin/fichas-medicas-coach" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/fichas-medicas-coach')}`}>
+              Fichas Médicas Coach
+            </Link>
             <Link to="/admin/check-in-out" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/check-in-out')}`}>
               Check In/Out
             </Link>
             <Link to="/admin/gestion-entrenadores" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/gestion-entrenadores')}`}>
               Gestión Entrenadores
+            </Link>
+            <Link to="/admin/citas-nutri" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-nutri')}`}>
+              Citas Nutriologo
+            </Link>
+            <Link to="/admin/citas-trainer" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-trainer')}`}>
+              Citas Entrenador
             </Link>
           </div>
 
@@ -137,6 +146,13 @@ function Navbar({ onLogout }) {
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/fichas-medicas')}`}
           >
             🩺 Fichas Médicas
+          </Link>
+          <Link 
+            to="/admin/fichas-medicas-coach" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/fichas-medicas-coach')}`}
+          >
+            🩺 Fichas Médicas Coach
           </Link>
           <Link 
             to="/admin/gestion-entrenadores" 

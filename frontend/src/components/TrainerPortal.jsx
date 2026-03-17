@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import TrainerNavbar from './TrainerNavbar';
 import TrainerManagement from './TrainerManagement';
 import ClientCoachView from './ClientCoachView';
 
 function TrainerPortal() {
-    const navigate = useNavigate();
-
     const [activeTab, setActiveTab] = useState('inicio');
 
    /* const handleLogOut = () => {
