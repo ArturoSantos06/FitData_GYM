@@ -2,6 +2,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function maxDietFileSize() {
+      return 10 * 1024 * 1024;
+    }
     
     // Función helper para verificar si el usuario está autenticado
     function isAuthenticated() {
@@ -42,6 +45,7 @@ service firebase.storage {
       allow read: if isAdmin();
       allow write: if isAdmin() &&
         request.resource != null &&
+        request.resource.size <= maxDietFileSize() &&
         request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
     }
   }

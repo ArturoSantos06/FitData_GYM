@@ -18,6 +18,7 @@ import ErrorModal from './ErrorModal';
 import ConfirmModal from './ConfirmModal';
 
 const allowedTypesLabel = 'PDF, JPG o PNG';
+const maxDietFileSizeBytes = 10 * 1024 * 1024;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -214,6 +215,24 @@ function DietRepositoryAdmin() {
     setSelectedFile(null);
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size > maxDietFileSizeBytes) {
+      event.target.value = '';
+      setSelectedFile(null);
+      setErrorModal({ open: true, message: 'El archivo supera el limite de 10 MB. Selecciona un PDF, JPG o PNG de maximo 10 MB.' });
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -398,7 +417,7 @@ function DietRepositoryAdmin() {
                   type="file"
                   accept="application/pdf,image/jpeg,image/png"
                   className="hidden"
-                  onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                  onChange={handleFileChange}
                 />
               </label>
             </div>
