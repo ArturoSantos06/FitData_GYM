@@ -28,7 +28,7 @@ function Navbar({ onLogout }) {
               Inicio
             </Link>
             <Link to="/admin/registrar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/registrar')}`}>
-              Registrar Clientes
+              Registro
             </Link>
             <Link to="/admin/asignar" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/asignar')}`}>
               Renovar Membresías
@@ -94,7 +94,7 @@ function Navbar({ onLogout }) {
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/registrar')}`}
           >
-            Registrar Clientes
+            Registro
           </Link>
           <Link 
             to="/admin/asignar" 

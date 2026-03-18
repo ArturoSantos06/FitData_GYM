@@ -20,8 +20,48 @@ import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
+import NutriologoPortal from './components/NutriologoPortal';
+import NutriologoLogin from './components/NutriologoLogin';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
+// (definido más abajo)
+
+// --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
+function NutriologoArea() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = () => setIsAuthenticated(true);
+
+  const handleLogout = () => {
+    localStorage.removeItem('firebaseUser');
+    setIsAuthenticated(false);
+    window.location.href = "/";
+  };
+
+  if (isLoading) return <div className="text-white bg-gray-900 h-screen flex items-center justify-center">Cargando...</div>;
+
+  // Si NO está autenticado, mostramos el Login de Nutriólogo
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+        <NutriologoLogin />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-900 text-gray-100 min-h-screen">
+      <NutriologoPortal onLogout={handleLogout} />
+    </div>
+  );
+}
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,6 +162,9 @@ function App() {
 
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+
+        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+        <Route path="/nutriologo" element={<NutriologoArea />} />
 
         <Route path="/admin/*" element={<AdminArea />} />
 

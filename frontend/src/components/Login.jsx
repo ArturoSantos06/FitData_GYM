@@ -54,7 +54,7 @@ function Login({ onLogin }) {
             }
           } else {
             await logoutUser();
-            throw new Error('Acceso denegado: solo administradores');
+            throw new Error('Acceso denegado: solo administradores pueden acceder aquí');
           }
         }
       }

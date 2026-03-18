@@ -7,6 +7,7 @@ export {
   registerUser,
   createUserWithoutSessionChange,
   registerClientByAdmin,
+  registerNutriologoByAdmin,
   logoutUser,
   onAuthChanged,
   getCurrentUser

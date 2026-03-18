@@ -36,8 +36,8 @@ function ClientPortal() {
         {activeTab === 'catalogo' && (
           <ClientStore />
         )}
-      {/*activeTab === 'nutriologos' && (
-          <NutriologosList />)*/}
+      {activeTab === 'nutriologos' && (
+          <NutriologosList />)}
         {activeTab === 'perfil' && (
           <UserProfile />
         )}
