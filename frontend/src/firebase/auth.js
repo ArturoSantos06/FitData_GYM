@@ -6,7 +6,8 @@ import {
   updateProfile
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { auth, functions } from "./config";
+import { auth, functions, db } from "./config";
+import { doc, setDoc } from 'firebase/firestore';
 
 // Login con email y contraseña
 export const loginUser = async (email, password) => {
@@ -96,4 +97,27 @@ export const onAuthChanged = (callback) => {
 // Obtener usuario actual
 export const getCurrentUser = () => {
   return auth.currentUser;
+};
+
+export const registerNutriologoByAdmin = async (payload) => {
+  try {
+    const registerFn = httpsCallable(functions, 'registerNutriologoByAdmin');
+    const result = await registerFn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en registerNutriologoByAdmin:', error);
+    const friendlyError =
+      error?.details?.message ||
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo completar el registro del nutriólogo';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null,
+      raw: error,
+    };
+  }
 };
