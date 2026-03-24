@@ -12,6 +12,15 @@ service cloud.firestore {
       );
     }
 
+    function ownsMember(memberId) {
+      return isSignedIn() &&
+        memberId is string &&
+        exists(/databases/$(database)/documents/miembros/$(memberId)) && (
+          get(/databases/$(database)/documents/miembros/$(memberId)).data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/miembros/$(memberId)).data.authUid == request.auth.uid
+        );
+    }
+
     // Necesario para validar rol en EntrenadorLogin y listar alumnos en VistaEntrenador.
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -29,6 +38,11 @@ service cloud.firestore {
 
     match /memberRoutines/{memberId} {
       allow read, write: if isSignedIn();
+    }
+
+    match /dietFiles/{fileId} {
+      allow read: if isAdmin() || ownsMember(resource.data.memberId);
+      allow write: if isAdmin();
     }
   }
 }

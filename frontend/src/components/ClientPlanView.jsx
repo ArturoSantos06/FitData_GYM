@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity } from 'lucide-react';
+import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown } from 'lucide-react';
 
 import ClientRoutine from './ClientRoutine';
 import ClientCoachView from './ClientCoachView';
+import ClientDietViewer from './ClientDietViewer';
 
 function ClientPlanView() {
   const [currentView, setCurrentView] = useState('menu');
@@ -88,6 +89,7 @@ function ClientPlanView() {
                 </div>
                 <ChevronRight className="text-slate-500 group-hover:text-red-400" size={24}/>
               </button>
+
             </div>
           </div>
         </div>
@@ -119,13 +121,47 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('menu', 'Volver a Mi Programa')}
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-12 shadow-xl text-center flex flex-col items-center justify-center">
-          <div className="text-6xl mb-6 opacity-80">🥗</div>
-          <h3 className="text-2xl font-bold text-white mb-2">Área de Nutrición</h3>
-          <p className="text-slate-400 max-w-sm mx-auto">
-            Próximamente podrás ver aquí tu plan de alimentación, progreso físico y comunicarte con tu nutriólogo.
-          </p>
+        <div className="w-full flex justify-center">
+          <div className="relative w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 to-lime-400"></div>
+
+            <div className="mb-8 text-center md:text-left">
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-emerald-300 to-lime-300">
+                Área de Nutrición
+              </h2>
+              <p className="text-slate-400 font-medium mt-1.5">
+                Consulta tu plan alimenticio y servicios de nutrición.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => setCurrentView('nutriologo_dieta')}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-emerald-500/50"
+              >
+                <div className="flex items-center gap-5 text-left">
+                  <div className="p-3.5 bg-emerald-500/10 rounded-xl text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-inner">
+                    <FileDown size={28} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-emerald-300 font-bold text-lg">Consultar y Descargar Dieta</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Consulta o descarga tu dieta vigente.</span>
+                  </div>
+                </div>
+                <ChevronRight className="text-slate-500 group-hover:text-emerald-400" size={24}/>
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'nutriologo_dieta') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
+        <ClientDietViewer />
       </div>
     );
   }

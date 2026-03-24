@@ -12,10 +12,24 @@ service firebase.storage {
       );
     }
 
+    function ownsMember(memberId) {
+      return isSignedIn() &&
+        firestore.exists(/databases/(default)/documents/miembros/$(memberId)) && (
+          firestore.get(/databases/(default)/documents/miembros/$(memberId)).data.userId == request.auth.uid ||
+          firestore.get(/databases/(default)/documents/miembros/$(memberId)).data.authUid == request.auth.uid
+        );
+    }
+
     match /trainerRoutines/{memberId}/{fileName} {
       allow write: if true;
       allow read: if true;
       allow delete: if true;
+    }
+
+    match /dietFiles/{memberId}/{fileName} {
+      allow read: if isAdmin() || ownsMember(memberId);
+      allow write: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

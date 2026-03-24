@@ -1932,6 +1932,29 @@ export const getAllDietFiles = async () => {
   }
 };
 
+export const getDietFilesByMember = async (memberId) => {
+  try {
+    const safeMemberId = String(memberId || '').trim();
+    if (!safeMemberId) {
+      return { success: true, data: [] };
+    }
+
+    const q = query(collection(db, 'dietFiles'), where('memberId', '==', safeMemberId));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const aTime = a.createdAt?.seconds || a.updatedAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || b.updatedAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const createDietFileRecord = async (recordData) => {
   try {
     const ownerUid = String(auth.currentUser?.uid || '');
