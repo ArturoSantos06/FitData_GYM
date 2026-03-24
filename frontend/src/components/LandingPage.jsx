@@ -19,7 +19,7 @@ function UserSelectionModal({ onClose }) {
         <div className="space-y-4">
           <button 
             onClick={() => {
-              localStorage.removeItem('firebaseUser'); 
+              localStorage.removeItem('token'); 
               navigate('/admin');
             }}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-purple-500 hover:bg-gray-700 transition-all duration-300"
@@ -31,13 +31,23 @@ function UserSelectionModal({ onClose }) {
             <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🛡️</span>
           </button>
 
+          <button
+            onClick={() => navigate('/entrenador')}
+            className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-blue-500 hover:bg-gray-700 transition-all duration-300"
+          >
+            <div className="text-left">
+              <h4 className="font-bold text-white group-hover:text-blue-400 transition-colors">Entrenador</h4>
+              <p className="text-xs text-gray-500">Gestión de rutinas</p>
+            </div>
+            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🏋️</span>
+          </button>
+
           <button 
             onClick={() => navigate('/cliente')}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-cyan-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">
               <h4 className="font-bold text-white group-hover:text-cyan-400 transition-colors">Cliente</h4>
-              <p className="text-xs text-gray-500">Mi cuenta</p>
             </div>
             <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">💪</span>
           </button>
@@ -410,9 +420,15 @@ function ServicesSection() {
                   <h3 className="text-lg font-bold text-cyan-400 uppercase tracking-wider mb-4">
                     {service.title}
                   </h3>
-                  <div className="text-gray-200 text-sm leading-relaxed">
-                    {service.description}
-                  </div>
+                  {typeof service.description === 'string' ? (
+                    <p className="text-gray-200 text-sm leading-relaxed">
+                      {service.description}
+                    </p>
+                  ) : (
+                    <div className="text-gray-200 text-sm leading-relaxed">
+                      {service.description}
+                    </div>
+                  )}
                   <p className="text-xs text-gray-400 mt-4">
                     Click para regresar
                   </p>
@@ -595,7 +611,7 @@ function ContactSection() {
       } else {
         setMessage('Hubo un error al enviar el mensaje. Por favor intenta de nuevo.');
       }
-    } catch (error) {
+    } catch {
       setMessage('Error de conexión. Por favor intenta más tarde.');
     } finally {
       setSending(false);
@@ -803,7 +819,7 @@ function LandingPage() {
 
   // NUEVA LÓGICA DE SEGURIDAD
   useEffect(() => {
-    localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('token');
   }, []);
 
   return (

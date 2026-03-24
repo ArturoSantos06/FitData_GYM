@@ -1,6 +1,6 @@
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -475,9 +475,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-// Cloud Function para crear usuarios sin cambiar la sesión del admin
 exports.createUserAccount = onCall(async (request) => {
-  // Verificar que el usuario que llama está autenticado
   if (!request.auth) {
     throw new Error("No autenticado");
   }
@@ -489,7 +487,6 @@ exports.createUserAccount = onCall(async (request) => {
   }
 
   try {
-    // Crear usuario con Admin SDK (no afecta la sesión del frontend)
     const userRecord = await admin.auth().createUser({
       email,
       password,
@@ -528,13 +525,19 @@ exports.registerClientByAdmin = onCall(async (request) => {
     password,
     firstName,
     lastName,
+    phone,
     membershipTypeId,
     paymentMethod,
     montoRecibido,
   } = request.data || {};
 
-  if (!username || !email || !password || !firstName || !lastName || !membershipTypeId) {
+  if (!username || !email || !password || !firstName || !lastName || !phone || !membershipTypeId) {
     throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro");
+  }
+
+  const normalizedPhone = String(phone).replace(/\D/g, "").slice(0, 10);
+  if (!/^\d{10}$/.test(normalizedPhone)) {
+    throw new HttpsError("invalid-argument", "Número de teléfono inválido");
   }
 
   const db = admin.firestore();
@@ -545,12 +548,28 @@ exports.registerClientByAdmin = onCall(async (request) => {
       throw new HttpsError("permission-denied", "No tienes permisos de administrador");
     }
 
+    const normalizedUsername = normalizeComparableText(username);
+    if (!normalizedUsername) {
+      throw new HttpsError("invalid-argument", "El nombre de usuario es requerido");
+    }
+
+    const normalizedFirstName = normalizeComparableText(firstName);
     const normalizedLastName = normalizeComparableText(lastName);
-    if (!normalizedLastName) {
-      throw new HttpsError("invalid-argument", "Los apellidos son requeridos");
+    if (!normalizedFirstName || !normalizedLastName) {
+      throw new HttpsError("invalid-argument", "El nombre y los apellidos son requeridos");
     }
 
     const usersSnapshot = await db.collection("users").get();
+    const duplicatedUsernameDoc = usersSnapshot.docs.find((docSnap) => {
+      const userData = docSnap.data() || {};
+      const existingUsername = userData.username || userData.userName || "";
+      return normalizeComparableText(existingUsername) === normalizedUsername;
+    });
+
+    if (duplicatedUsernameDoc) {
+      throw new HttpsError("already-exists", "Ya existe un usuario registrado con ese nombre de usuario");
+    }
+
     const duplicatedLastNameDoc = usersSnapshot.docs.find((docSnap) => {
       const userData = docSnap.data() || {};
       const userRole = userData.role;
@@ -559,12 +578,17 @@ exports.registerClientByAdmin = onCall(async (request) => {
         return false;
       }
 
-      const existingLastName = userData.lastName || userData.last_name || "";
-      return normalizeComparableText(existingLastName) === normalizedLastName;
+      const existingFirstName = userData.firstName || userData.first_name || userData.nombre || "";
+      const existingLastName = userData.lastName || userData.last_name || userData.apellido || "";
+
+      return (
+        normalizeComparableText(existingFirstName) === normalizedFirstName &&
+        normalizeComparableText(existingLastName) === normalizedLastName
+      );
     });
 
     if (duplicatedLastNameDoc) {
-      throw new HttpsError("already-exists", "Ya existe un cliente registrado con esos apellidos");
+      throw new HttpsError("already-exists", "Ya existe un cliente registrado con el mismo nombre y apellidos");
     }
 
     const membershipTypeDoc = await db.collection("membershipTypes").doc(String(membershipTypeId)).get();
@@ -632,6 +656,8 @@ exports.registerClientByAdmin = onCall(async (request) => {
         username,
         firstName,
         lastName,
+        phone: normalizedPhone,
+        telefono: normalizedPhone,
         displayName: fullName,
         role: "client",
         isStaff: false,
@@ -674,7 +700,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
         nombre: firstName,
         apellido: lastName,
         email,
-        telefono: "",
+        telefono: normalizedPhone,
         qr_code: `FD-USER${newId}`,
         qrCode: `FD-USER${newId}`,
         avatar_color: "#6366f1",
@@ -753,5 +779,263 @@ exports.registerClientByAdmin = onCall(async (request) => {
     }
 
     throw new HttpsError("internal", error.message || "No se pudo registrar el cliente");
+  }
+});
+
+
+exports.updateClientEmail = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const { newEmail, userId } = request.data || {};
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|hotmail\.com|yahoo\.com|icloud\.com)$/i;
+
+  if (!newEmail || !emailRegex.test(newEmail)) {
+    throw new HttpsError("invalid-argument", "Correo inválido. Solo se aceptan dominios: gmail, outlook, hotmail, yahoo o icloud.");
+  }
+
+  const db = admin.firestore();
+  const authUid = request.auth.uid;
+
+  try {
+    await admin.auth().updateUser(authUid, { email: newEmail });
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const updates = [];
+
+
+    if (userId) {
+      const userRef = db.collection("users").doc(String(userId));
+      updates.push(userRef.update({ email: newEmail, updatedAt: timestamp }));
+    }
+    const usersByAuthUid = await db.collection("users").where("authUid", "==", authUid).limit(1).get();
+    if (!usersByAuthUid.empty) {
+      updates.push(usersByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
+    }
+
+    // 3. Actualizar colección miembros
+    const miembrosByAuthUid = await db.collection("miembros").where("authUid", "==", authUid).limit(1).get();
+    if (!miembrosByAuthUid.empty) {
+      updates.push(miembrosByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
+    }
+
+    const candidates = authUid ? [authUid] : [];
+    if (userId) {
+      candidates.push(String(userId));
+      const numericId = Number(userId);
+      if (!Number.isNaN(numericId)) candidates.push(numericId);
+    }
+
+    const membershipQueries = [
+      db.collection("memberships").where("authUid", "==", authUid).get(),
+    ];
+    if (userId) {
+      membershipQueries.push(db.collection("memberships").where("userId", "==", String(userId)).get());
+    }
+
+    const membershipSnaps = await Promise.all(membershipQueries);
+    const dedupDocs = new Map();
+    membershipSnaps.forEach((snap) => snap.docs.forEach((d) => dedupDocs.set(d.id, d)));
+    dedupDocs.forEach((d) => {
+      updates.push(d.ref.update({ userEmail: newEmail, updatedAt: timestamp }));
+    });
+
+    await Promise.all(updates);
+
+    logger.info("Email actualizado correctamente", { authUid, newEmail, membershipsUpdated: dedupDocs.size });
+    return { success: true };
+  } catch (error) {
+    logger.error("Error actualizando email", { authUid, error: String(error.message) });
+    throw new HttpsError("internal", error.message || "No se pudo actualizar el correo");
+  }
+});
+
+exports.updateSelfProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const authUid = request.auth.uid;
+  const tokenEmail = String(request.auth.token.email || "").trim().toLowerCase();
+  const {
+    userId,
+    email,
+    username,
+    telefono,
+  } = request.data || {};
+
+  const normalizedUsername = String(username || "").trim();
+  const normalizedEmail = String(email || tokenEmail || "").trim().toLowerCase();
+  const normalizedPhone = String(telefono || "").replace(/\D/g, "").slice(0, 10);
+
+  if (!normalizedUsername) {
+    throw new HttpsError("invalid-argument", "El nombre de usuario es obligatorio");
+  }
+
+  const db = admin.firestore();
+  const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+  try {
+    const userDocIds = new Set();
+    if (userId !== undefined && userId !== null && String(userId).trim()) {
+      userDocIds.add(String(userId).trim());
+    }
+    userDocIds.add(authUid);
+
+    const byAuthUid = await db.collection("users").where("authUid", "==", authUid).limit(5).get();
+    byAuthUid.docs.forEach((d) => userDocIds.add(d.id));
+
+    if (tokenEmail) {
+      const byEmail = await db.collection("users").where("email", "==", tokenEmail).limit(5).get();
+      byEmail.docs.forEach((d) => userDocIds.add(d.id));
+    }
+
+    const userPayload = {
+      username: normalizedUsername,
+      email: normalizedEmail || null,
+      phone: normalizedPhone,
+      telefono: normalizedPhone,
+      updatedAt: timestamp,
+    };
+
+    let usersUpdated = 0;
+    for (const docId of userDocIds) {
+      if (!docId) continue;
+      const ref = db.collection("users").doc(docId);
+      const snap = await ref.get();
+      if (!snap.exists) continue;
+      await ref.update(userPayload);
+      usersUpdated += 1;
+    }
+
+    const memberUserIdCandidates = new Set();
+    memberUserIdCandidates.add(authUid);
+    if (userId !== undefined && userId !== null && String(userId).trim()) {
+      memberUserIdCandidates.add(String(userId).trim());
+      const n = Number(userId);
+      if (!Number.isNaN(n)) memberUserIdCandidates.add(n);
+    }
+
+    let membersUpdated = 0;
+    const memberTargets = new Map();
+
+    const membersByAuthUid = await db.collection("miembros").where("authUid", "==", authUid).get();
+    membersByAuthUid.docs.forEach((d) => memberTargets.set(d.id, d.ref));
+
+    for (const candidate of memberUserIdCandidates) {
+      const memberByUserId = await db.collection("miembros").where("userId", "==", candidate).get();
+      memberByUserId.docs.forEach((d) => memberTargets.set(d.id, d.ref));
+    }
+
+    for (const [, ref] of memberTargets) {
+      await ref.update({
+        email: normalizedEmail || null,
+        telefono: normalizedPhone,
+        updatedAt: timestamp,
+      });
+      membersUpdated += 1;
+    }
+
+    logger.info("Perfil propio actualizado", {
+      authUid,
+      usersUpdated,
+      membersUpdated,
+    });
+
+    return { success: true, usersUpdated, membersUpdated };
+  } catch (error) {
+    logger.error("Error en updateSelfProfile", {
+      authUid,
+      error: String(error.message || error),
+    });
+    throw new HttpsError("internal", error.message || "No se pudo actualizar el perfil");
+  }
+});
+
+exports.downloadDietFile = onRequest({ cors: true, region: "us-east1" }, async (req, res) => {
+  if (req.method === "OPTIONS") {
+    return res.status(204).send("");
+  }
+
+  const authHeader = req.headers.authorization || "";
+  const hasBearer = authHeader.startsWith("Bearer ");
+  let decoded = null;
+
+  if (hasBearer) {
+    const idToken = authHeader.slice(7);
+    try {
+      decoded = await admin.auth().verifyIdToken(idToken);
+    } catch {
+      return res.status(401).json({ error: "Token inválido" });
+    }
+  }
+
+  const storagePath = req.query.path;
+  const fileName = req.query.name || "archivo";
+  const downloadToken = String(req.query.token || "").trim();
+
+  if (!storagePath) {
+    return res.status(400).json({ error: "Falta el parámetro path" });
+  }
+
+  try {
+    if (hasBearer) {
+      const db = admin.firestore();
+      const usersRef = db.collection("users");
+      const email = String(decoded?.email || "").trim();
+      const normalizedEmail = email.toLowerCase();
+
+      let isAdmin = decoded?.admin === true || String(decoded?.role || "").toLowerCase() === "admin";
+
+      if (!isAdmin) {
+        const userDoc = await usersRef.doc(decoded.uid).get();
+        isAdmin = String(userDoc.data()?.role || "").toLowerCase() === "admin";
+      }
+
+      if (!isAdmin) {
+        const authUidSnap = await usersRef.where("authUid", "==", decoded.uid).limit(1).get();
+        isAdmin = authUidSnap.docs.some((doc) => String(doc.data()?.role || "").toLowerCase() === "admin");
+      }
+
+      if (!isAdmin && email) {
+        const emailSnap = await usersRef.where("email", "==", email).limit(1).get();
+        isAdmin = emailSnap.docs.some((doc) => String(doc.data()?.role || "").toLowerCase() === "admin");
+      }
+
+      if (!isAdmin && normalizedEmail === "admin@fitdata.gym") {
+        isAdmin = true;
+      }
+
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Solo administradores pueden descargar archivos" });
+      }
+    }
+
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ error: "Archivo no encontrado" });
+    }
+
+    const [metadata] = await file.getMetadata();
+
+    if (!hasBearer) {
+      const rawTokens = String(metadata?.metadata?.firebaseStorageDownloadTokens || "");
+      const allowedTokens = rawTokens.split(",").map((t) => t.trim()).filter(Boolean);
+      if (!downloadToken || !allowedTokens.includes(downloadToken)) {
+        return res.status(403).json({ error: "Token de descarga inválido" });
+      }
+    }
+
+    res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader("Cache-Control", "private, no-cache");
+
+    file.createReadStream().pipe(res);
+  } catch (error) {
+    logger.error("Error descargando archivo de dieta", { error: String(error.message) });
+    res.status(500).json({ error: "No se pudo descargar el archivo" });
   }
 });

@@ -1,73 +1,78 @@
 # =========================
-# FitData_GYM - .gitignore único
+# Variables y credenciales
 # =========================
-
-# --- Secretos / credenciales ---
 .env
+.env.*
 *.env
-*.env.local
-*.env.production
-*.local
+!.env.example
 client_secret.json
 gmail_tokens.json
-firebase-service-account.json
-*-service-account.json
-*service-account*.json
-.firebase/
+credentials.json
+token.json
+firebase-service-account*.json
+/firebase-service-account.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
 
-# --- Python / Django (fase1) ---
+# =========================
+# Python
+# =========================
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
 *.so
 *.egg
 *.egg-info/
-.pytest_cache/
-.mypy_cache/
+build/
+dist/
 
 # Entornos virtuales
 venv/
-.venv/
 env/
 ENV/
+.venv/
 
-# DB locales
-*.sqlite
-*.sqlite3
-*.db
-
-# Estáticos / uploads Django
-fase1/media/
-fase1/productos/
-fase1/memberships/
-fase1/static/
-fase1/staticfiles/
-
-# --- Node / frontend / functions ---
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
 frontend/node_modules/
 frontend/dist/
-frontend/dist-ssr/
-functions/node_modules/
-
-# Logs
-logs/
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-# IDE / Editor
+# =========================
+# Base de datos y datos locales
+# =========================
+db.sqlite3
+*.sqlite3
+*.db
+
+# =========================
+# Archivos de usuario/servidor
+# =========================
+media/
+static/
+staticfiles/
+fase1/media/
+fase1/productos/
+
+# =========================
+# IDE / OS / logs
+# =========================
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Sistema operativo
+*.log
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
+

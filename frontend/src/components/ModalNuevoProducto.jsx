@@ -6,7 +6,7 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
 

@@ -29,7 +29,18 @@ function ClientLogin() {
         throw new Error(result.error || 'Email o contraseña incorrectos');
       }
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || '';
+      const errorMessage =
+        msg.includes('auth/invalid-credential') ||
+        msg.includes('auth/user-not-found') ||
+        msg.includes('auth/wrong-password')
+          ? 'Correo o contraseña incorrectos'
+          : msg.includes('auth/invalid-email')
+          ? 'Correo electrónico inválido'
+          : msg.includes('auth/too-many-requests')
+          ? 'Demasiados intentos fallidos. Intenta más tarde'
+          : 'Correo o contraseña incorrectos';
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
@@ -94,7 +105,7 @@ function ClientLogin() {
             {/* Error */}
             {error && (
               <div className="bg-red-900/20 border border-red-500 rounded-lg p-3">
-                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-red-400 text-sm text-center">{error}</p>
               </div>
             )}
 

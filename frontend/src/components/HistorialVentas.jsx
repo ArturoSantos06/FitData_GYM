@@ -26,7 +26,7 @@ const HistorialVentas = ({ reloadTrigger }) => {
             if (typeof venta.detalle_productos === 'string') {
                 try {
                     productos = JSON.parse(venta.detalle_productos);
-                } catch (jsonError) {
+                } catch {
                     const jsonFijo = venta.detalle_productos.replace(/'/g, '"');
                     productos = JSON.parse(jsonFijo);
                 }
@@ -36,27 +36,20 @@ const HistorialVentas = ({ reloadTrigger }) => {
                 return [];
             }
             
-            const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || Date.now());
-            const fechaMx = fechaObj.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' });
-            const horaMx = fechaObj.toLocaleTimeString('es-MX', {
-                timeZone: 'America/Mexico_City',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
+            const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || 0);
             
             return productos.map(prod => ({
                 id_unico: `${venta.id}-${prod.id}`,
                 folio: venta.folio || 'PENDIENTE',
                 nombre_completo: venta.cliente_username || 'Cliente anónimo',
-                fecha: `${fechaMx} ${horaMx}`,
+                fecha: fechaObj.toLocaleDateString() + ' ' + fechaObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                 producto_nombre: prod.nombre || 'Producto eliminado',
                 cantidad: prod.cantidad,
                 precio_unitario: prod.precio,
                 total_linea: prod.cantidad * prod.precio,
                 metodo: venta.metodo_pago
             }));
-        } catch (e) {
+        } catch {
             return [];
         }
     });

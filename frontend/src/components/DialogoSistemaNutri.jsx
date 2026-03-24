@@ -4,7 +4,6 @@ import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 const DialogoSistemaNutri = ({ type, title, message, onConfirm, onCancel }) => {
   const isDanger = type === 'danger';
   const isSuccess = type === 'success';
-  const isWarning = type === 'warning';
   
   const getColors = () => {
     if (isSuccess) return { border: 'border-emerald-500/40', bg: 'bg-emerald-500/10', text: 'text-emerald-500', btn: 'bg-emerald-600', icon: <CheckCircle size={32} /> };

@@ -14,7 +14,8 @@ const ModalDetalleTrainer = ({ entreno, onClose }) => {
       const entrenoRef = doc(db, "entrenamientos", entreno.id);
       await updateDoc(entrenoRef, { rutina: editContent });
       setIsEditing(false);
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       setDialogConfig({ type: 'danger', title: 'Error', message: 'No se pudo actualizar la rutina.', onConfirm: () => setDialogConfig(null) });
     }
   };
@@ -48,6 +49,14 @@ const ModalDetalleTrainer = ({ entreno, onClose }) => {
                 <p className="text-[10px] text-slate-500 font-bold uppercase mt-2 tracking-widest flex items-center gap-2">
                    <Zap size={12} className="text-orange-500" /> Plan de Entrenamiento
                 </p>
+                {entreno.horaInicio && entreno.horaFin && (
+                  <div className="mt-3 inline-flex items-center gap-2 bg-orange-500/15 border border-orange-500/30 rounded-full px-3 py-1">
+                    <CalendarClock size={12} className="text-orange-400" />
+                    <span className="text-orange-300 font-black text-xs tracking-widest">
+                      {entreno.horaInicio} – {entreno.horaFin}
+                    </span>
+                  </div>
+                )}
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl text-slate-500 transition-colors">
                 <X size={20} />

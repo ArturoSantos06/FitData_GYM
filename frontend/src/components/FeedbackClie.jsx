@@ -4,7 +4,7 @@ const FeedbackClie = () => {
   const [newMessage, setNewMessage] = useState('');
 
   // Datos simulados para visualizar la estética y los estados de envío
-  const [messages, setMessages] = useState([
+  const messages = [
     {
       id: 1,
       text: '¡Hola! ¿Cómo te sentiste con la rutina y dieta de esta semana?',
@@ -40,7 +40,7 @@ const FeedbackClie = () => {
       timestamp: '10:25 AM',
       status: 'sent' // ✓ gris
     }
-  ]);
+  ];
 
   const currentClientId = 'cliente_actual'; // Esto vendrá de tu Firebase Auth
 

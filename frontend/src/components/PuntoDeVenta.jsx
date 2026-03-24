@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ProductoCard from './ProductoCard';
 import ModalNuevoProducto from './ModalNuevoProducto';
 import ModalEditarProducto from './ModalEditarProducto';
@@ -57,15 +57,15 @@ function PuntoDeVenta() {
         }
     };
 
-    const calcularTotal = () => {
+    const calcularTotal = useCallback(() => {
         return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
-    };
+    }, [carrito]);
 
     useEffect(() => {
         const total = calcularTotal();
         const recibido = parseFloat(montoRecibido) || 0;
         setCambio(recibido - total);
-    }, [montoRecibido, carrito]);
+    }, [montoRecibido, calcularTotal]);
 
     const cargarDatos = async () => {
         try {
@@ -123,7 +123,7 @@ function PuntoDeVenta() {
             } else {
                 alert("Error al eliminar: " + result.error);
             }
-        } catch (error) { alert("Error al eliminar"); }
+        } catch { alert("Error al eliminar"); }
     };
 
     // --- Eliminación Carrito ---

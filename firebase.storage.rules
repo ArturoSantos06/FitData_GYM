@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'ADMIN'
+      );
+    }
+
+    match /trainerRoutines/{memberId}/{fileName} {
+      allow write: if true;
+      allow read: if true;
+      allow delete: if true;
+    }
+  }
+}

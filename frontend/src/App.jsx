@@ -13,7 +13,6 @@ import PuntoDeVenta from './components/PuntoDeVenta';
 import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
-import HealthProfilesCoach from './components/HealthProfilesCoach';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
 import CitasNutri from './components/CitasNutri';
@@ -24,11 +23,90 @@ import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
+import RutinaEntrenador from './components/RutinaEntrenador';
+import EntrenadorLogin from './components/EntrenadorLogin';
+import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
+
+function RequireTrainerAuth({ children }) {
+  const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+  const [hasTrainerRole, setHasTrainerRole] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setHasFirebaseSession(false);
+        setHasTrainerRole(false);
+        setIsAuthReady(true);
+        return;
+      }
+
+      setHasFirebaseSession(true);
+
+      try {
+        let role = '';
+
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const isTrainer = role === 'trainer' || role === 'entrenador';
+        setHasTrainerRole(isTrainer);
+
+        if (!isTrainer) {
+          localStorage.removeItem('trainer_token');
+          localStorage.removeItem('trainer_username');
+        }
+      } catch {
+        setHasTrainerRole(false);
+        localStorage.removeItem('trainer_token');
+        localStorage.removeItem('trainer_username');
+      } finally {
+        setIsAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isTrainerAuthenticated) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">
+        Cargando sesión...
+      </div>
+    );
+  }
+
+  if (!hasFirebaseSession) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  if (!hasTrainerRole) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
+  return children;
+}
+
+//Componete para el entrenador//
+import TrainerPortal from './components/TrainerPortal';
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
@@ -42,22 +120,16 @@ function AdminArea() {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
-  useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (firebaseUser) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
-
   const handleLogin = () => setIsAuthenticated(true);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('token');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
     window.location.href = "/"; 
   };
-
-  if (isLoading) return <div className="text-white bg-gray-900 h-screen flex items-center justify-center">Cargando...</div>;
 
   // Si NO está autenticado, mostramos el Login del Admin
   if (!isAuthenticated) {
@@ -101,23 +173,15 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
+
           
-          {/* 8. Bitácora de Notas Privadas del Entrenador */}
-          <Route path="bitacora" element={<BitacoraEntrenador />} />
-          
-          {/* 9. Gestión de Entrenadores (RF-018) */}
+          {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
 
-          {/* 10. Fichas Médicas vista desde Entrenador (Health Profiles) */}
-          <Route path="fichas-medicas-coach" element={<HealthProfilesCoach refreshTrigger={refreshHealthProfiles} />} />
-
-          {/* 11. Citas de Nutrición */}
+          {/* 10. Citas de Nutrición */}
           <Route path="citas-nutri" element={<CitasNutri />} />
 
-          {/* 12. Citas de Entrenamiento */}
-          <Route path="citas-trainer" element={<CitasTrainer />} />
-
-          {/* 13. Feedback y comunicación */}
+          {/* 11. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
 
           <Route path="*" element={<Navigate to="/admin" />} />
@@ -138,9 +202,45 @@ function App() {
 
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+        <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+        <Route
+          path="/entrenador"
+          element={
+            <RequireTrainerAuth>
+              <TrainerPortal />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/rutina/:memberId"
+          element={
+            <RequireTrainerAuth>
+              <RutinaEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/citas"
+          element={
+            <RequireTrainerAuth>
+              <CitasTrainer />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/bitacora"
+          element={
+            <RequireTrainerAuth>
+              <BitacoraEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
 
         <Route path="/admin/*" element={<AdminArea />} />
 
+        <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+
+        {/* Comodín: Cualquier otra cosa redirige al inicio */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

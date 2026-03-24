@@ -78,6 +78,63 @@ export const registerClientByAdmin = async (payload) => {
   }
 };
 
+export const registerTrainerByAdmin = async (payload) => {
+  try {
+    const registerFn = httpsCallable(functions, 'registerTrainerByAdmin');
+    const result = await registerFn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en registerTrainerByAdmin:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo completar el registro';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null
+    };
+  }
+};
+
+export const ensureUserClaim = async () => {
+  try {
+    const fn = httpsCallable(functions, 'ensureUserClaim');
+    await fn();
+    // Forzar refresh del token para que el nuevo claim entre en vigor
+    if (auth.currentUser) {
+      await auth.currentUser.getIdToken(true);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error en ensureUserClaim:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateSelfProfile = async (payload) => {
+  try {
+    const fn = httpsCallable(functions, 'updateSelfProfile');
+    const result = await fn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en updateSelfProfile:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo actualizar el perfil';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null,
+    };
+  }
+};
+
 // Logout
 export const logoutUser = async () => {
   try {

@@ -14,7 +14,8 @@ const ModalDetalleNutri = ({ cita, onClose }) => {
       const citaRef = doc(db, "citas", cita.id);
       await updateDoc(citaRef, { nota: editContent });
       setIsEditing(false);
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       setDialogConfig({ type: 'danger', title: 'Error', message: 'No se pudo actualizar la nota.', onConfirm: () => setDialogConfig(null) });
     }
   };
