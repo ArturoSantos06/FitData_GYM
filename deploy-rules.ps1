@@ -2,8 +2,8 @@
 # Uso: .\deploy-rules.ps1
 
 $rootPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sourceFirestoreRules = Join-Path $rootPath "firestore.rules"
-$frontendFirestoreRules = Join-Path $rootPath "frontend\firestore.rules"
+$sourceFirestoreRules = Join-Path $rootPath "firebase.firestore.rules"
+$sourceStorageRules = Join-Path $rootPath "firebase.storage.rules"
 
 Write-Host "🚀 Desplegando Firebase Security Rules..." -ForegroundColor Cyan
 Write-Host "" 
@@ -28,10 +28,15 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✅ Autenticación confirmada" -ForegroundColor Green
 Write-Host "" 
 
-# Sincronizar copia auxiliar del frontend
-if (Test-Path $frontendFirestoreRules) {
-    Write-Host "🔄 Sincronizando frontend/firestore.rules..." -ForegroundColor Cyan
-    Copy-Item $sourceFirestoreRules $frontendFirestoreRules -Force
+# Verificar existencia de archivos canónicos
+if (-not (Test-Path $sourceFirestoreRules)) {
+    Write-Host "❌ No se encontró firebase.firestore.rules" -ForegroundColor Red
+    exit 1
+}
+
+if (-not (Test-Path $sourceStorageRules)) {
+    Write-Host "❌ No se encontró firebase.storage.rules" -ForegroundColor Red
+    exit 1
 }
 
 # Desplegar reglas

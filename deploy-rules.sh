@@ -4,8 +4,8 @@
 # Uso: ./deploy-rules.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_FIRESTORE_RULES="$SCRIPT_DIR/firestore.rules"
-FRONTEND_FIRESTORE_RULES="$SCRIPT_DIR/frontend/firestore.rules"
+SOURCE_FIRESTORE_RULES="$SCRIPT_DIR/firebase.firestore.rules"
+SOURCE_STORAGE_RULES="$SCRIPT_DIR/firebase.storage.rules"
 
 echo "🚀 Desplegando Firebase Security Rules..."
 echo ""
@@ -28,9 +28,14 @@ fi
 echo "✅ Autenticación confirmada"
 echo ""
 
-if [ -f "$FRONTEND_FIRESTORE_RULES" ]; then
-    echo "🔄 Sincronizando frontend/firestore.rules..."
-    cp "$SOURCE_FIRESTORE_RULES" "$FRONTEND_FIRESTORE_RULES"
+if [ ! -f "$SOURCE_FIRESTORE_RULES" ]; then
+    echo "❌ No se encontró firebase.firestore.rules"
+    exit 1
+fi
+
+if [ ! -f "$SOURCE_STORAGE_RULES" ]; then
+    echo "❌ No se encontró firebase.storage.rules"
+    exit 1
 fi
 
 # Desplegar reglas

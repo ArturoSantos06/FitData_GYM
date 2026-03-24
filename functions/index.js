@@ -63,6 +63,130 @@ const sendGmailSmtp = async ({toEmail, subject, message, defaultFrom}) => {
   return {id: info.messageId};
 };
 
+const isPrivilegedRole = (roleValue = "") => {
+  const role = String(roleValue || "").trim().toLowerCase();
+  return ["admin", "trainer", "coach", "entrenador", "nutriologo", "nutri"].includes(role);
+};
+
+const isPrivilegedFromToken = (decodedToken = {}) => {
+  return decodedToken.admin === true ||
+    String(decodedToken.role || "").toUpperCase() === "ADMIN" ||
+    isPrivilegedRole(decodedToken.role) ||
+    decodedToken.email === "admin@fitdata.gym";
+};
+
+const getMemberIdFromPath = (path = "") => {
+  const cleanPath = String(path || "").replace(/^\/+/, "");
+  const match = cleanPath.match(/^(dietFiles|dietas)\/([^/]+)\//);
+  return match?.[2] || "";
+};
+
+const sanitizeDownloadName = (value = "archivo") => String(value || "archivo")
+    .replace(/[\r\n]/g, " ")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .slice(0, 180) || "archivo";
+
+exports.downloadDietFile = onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  if (req.method !== "GET") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const rawPath = String(req.query.path || "").trim();
+    const cleanPath = rawPath.replace(/^\/+/, "");
+    const requestedName = sanitizeDownloadName(req.query.name || "dieta_vigente");
+
+    if (!cleanPath) {
+      res.status(400).json({error: "El parámetro path es requerido."});
+      return;
+    }
+
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) {
+      res.status(401).json({error: "Falta token de autenticación."});
+      return;
+    }
+
+    const idToken = authHeader.slice("Bearer ".length).trim();
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = String(decodedToken.uid || "");
+    if (!uid) {
+      res.status(401).json({error: "Token inválido."});
+      return;
+    }
+
+    let hasPrivilegedAccess = isPrivilegedFromToken(decodedToken);
+    if (!hasPrivilegedAccess) {
+      try {
+        const userSnap = await admin.firestore().doc(`users/${uid}`).get();
+        const userRole = String(userSnap.data()?.role || "").toLowerCase();
+        hasPrivilegedAccess = isPrivilegedRole(userRole);
+      } catch {
+        hasPrivilegedAccess = false;
+      }
+    }
+
+    if (!hasPrivilegedAccess) {
+      const memberId = getMemberIdFromPath(cleanPath);
+      if (!memberId) {
+        res.status(403).json({error: "Ruta de archivo no autorizada."});
+        return;
+      }
+
+      const memberSnap = await admin.firestore().doc(`miembros/${memberId}`).get();
+      if (!memberSnap.exists) {
+        res.status(404).json({error: "Miembro no encontrado para este archivo."});
+        return;
+      }
+
+      const memberData = memberSnap.data() || {};
+      const ownerByUserId = String(memberData.userId || "") === uid;
+      const ownerByAuthUid = String(memberData.authUid || "") === uid;
+      if (!ownerByUserId && !ownerByAuthUid) {
+        res.status(403).json({error: "No tienes permisos para descargar este archivo."});
+        return;
+      }
+    }
+
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(cleanPath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      res.status(404).json({error: "Archivo no encontrado en Storage."});
+      return;
+    }
+
+    const [metadata] = await file.getMetadata();
+    const contentType = metadata?.contentType || "application/octet-stream";
+
+    res.set("Content-Type", contentType);
+    res.set("Content-Disposition", `attachment; filename="${requestedName}"`);
+    res.set("Cache-Control", "private, max-age=60");
+
+    file.createReadStream()
+        .on("error", (error) => {
+          logger.error("Error al transmitir archivo de dieta", {error: String(error?.message || error)});
+          if (!res.headersSent) {
+            res.status(500).json({error: "No se pudo descargar el archivo."});
+          }
+        })
+        .pipe(res);
+  } catch (error) {
+    logger.error("downloadDietFile error", {error: String(error?.message || error)});
+    res.status(500).json({error: "No se pudo completar la descarga."});
+  }
+});
+
 exports.onMembershipCreatedSendEmail = onDocumentCreated({
   document: "memberships/{membershipId}",
   secrets: [
@@ -953,89 +1077,3 @@ exports.updateSelfProfile = onCall(async (request) => {
   }
 });
 
-exports.downloadDietFile = onRequest({ cors: true, region: "us-east1" }, async (req, res) => {
-  if (req.method === "OPTIONS") {
-    return res.status(204).send("");
-  }
-
-  const authHeader = req.headers.authorization || "";
-  const hasBearer = authHeader.startsWith("Bearer ");
-  let decoded = null;
-
-  if (hasBearer) {
-    const idToken = authHeader.slice(7);
-    try {
-      decoded = await admin.auth().verifyIdToken(idToken);
-    } catch {
-      return res.status(401).json({ error: "Token inválido" });
-    }
-  }
-
-  const storagePath = req.query.path;
-  const fileName = req.query.name || "archivo";
-  const downloadToken = String(req.query.token || "").trim();
-
-  if (!storagePath) {
-    return res.status(400).json({ error: "Falta el parámetro path" });
-  }
-
-  try {
-    if (hasBearer) {
-      const db = admin.firestore();
-      const usersRef = db.collection("users");
-      const email = String(decoded?.email || "").trim();
-      const normalizedEmail = email.toLowerCase();
-
-      let isAdmin = decoded?.admin === true || String(decoded?.role || "").toLowerCase() === "admin";
-
-      if (!isAdmin) {
-        const userDoc = await usersRef.doc(decoded.uid).get();
-        isAdmin = String(userDoc.data()?.role || "").toLowerCase() === "admin";
-      }
-
-      if (!isAdmin) {
-        const authUidSnap = await usersRef.where("authUid", "==", decoded.uid).limit(1).get();
-        isAdmin = authUidSnap.docs.some((doc) => String(doc.data()?.role || "").toLowerCase() === "admin");
-      }
-
-      if (!isAdmin && email) {
-        const emailSnap = await usersRef.where("email", "==", email).limit(1).get();
-        isAdmin = emailSnap.docs.some((doc) => String(doc.data()?.role || "").toLowerCase() === "admin");
-      }
-
-      if (!isAdmin && normalizedEmail === "admin@fitdata.gym") {
-        isAdmin = true;
-      }
-
-      if (!isAdmin) {
-        return res.status(403).json({ error: "Solo administradores pueden descargar archivos" });
-      }
-    }
-
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(storagePath);
-    const [exists] = await file.exists();
-    if (!exists) {
-      return res.status(404).json({ error: "Archivo no encontrado" });
-    }
-
-    const [metadata] = await file.getMetadata();
-
-    if (!hasBearer) {
-      const rawTokens = String(metadata?.metadata?.firebaseStorageDownloadTokens || "");
-      const allowedTokens = rawTokens.split(",").map((t) => t.trim()).filter(Boolean);
-      if (!downloadToken || !allowedTokens.includes(downloadToken)) {
-        return res.status(403).json({ error: "Token de descarga inválido" });
-      }
-    }
-
-    res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
-    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    res.setHeader("Cache-Control", "private, no-cache");
-
-    file.createReadStream().pipe(res);
-  } catch (error) {
-    logger.error("Error descargando archivo de dieta", { error: String(error.message) });
-    res.status(500).json({ error: "No se pudo descargar el archivo" });
-  }
-});
