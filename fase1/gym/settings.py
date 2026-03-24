@@ -109,21 +109,36 @@ if os.environ.get('DATABASE_URL'):
         )
     }
 else:
-    # Configuración Local (SQL Server)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'mssql',
-            'NAME': 'FitDataDB',
-            'HOST': r'(local)', 
-            'USER': 'ArturoBD', 
-            'PASSWORD': 'chichu2006', 
-            'OPTIONS': {
-                'driver': 'ODBC Driver 17 for SQL Server',
-                'encrypt': 'yes',
-                'trust_server_certificate': 'yes',
-            },
+    # Usa SQL Server por defecto en desarrollo
+    USE_SQL_SERVER = os.environ.get('USE_SQL_SERVER', '1') == '1'
+    
+    if USE_SQL_SERVER:
+        # Configuración SQL Server
+        DB_NAME = os.environ.get('DB_NAME', 'FitDataDB')
+        DB_HOST = os.environ.get('DB_HOST', 'localhost\\SQLEXPRESS')
+        DB_DRIVER = os.environ.get('DB_DRIVER', 'ODBC Driver 17 for SQL Server')
+        DB_USE_TRUSTED = os.environ.get('DB_USE_TRUSTED_CONNECTION', '1') == '1'
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'mssql',
+                'NAME': DB_NAME,
+                'HOST': DB_HOST,
+                'OPTIONS': {
+                    'driver': DB_DRIVER,
+                    'extra_params': 'TrustServerCertificate=yes;Encrypt=no;',
+                    'sql_server_version': 2022,
+                },
+            }
         }
-    }
+
+        if DB_USE_TRUSTED:
+            DATABASES['default']['OPTIONS']['extra_params'] += 'Trusted_Connection=yes;'
+        else:
+            DATABASES['default']['USER'] = os.environ.get('DB_USER', 'Agustin')
+            DATABASES['default']['PASSWORD'] = os.environ.get('DB_PASSWORD', '')
+    else:
+        raise RuntimeError('USE_SQL_SERVER=0 no está soportado en esta configuración local.')
 
 # Validadores de Contraseña
 AUTH_PASSWORD_VALIDATORS = [
@@ -146,6 +161,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Configuración de WhiteNoise para servir archivos comprimidos
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+DJANGO_VITE = {
+    'default': {
+        'dev_mode': DEBUG,
+        'manifest_path': BASE_DIR / 'frontend' / 'dist' / '.vite' / 'manifest.json',
+    },
+}
 
 # --- CONFIGURACIÓN DE MEDIA (Imágenes subidas) ---
 # Cloudinary deshabilitado: usaremos almacenamiento local (Render servirá /media/)

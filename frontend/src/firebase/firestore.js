@@ -11,10 +11,12 @@ import {
   where,
   orderBy,
   limit,
+  onSnapshot,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore";
-import { db } from "./config";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "./config";
 
 const getLocalMXDate = () => {
   // Store absolute current timestamp; presentation layer applies Mexico timezone.
@@ -23,6 +25,153 @@ const getLocalMXDate = () => {
 
 const getLocalMXDateISO = () => {
   return new Date().toISOString();
+};
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeText = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+const isPermissionDeniedError = (error) => {
+  const raw = String(error?.message || error || '');
+  const code = String(error?.code || '');
+  return /insufficient permissions|permission-denied/i.test(raw) || /permission-denied/i.test(code);
+};
+
+const isNotFoundError = (error) => {
+  const raw = String(error?.message || error || '');
+  const code = String(error?.code || '');
+  return /not-found|no document to update/i.test(raw) || /not-found/i.test(code);
+};
+
+const normalizeFirestoreError = (error) => {
+  const raw = String(error?.message || error || 'Error desconocido');
+  if (isPermissionDeniedError(error)) {
+    return 'No hay permisos para guardar esta rutina en Firestore. Revisa reglas de trainerRoutines.';
+  }
+  return raw;
+};
+
+const waitForAuthReady = (timeoutMs = 3500) =>
+  new Promise((resolve) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+
+    let settled = false;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      unsubscribe();
+      resolve(user || null);
+    });
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(auth.currentUser || null);
+    }, timeoutMs);
+  });
+
+const withAuthRetry = async (operation, maxAttempts = 4) => {
+  await waitForAuthReady();
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError || !auth.currentUser || attempt === maxAttempts) {
+        throw error;
+      }
+
+      await auth.currentUser.getIdToken(true);
+      await delay(800 * attempt);
+      await waitForAuthReady(1500 + attempt * 300);
+    }
+  }
+
+  throw lastError;
+};
+
+// CATALOGO GLOBAL — ejercisedb.dev v1 (gratis, sin clave)
+// Los 1500 ejercicios se cargan una vez y se cachean en memoria
+// CATALOGO GLOBAL — ejercisedb.dev v1 (gratis, sin clave)
+// Cache para búsqueda por texto
+let _exCache = null;
+let _exCachePromise = null;
+
+const _delay = (ms) => new Promise((r) => setTimeout(r, ms));
+const BASE_URL = 'https://exercisedb.dev/api/v1/exercises?limit=100&offset=';
+
+const loadAllExercises = () => {
+  if (_exCache) return Promise.resolve(_exCache);
+  if (_exCachePromise) return _exCachePromise;
+  // 5 lotes de 3 páginas con 400ms entre lotes para evitar rate limiting
+  _exCachePromise = (async () => {
+    const all = [];
+    for (let batch = 0; batch < 5; batch++) {
+      if (batch > 0) await _delay(400);
+      const offsets = [batch * 300, batch * 300 + 100, batch * 300 + 200].filter((o) => o < 1500);
+      const pages = await Promise.all(
+        offsets.map((offset) =>
+          fetch(`${BASE_URL}${offset}`)
+            .then((r) => (r.ok ? r.json() : { data: [] }))
+            .then((j) => (Array.isArray(j?.data) ? j.data : []))
+            .catch(() => [])
+        )
+      );
+      pages.forEach((p) => all.push(...p));
+    }
+    _exCache = all;
+    return _exCache;
+  })();
+  return _exCachePromise;
+};
+
+const mapExercise = (ex) => ({
+  id: ex.exerciseId || ex.id || '',
+  name: ex.name || '',
+  nameLower: normalizeText(ex.name),
+  movementPattern: (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) || '',
+  primaryMuscle: (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) || '',
+  secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
+  tags: Array.isArray(ex.equipments) ? ex.equipments : (ex.equipment ? [ex.equipment] : []),
+  gifUrl: ex.gifUrl || null,
+  instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
+});
+
+export const searchExerciseCatalog = async ({ text = '', bodyPart = '', movementPattern = '', limitCount = 8 } = {}) => {
+  try {
+    const bp = bodyPart || movementPattern;
+    const normalizedText = normalizeText(text);
+    const safeLimit = Math.max(1, Math.min(Number(limitCount) || 8, 100));
+
+    const all = await loadAllExercises();
+
+    const filtered = all
+      .filter((ex) => {
+        const bpMatch = !bp || (Array.isArray(ex.bodyParts) ? ex.bodyParts : [ex.bodyPart || ''])
+          .some((b) => normalizeText(b) === normalizeText(bp));
+        const nameMatch = !normalizedText || normalizeText(ex.name).includes(normalizedText);
+        return bpMatch && nameMatch;
+      })
+      .slice(0, safeLimit)
+      .map(mapExercise);
+
+    return { success: true, data: filtered };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 };
 
 // USUARIOS
@@ -43,7 +192,15 @@ export const getUser = async (uid) => {
   try {
     const docSnap = await getDoc(doc(db, "users", uid));
     if (docSnap.exists()) {
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -57,7 +214,15 @@ export const getUserByEmail = async (email) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -71,7 +236,15 @@ export const getUserByAuthUid = async (authUid) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -81,11 +254,53 @@ export const getUserByAuthUid = async (authUid) => {
 
 export const updateUser = async (uid, userData) => {
   try {
-    await updateDoc(doc(db, "users", uid), {
+    const payload = {
       ...userData,
       updatedAt: serverTimestamp()
-    });
-    return { success: true };
+    };
+
+    const candidateDocIds = Array.from(new Set([
+      String(uid || '').trim(),
+      String(auth.currentUser?.uid || '').trim(),
+    ].filter(Boolean)));
+
+    for (const docId of candidateDocIds) {
+      try {
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    const currentAuthUid = String(auth.currentUser?.uid || '').trim();
+    const currentEmail = String(auth.currentUser?.email || '').trim().toLowerCase();
+
+    const fallbackQueries = [];
+    if (currentAuthUid) {
+      fallbackQueries.push(query(collection(db, "users"), where("authUid", "==", currentAuthUid), limit(1)));
+    }
+    if (currentEmail) {
+      fallbackQueries.push(query(collection(db, "users"), where("email", "==", currentEmail), limit(1)));
+    }
+
+    for (const q of fallbackQueries) {
+      try {
+        const snap = await getDocs(q);
+        if (snap.empty) continue;
+        const docId = snap.docs[0].id;
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    return { success: false, error: 'Missing or insufficient permissions.' };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -94,10 +309,14 @@ export const updateUser = async (uid, userData) => {
 export const getUsers = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
-    const users = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const users = querySnapshot.docs.map(doc => {
+      const userData = doc.data();
+      return {
+        ...userData,
+        legacyId: userData.id ?? null,
+        id: doc.id,
+      };
+    });
     return { success: true, data: users };
   } catch (error) {
     return { success: false, error: error.message };
@@ -107,14 +326,14 @@ export const getUsers = async () => {
 // MIEMBROS
 export const getMembers = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "miembros"));
+    const querySnapshot = await withAuthRetry(() => getDocs(collection(db, "miembros")));
     const members = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, data: members };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -129,7 +348,7 @@ export const getMemberByUserId = async (userId) => {
 
     const snapshots = await Promise.all(
       candidates.map((candidate) =>
-        getDocs(query(collection(db, "miembros"), where("userId", "==", candidate)))
+        withAuthRetry(() => getDocs(query(collection(db, "miembros"), where("userId", "==", candidate))))
       )
     );
 
@@ -149,14 +368,48 @@ export const getMemberByUserId = async (userId) => {
     }
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const updateMemberByUserId = async (userId, memberData = {}) => {
+  try {
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
+
+    const snapshots = await Promise.all(
+      candidates.map((candidate) =>
+        withAuthRetry(() => getDocs(query(collection(db, "miembros"), where("userId", "==", candidate), limit(1))))
+      )
+    );
+
+    const docSnap = snapshots.find((snap) => !snap.empty)?.docs?.[0];
+    if (!docSnap) {
+      return { success: false, error: "Miembro no encontrado" };
+    }
+
+    const payload = {};
+    if (memberData.telefono !== undefined) payload.telefono = memberData.telefono;
+    if (memberData.email !== undefined) payload.email = memberData.email;
+    if (memberData.nombre !== undefined) payload.nombre = memberData.nombre;
+    if (memberData.apellido !== undefined) payload.apellido = memberData.apellido;
+
+    await updateDoc(doc(db, "miembros", docSnap.id), {
+      ...payload,
+      updatedAt: serverTimestamp()
+    });
+
+    return { success: true, id: docSnap.id };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
 export const getMemberByAuthUid = async (authUid) => {
   try {
     const q = query(collection(db, "miembros"), where("authUid", "==", authUid), limit(1));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await withAuthRetry(() => getDocs(q));
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
@@ -172,7 +425,7 @@ export const getMemberByAuthUid = async (authUid) => {
     }
     return { success: false, error: "Miembro no encontrado" };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -463,6 +716,7 @@ export const assignMembership = async (assignmentData) => {
       user: userId,
       membershipType: membershipTypeId,
       userId: userId,
+      authUid: userData.authUid || userId,
       userName: userName || "",
       userFullName: userFullName || "",
       userEmail: userData.email || "",
@@ -526,7 +780,6 @@ export const assignMembership = async (assignmentData) => {
         cliente_username: userName || userData.username || userData.email || "Cliente anónimo",
         cliente_email: userData.email || null,
         clienteEmail: userData.email || null,
-        cliente_auth_uid: userData.authUid || null,
         clienteNombre: userFullName || userName || userData.email || "Cliente",
         metodo_pago: payMethod,
         total: membershipPrice,
@@ -1047,7 +1300,6 @@ export const createSale = async (saleData) => {
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
-    let cliente_auth_uid = null;
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", cliente_id));
       if (userDoc.exists()) {
@@ -1057,7 +1309,6 @@ export const createSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
-        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
@@ -1070,7 +1321,6 @@ export const createSale = async (saleData) => {
       cliente_username: cliente_username,
       cliente_email: cliente_email,
       clienteEmail: cliente_email,
-      cliente_auth_uid: cliente_auth_uid,
       clienteNombre: clienteNombre,
       metodo_pago: metodo_pago,
       total: total,
@@ -1108,7 +1358,6 @@ export const createMembershipSale = async (saleData) => {
     let cliente_username = null;
     let cliente_email = null;
     let clienteNombre = null;
-    let cliente_auth_uid = null;
 
     if (cliente_id) {
       const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
@@ -1119,7 +1368,6 @@ export const createMembershipSale = async (saleData) => {
         const nombreCompleto = `${nombre} ${apellido}`.trim();
         cliente_username = userData.username || userData.email;
         cliente_email = userData.email;
-        cliente_auth_uid = userData.authUid || null;
         clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
       }
     }
@@ -1137,7 +1385,6 @@ export const createMembershipSale = async (saleData) => {
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
-      cliente_auth_uid: cliente_auth_uid,
       clienteNombre,
       metodo_pago: payMethod,
       total: totalNumber,
@@ -1199,15 +1446,8 @@ export const getSales = async (filters = {}) => {
 
     let sales = [];
 
-    if (filters.userId || filters.userEmail || filters.username || filters.authUid) {
+    if (filters.userId || filters.userEmail || filters.username) {
       const fieldQueries = [];
-
-      if (filters.authUid) {
-        fieldQueries.push(
-          query(collection(db, "ventas"), where("cliente_auth_uid", "==", filters.authUid), limit(limitValue)),
-          query(collection(db, "ventas"), where("authUid", "==", filters.authUid), limit(limitValue))
-        );
-      }
 
       if (filters.userId) {
         const userIdCandidates = [filters.userId];
@@ -1374,6 +1614,245 @@ export const getMemberByEmail = async (email) => {
 
 // NOTAS PRIVADAS DEL ENTRENADOR
 
+export const createOrUpdateTrainerRoutine = async (routineData) => {
+  try {
+    const memberId = String(routineData?.memberId || '').trim();
+    const trainerUid = String(routineData?.createdBy || '').trim();
+    if (!memberId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const canonicalRef = doc(db, 'trainerRoutines', memberId);
+    const memberRoutineRef = doc(db, 'memberRoutines', memberId);
+    const trainerScopedId = trainerUid ? `${memberId}_${trainerUid}` : '';
+    const trainerScopedRef = trainerScopedId ? doc(db, 'trainerRoutines', trainerScopedId) : null;
+
+    const payload = {
+      memberId,
+      memberName: routineData.memberName || '',
+      memberEmail: routineData.memberEmail || '',
+      memberAuthUid: routineData.memberAuthUid || '',
+      memberUserId: routineData.memberUserId || '',
+      routineName: routineData.routineName || '',
+      days: Array.isArray(routineData.days) ? routineData.days : [],
+      steps: Array.isArray(routineData.steps) ? routineData.steps : [],
+      files: Array.isArray(routineData.files) ? routineData.files : [],
+      createdBy: routineData.createdBy || '',
+      trainerEmail: routineData.trainerEmail || '',
+      ownerUid: trainerUid,
+      updatedAt: serverTimestamp(),
+    };
+
+    const upsertRoutineDoc = async (routineRef) => {
+      try {
+        await withAuthRetry(() => updateDoc(routineRef, payload));
+        return;
+      } catch (error) {
+        if (!isNotFoundError(error)) {
+          throw error;
+        }
+      }
+
+      await withAuthRetry(() =>
+        setDoc(
+          routineRef,
+          {
+            ...payload,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      );
+    };
+
+    try {
+      await upsertRoutineDoc(canonicalRef);
+      await upsertRoutineDoc(memberRoutineRef);
+      return { success: true, id: memberId };
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError || !trainerScopedRef) {
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
+      }
+
+      try {
+        await upsertRoutineDoc(trainerScopedRef);
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: trainerScopedId, fallback: true };
+      } catch {
+        await upsertRoutineDoc(memberRoutineRef);
+        return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
+      }
+    }
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const getTrainerRoutineByMember = async (memberId) => {
+  try {
+    const canonicalId = String(memberId || '').trim();
+    if (!canonicalId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const authUid = String(auth.currentUser?.uid || '').trim();
+    const docCandidates = [canonicalId];
+    if (authUid) {
+      docCandidates.unshift(`${canonicalId}_${authUid}`);
+    }
+
+    for (const candidateId of docCandidates) {
+      try {
+        const routineRef = doc(db, 'trainerRoutines', candidateId);
+        const routineSnap = await withAuthRetry(() => getDoc(routineRef));
+        if (routineSnap.exists()) {
+          return { success: true, data: { id: routineSnap.id, ...routineSnap.data() } };
+        }
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    try {
+      const memberRoutineSnap = await withAuthRetry(() => getDoc(doc(db, 'memberRoutines', canonicalId)));
+      if (memberRoutineSnap.exists()) {
+        return { success: true, data: { id: memberRoutineSnap.id, ...memberRoutineSnap.data() } };
+      }
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error);
+      if (!isPermissionError) throw error;
+    }
+
+    const queryCandidates = [
+      query(collection(db, 'trainerRoutines'), where('memberId', '==', canonicalId), limit(1)),
+    ];
+
+    for (const q of queryCandidates) {
+      try {
+        const querySnapshot = await withAuthRetry(() => getDocs(q));
+        if (!querySnapshot.empty) {
+          const routineDoc = querySnapshot.docs[0];
+          return { success: true, data: { id: routineDoc.id, ...routineDoc.data() } };
+        }
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    return { success: false, error: 'Rutina no encontrada' };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const subscribeTrainerRoutineByMember = (memberId, onRoutineChange) => {
+  const canonicalId = String(memberId || '').trim();
+  if (!canonicalId || typeof onRoutineChange !== 'function') {
+    return () => {};
+  }
+
+  const routineRef = doc(db, 'trainerRoutines', canonicalId);
+  const memberRoutineRef = doc(db, 'memberRoutines', canonicalId);
+
+  const emitFallbackRoutine = async () => {
+    try {
+      const memberRoutineSnap = await getDoc(memberRoutineRef);
+      if (memberRoutineSnap.exists()) {
+        onRoutineChange({ id: memberRoutineSnap.id, ...memberRoutineSnap.data() });
+        return;
+      }
+
+      const q = query(collection(db, 'trainerRoutines'), where('memberId', '==', canonicalId), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const routineDoc = querySnapshot.docs[0];
+        onRoutineChange({ id: routineDoc.id, ...routineDoc.data() });
+        return;
+      }
+
+      onRoutineChange(null);
+    } catch {
+      onRoutineChange(null);
+    }
+  };
+
+  return onSnapshot(
+    routineRef,
+    async (routineSnap) => {
+      try {
+        if (routineSnap.exists()) {
+          onRoutineChange({ id: routineSnap.id, ...routineSnap.data() });
+          return;
+        }
+
+        await emitFallbackRoutine();
+      } catch {
+        await emitFallbackRoutine();
+      }
+    },
+    async () => {
+      await emitFallbackRoutine();
+    }
+  );
+};
+
+export const getAllTrainerRoutines = async () => {
+  try {
+    const q = query(collection(db, 'trainerRoutines'), orderBy('updatedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const routines = querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    }));
+    return { success: true, data: routines };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTrainerRoutineByMember = async (memberId) => {
+  try {
+    const canonicalId = String(memberId || '').trim();
+    if (!canonicalId) {
+      return { success: false, error: 'memberId es requerido' };
+    }
+
+    const authUid = String(auth.currentUser?.uid || '').trim();
+    const targetIds = authUid ? [`${canonicalId}_${authUid}`, canonicalId] : [canonicalId];
+
+    let deletedAny = false;
+    for (const targetId of targetIds) {
+      try {
+        await withAuthRetry(() => deleteDoc(doc(db, 'trainerRoutines', targetId)));
+        deletedAny = true;
+      } catch (error) {
+        const isPermissionError = isPermissionDeniedError(error) || isNotFoundError(error);
+        if (!isPermissionError) throw error;
+      }
+    }
+
+    try {
+      await withAuthRetry(() => deleteDoc(doc(db, 'memberRoutines', canonicalId)));
+      deletedAny = true;
+    } catch (error) {
+      const isPermissionError = isPermissionDeniedError(error) || isNotFoundError(error);
+      if (!isPermissionError) throw error;
+    }
+
+    if (!deletedAny) {
+      return { success: false, error: 'No se encontro una rutina eliminable para este entrenador.' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
 export const createTrainerNote = async (noteData) => {
   try {
     const docRef = await addDoc(collection(db, "trainerNotes"), {
@@ -1435,6 +1914,68 @@ export const updateTrainerNote = async (noteId, noteData) => {
 export const deleteTrainerNote = async (noteId) => {
   try {
     await deleteDoc(doc(db, "trainerNotes", noteId));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// REPOSITORIO DE DIETAS
+export const getAllDietFiles = async () => {
+  try {
+    const q = query(collection(db, 'dietFiles'), orderBy('createdAt', 'desc'));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getDietFilesByMember = async (memberId) => {
+  try {
+    const safeMemberId = String(memberId || '').trim();
+    if (!safeMemberId) {
+      return { success: true, data: [] };
+    }
+
+    const q = query(collection(db, 'dietFiles'), where('memberId', '==', safeMemberId));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const aTime = a.createdAt?.seconds || a.updatedAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || b.updatedAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const createDietFileRecord = async (recordData) => {
+  try {
+    const ownerUid = String(auth.currentUser?.uid || '');
+    const docRef = await withAuthRetry(() =>
+      addDoc(collection(db, 'dietFiles'), {
+        ...recordData,
+        ownerUid,
+        uploadedByUid: ownerUid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    );
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteDietFileRecord = async (fileId) => {
+  try {
+    await withAuthRetry(() => deleteDoc(doc(db, 'dietFiles', fileId)));
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

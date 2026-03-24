@@ -67,7 +67,7 @@ function MembershipAdmin() {
   
 
   const [activeCardId, setActiveCardId] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchMemberships();
