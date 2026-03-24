@@ -1672,7 +1672,6 @@ export const createOrUpdateTrainerRoutine = async (routineData) => {
     } catch (error) {
       const isPermissionError = isPermissionDeniedError(error);
       if (!isPermissionError || !trainerScopedRef) {
-        // Ultimo fallback para evitar bloquear el flujo por reglas en trainerRoutines.
         await upsertRoutineDoc(memberRoutineRef);
         return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
       }
