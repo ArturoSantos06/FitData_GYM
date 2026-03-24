@@ -15,6 +15,7 @@ import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/GestionEntrenadores';
+import ReportesFacturacion from './components/ReportesFacturacion';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -47,7 +48,6 @@ function NutriologoArea() {
 
   if (isLoading) return <div className="text-white bg-gray-900 h-screen flex items-center justify-center">Cargando...</div>;
 
-  // Si NO está autenticado, mostramos el Login de Nutriólogo
   if (!isAuthenticated) {
     return (
       <div className="bg-gray-900 min-h-screen flex items-center justify-center">
@@ -143,6 +143,9 @@ function AdminArea() {
           
           {/* 9. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
+          
+          {/* 10. Reportes de Facturación */}
+          <Route path="reportes-facturas" element={<ReportesFacturacion />} />
           
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>

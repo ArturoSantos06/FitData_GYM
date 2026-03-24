@@ -128,10 +128,12 @@ function RegisterUser({ onUserRegistered }) {
   // --- SUBMIT DE NUTRIÓLOGO ---
   const handleNutriSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔄 Iniciando registro de nutriólogo con datos:', nutriData);
     setIsLoading(true);
 
     try {
       const result = await registerNutriologoByAdmin(nutriData);
+      console.log('✅ Resultado del registro:', result);
 
       if (!result.success) {
         throw new Error(result.error);
@@ -145,6 +147,7 @@ function RegisterUser({ onUserRegistered }) {
       setNutriData({ email: '', password: '', first_name: '', last_name: '', especialidad: 'Nutrición Deportiva' });
 
     } catch (err) {
+      console.error('❌ Error en registro de nutriólogo:', err);
       let mensaje = err.message;
       if (mensaje.includes('email-already-in-use')) mensaje = 'Este correo ya está registrado';
       if (mensaje.includes('weak-password')) mensaje = 'La contraseña debe tener al menos 6 caracteres';
@@ -220,8 +223,6 @@ function RegisterUser({ onUserRegistered }) {
             <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
             <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
           </div>
-
-          {/* ... Pega el resto de tu sección de pagos original del cliente aquí ... */}
 
           <div className="md:col-span-2 mt-4">
             <button type="submit" disabled={isLoading} className={`w-full bg-linear-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all uppercase tracking-wide flex justify-center items-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>

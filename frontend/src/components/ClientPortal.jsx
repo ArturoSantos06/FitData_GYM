@@ -5,6 +5,7 @@ import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
 import ClientNavbar from './ClientNavbar';
 import NutriologosList from './NutriologosList';
+import CentroFacturacion from './CentroFacturacion';
 
 function ClientPortal() {
   const navigate = useNavigate();
@@ -36,8 +37,12 @@ function ClientPortal() {
         {activeTab === 'catalogo' && (
           <ClientStore />
         )}
-      {activeTab === 'nutriologos' && (
-          <NutriologosList />)}
+        {activeTab === 'nutriologos' && (
+          <NutriologosList />
+        )}
+        {activeTab === 'facturas' && (
+          <CentroFacturacion />
+        )}
         {activeTab === 'perfil' && (
           <UserProfile />
         )}
