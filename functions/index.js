@@ -4,6 +4,8 @@ const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const PDFDocument = require("pdfkit");
+const {Readable} = require("stream");
 
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
@@ -755,3 +757,365 @@ exports.registerClientByAdmin = onCall(async (request) => {
     throw new HttpsError("internal", error.message || "No se pudo registrar el cliente");
   }
 });
+
+exports.registerNutriologoByAdmin = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    especialidad,
+  } = request.data || {};
+
+  if (!email || !password) {
+    throw new HttpsError("invalid-argument", "Email y contraseña son requeridos");
+  }
+
+  const db = admin.firestore();
+
+  try {
+    const adminUserDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== "admin") {
+      throw new HttpsError("permission-denied", "No tienes permisos de administrador");
+    }
+
+    const authUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: `${firstName || ""} ${lastName || ""}`.trim() || undefined,
+    });
+
+    const userDoc = {
+      email,
+      role: "nutriologo",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (firstName) userDoc.firstName = firstName;
+    if (lastName) userDoc.lastName = lastName;
+    if (especialidad) userDoc.especialidad = especialidad;
+
+    await db.collection("users").doc(authUser.uid).set(userDoc);
+
+    return {
+      success: true,
+      id: authUser.uid,
+      email: authUser.email,
+    };
+  } catch (error) {
+    logger.error("Error en registerNutriologoByAdmin", {
+      email,
+      error: String(error.message || error),
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError(
+      "internal",
+      error.message || "No se pudo registrar el nutriólogo",
+      { message: String(error.message || error) }
+    );
+  }
+});
+
+// --- CLOUD FUNCTION: GENERAR FACTURA PDF ---
+exports.generarFactura = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const { ventaId } = request.data || {};
+
+  if (!ventaId) {
+    throw new HttpsError("invalid-argument", "Falta ventaId");
+  }
+
+  const db = admin.firestore();
+  const storage = admin.storage();
+
+  try {
+    // 1. Obtener el documento de venta
+    const ventaDoc = await db.collection("ventas").doc(ventaId).get();
+    if (!ventaDoc.exists) {
+      throw new HttpsError("not-found", "Venta no encontrada");
+    }
+
+    const venta = ventaDoc.data();
+
+    // 2. Generar número de factura secuencial
+    const fechaVenta = venta.fecha?.toDate?.() || new Date(venta.fecha || Date.now());
+    const periodo = `${fechaVenta.getFullYear()}-${String(fechaVenta.getMonth() + 1).padStart(2, "0")}`;
+    
+    const configRef = db.collection("facturas_config").doc("numeracion");
+    const configSnap = await configRef.get();
+    
+    let numeroFactura = 1;
+    let periodoActual = periodo;
+
+    if (configSnap.exists) {
+      const config = configSnap.data();
+      if (config.periodo_actual === periodo) {
+        numeroFactura = (config.ultimo_numero || 0) + 1;
+      } else {
+        numeroFactura = 1;
+      }
+      periodoActual = periodo;
+    }
+
+    const numeroFacturaFormato = String(numeroFactura).padStart(5, "0");
+    const anio = fechaVenta.getFullYear();
+    const facturaNumeroCodigo = `FAC-001-${anio}-${numeroFacturaFormato}`;
+
+    // 3. Actualizar config de numeración
+    await configRef.set({
+      periodo_actual: periodoActual,
+      ultimo_numero: numeroFactura,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 4. Generar PDF
+    const pdfBuffer = await generarPDFFactura({
+      facturaNumeroCodigo,
+      venta,
+      fechaVenta
+    });
+
+    // 5. Guardar PDF en Storage
+    const storageePath = `facturas/${anio}/${periodo}/${facturaNumeroCodigo}.pdf`;
+    const file = storage.bucket().file(storageePath);
+
+    await new Promise((resolve, reject) => {
+      const stream = file.createWriteStream({
+        metadata: {
+          contentType: "application/pdf"
+        }
+      });
+      stream.on("error", reject);
+      stream.on("finish", resolve);
+      stream.end(pdfBuffer);
+    });
+
+    // 6. Obtener URL descargable (signed URL válida por 7 días)
+    const [signedUrl] = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // 7. Actualizar documento de venta con info de factura
+    await db.collection("ventas").doc(ventaId).update({
+      factura_numero: facturaNumeroCodigo,
+      factura_estado: "generada",
+      factura_url: signedUrl,
+      factura_info_storage: storageePath,
+      factura_fecha_generacion: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      success: true,
+      facturaNumeroCodigo,
+      factura_url: signedUrl
+    };
+  } catch (error) {
+    logger.error("Error generando factura", {
+      ventaId,
+      error: String(error.message || error)
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError(
+      "internal",
+      error.message || "No se pudo generar la factura"
+    );
+  }
+});
+
+// --- HELPER: Generar PDF de factura ---
+async function generarPDFFactura({ facturaNumeroCodigo, venta, fechaVenta }) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on("data", (chunk) => buffers.push(chunk));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+    // --- Cabecera ---
+    doc.fontSize(20).font("Helvetica-Bold").text("FitData GYM", { align: "center" });
+    doc.fontSize(10).font("Helvetica").text("Centro de Entrenamiento Especializado", { align: "center" });
+    doc.text("Av. Resurgimiento 611, Campeche, México", { align: "center" });
+    doc.text("Tel: +52 981 111 2233 | Email: info@fitdatagym.com", { align: "center" });
+
+    doc.moveTo(50, 120).lineTo(550, 120).stroke();
+
+    // --- Número de factura ---
+    doc.fontSize(12).font("Helvetica-Bold").text(`Factura: ${facturaNumeroCodigo}`, 50, 130);
+    doc.fontSize(10).font("Helvetica");
+    doc.text(`Fecha: ${fechaVenta.toLocaleDateString("es-MX")}`, 50, 150);
+    doc.text(`Folio de Referencia: ${venta.folio || "N/A"}`, 50, 165);
+
+    // --- Datos del cliente ---
+    doc.fontSize(10).font("Helvetica-Bold").text("CLIENTE", 50, 190);
+    doc.font("Helvetica");
+    doc.text(`Nombre: ${venta.clienteNombre || venta.cliente_username || "N/A"}`, 50, 208);
+    doc.text(`Email: ${venta.clienteEmail || venta.cliente_email || "N/A"}`, 50, 223);
+
+    // --- Tabla de productos/servicios ---
+    doc.moveTo(50, 260).lineTo(550, 260).stroke();
+
+    const tableTop = 270;
+    doc.fontSize(9).font("Helvetica-Bold");
+    doc.text("Descripción", 50, tableTop);
+    doc.text("Cantidad", 300, tableTop);
+    doc.text("Precio Unit.", 370, tableTop);
+    doc.text("Total", 480, tableTop);
+
+    doc.moveTo(50, 285).lineTo(550, 285).stroke();
+
+    doc.font("Helvetica").fontSize(9);
+    let currentY = 295;
+
+    // Parsear items
+    let items = [];
+    if (venta.detalle_productos) {
+      try {
+        items = typeof venta.detalle_productos === "string" 
+          ? JSON.parse(venta.detalle_productos) 
+          : venta.detalle_productos;
+      } catch (e) {
+        items = [{ nombre: "Membresía", cantidad: 1, precio: venta.total }];
+      }
+    } else if (venta.membership_name) {
+      items = [{ 
+        nombre: `Membresía: ${venta.membership_name}`, 
+        cantidad: 1, 
+        precio: venta.total 
+      }];
+    }
+
+    items.forEach((item) => {
+      const nombre = item.nombre || "Producto";
+      const cantidad = item.cantidad || 1;
+      const precio = item.precio || 0;
+      const subtotal = cantidad * precio;
+
+      doc.text(nombre.substring(0, 35), 50, currentY);
+      doc.text(String(cantidad), 300, currentY);
+      doc.text(`$${precio.toFixed(2)}`, 370, currentY);
+      doc.text(`$${subtotal.toFixed(2)}`, 480, currentY);
+
+      currentY += 20;
+    });
+
+    doc.moveTo(50, currentY).lineTo(550, currentY).stroke();
+
+    // --- Totales ---
+    currentY += 10;
+    const subtotal = venta.total / 1.16;
+    const iva = venta.total - subtotal;
+
+    doc.fontSize(10).font("Helvetica");
+    doc.text(`Subtotal:`, 350, currentY);
+    doc.text(`$${subtotal.toFixed(2)}`, 480, currentY);
+    
+    doc.text(`IVA (16%):`, 350, currentY + 18);
+    doc.text(`$${iva.toFixed(2)}`, 480, currentY + 18);
+
+    doc.moveTo(350, currentY + 38).lineTo(550, currentY + 38).stroke();
+
+    doc.fontSize(12).font("Helvetica-Bold");
+    doc.text(`TOTAL:`, 350, currentY + 45);
+    doc.text(`$${venta.total.toFixed(2)}`, 480, currentY + 45);
+
+    // --- Forma de pago ---
+    currentY += 90;
+    doc.fontSize(9).font("Helvetica");
+    doc.text(`Método de Pago: ${venta.metodo_pago || "EFECTIVO"}`, 50, currentY);
+    if (venta.metodo_pago === "EFECTIVO") {
+      doc.text(`Monto Recibido: $${(venta.monto_recibido || venta.total).toFixed(2)}`, 50, currentY + 15);
+      doc.text(`Cambio: $${((venta.monto_recibido || venta.total) - venta.total).toFixed(2)}`, 50, currentY + 30);
+    }
+
+    // --- Pie ---
+    currentY += 80;
+    doc.fontSize(8).font("Helvetica").text("Gracias por su compra. Para consultas: info@fitdatagym.com", 50, currentY, { align: "center" });
+
+    doc.end();
+  });
+}
+
+// --- CLOUD FUNCTION: OBTENER REPORTES DE FACTURAS (ADMIN) ---
+exports.obtenerReporteFacturas = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const { mes, anio } = request.data || {};
+  const db = admin.firestore();
+
+  try {
+    // Verificar que sea admin
+    const adminDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (!adminDoc.exists || adminDoc.data()?.role !== "admin") {
+      throw new HttpsError("permission-denied", "No tienes permisos");
+    }
+
+    // Filtrar ventas por mes/año
+    const mesStr = mes ? String(mes).padStart(2, "0") : String(new Date().getMonth() + 1).padStart(2, "0");
+    const anioStr = anio || new Date().getFullYear();
+
+    // Obtener todas las ventas con factura
+    const snapshot = await db.collection("ventas").get();
+    const reportes = [];
+    let totalFacturado = 0;
+
+    snapshot.docs.forEach((doc) => {
+      const venta = doc.data();
+      const fecha = venta.fecha?.toDate?.() || new Date(venta.fecha);
+      
+      if (fecha.getFullYear() === parseInt(anioStr) && 
+          fecha.getMonth() + 1 === parseInt(mesStr)) {
+        reportes.push({
+          id: doc.id,
+          factura_numero: venta.factura_numero,
+          cliente: venta.clienteNombre || venta.cliente_username,
+          email: venta.clienteEmail || venta.cliente_email,
+          total: venta.total,
+          fecha: fecha.toLocaleDateString("es-MX"),
+          metodo_pago: venta.metodo_pago
+        });
+        totalFacturado += venta.total;
+      }
+    });
+
+    return {
+      success: true,
+      mes: mesStr,
+      anio: anioStr,
+      total_facturas: reportes.length,
+      total_facturado: totalFacturado,
+      reportes
+    };
+  } catch (error) {
+    logger.error("Error obteniendo reporte facturas", {
+      error: String(error.message || error)
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "Error obteniendo reporte");
+  }
+});
+

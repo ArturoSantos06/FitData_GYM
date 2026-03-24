@@ -75,7 +75,7 @@ function NutriologoLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   placeholder="tu@email.com"
                   required
                 />
@@ -93,7 +93,7 @@ function NutriologoLogin() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 pr-12 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 pr-12 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   placeholder="••••••••"
                   required
                 />
@@ -119,12 +119,12 @@ function NutriologoLogin() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg transform active:scale-95 flex justify-center items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-linear-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Entrando...
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Ingresando...
                 </>
               ) : (
                 <>
@@ -146,9 +146,18 @@ function NutriologoLogin() {
             </button>
           </div>
         </div>
+
+        {/* Nota informativa */}
+        <div className="mt-6 text-center">
+          <p className="text-slate-500 text-sm">
+            ¿No tienes cuenta? Regístrate en recepción del gimnasio
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+    
+  
 
 export default NutriologoLogin;

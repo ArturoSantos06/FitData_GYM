@@ -51,6 +51,9 @@ function Navbar({ onLogout }) {
             <Link to="/admin/gestion-entrenadores" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/gestion-entrenadores')}`}>
               Gestión Entrenadores
             </Link>
+            <Link to="/admin/reportes-facturas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/reportes-facturas')}`}>
+              Reportes Facturación
+            </Link>
           </div>
 
           <div className="hidden md:flex">
@@ -144,6 +147,13 @@ function Navbar({ onLogout }) {
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/gestion-entrenadores')}`}
           >
             👥 Gestión Entrenadores
+          </Link>
+          <Link 
+            to="/admin/reportes-facturas" 
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/reportes-facturas')}`}
+          >
+            📊 Reportes Facturación
           </Link>
           
           {/* Botón Salir Móvil */}
