@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Plus, Trash2, Upload, FileText,
-  Image as ImageIcon, Search, X, BookOpen,
+  ArrowLeft, Upload, FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   auth,
@@ -14,20 +14,12 @@ import {
   searchExerciseCatalog,
   uploadRoutineAttachment
 } from '../firebase';
+import FormStatusMessages from './FormStatusMessages';
+import DaySelector from './DaySelector';
+import ExerciseListSection from './ExerciseListSection';
+import CatalogSection from './CatalogSection';
 
 const WEEK_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-const BODY_PARTS = [
-  { key: 'chest',       label: 'Pecho'       },
-  { key: 'back',        label: 'Espalda'     },
-  { key: 'upper arms',  label: 'Brazos'      },
-  { key: 'lower arms',  label: 'Antebrazos'  },
-  { key: 'upper legs',  label: 'Piernas'     },
-  { key: 'lower legs',  label: 'Pantorrillas'},
-  { key: 'shoulders',   label: 'Hombros'     },
-  { key: 'waist',       label: 'Abdomen'     },
-  { key: 'cardio',      label: 'Cardio'      },
-];
 
 const LABEL_TRANSLATIONS = {
   pectorals: 'Pectorales',
@@ -60,12 +52,6 @@ const LABEL_TRANSLATIONS = {
   'assisted body weight': 'Peso corporal asistido',
   'leverage machine': 'Maquina de palanca',
   'smith machine': 'Maquina Smith',
-};
-
-const toSpanishLabel = (value) => {
-  if (!value) return '';
-  const key = String(value).trim().toLowerCase();
-  return LABEL_TRANSLATIONS[key] || value;
 };
 
 const DEFAULT_ACTIVE_DAYS = ['Lunes', 'Miércoles', 'Viernes'];
@@ -625,29 +611,12 @@ function RutinaEntrenador() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
-          {formSuccessMessage && (
-            <div className="bg-emerald-950 border border-emerald-700 rounded-2xl px-4 py-3 text-sm text-emerald-300">
-              {formSuccessMessage}
-            </div>
-          )}
-
-          {formWarningMessage && (
-            <div className="bg-amber-950 border border-amber-700 rounded-2xl px-4 py-3 text-sm text-amber-200">
-              {formWarningMessage}
-            </div>
-          )}
-
-          {(formErrors.save || formErrors.delete) && (
-            <div className="bg-red-950 border border-red-700 rounded-2xl px-4 py-3 text-sm text-red-300">
-              {formErrors.save || formErrors.delete}
-            </div>
-          )}
-
-          {isLoadingRoutine && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-300">
-              Cargando rutina existente del alumno...
-            </div>
-          )}
+          <FormStatusMessages
+            successMessage={formSuccessMessage}
+            warningMessage={formWarningMessage}
+            errors={formErrors}
+            isLoadingRoutine={isLoadingRoutine}
+          />
 
           {/* Nombre de la rutina */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6">
@@ -670,335 +639,43 @@ function RutinaEntrenador() {
           </div>
 
           {/* Selector de días */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6">
-            <p className="text-xs text-slate-400 uppercase tracking-widest mb-3 font-semibold">
-              Días de entrenamiento
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {WEEK_DAYS.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(day)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-                    activeDays.includes(day)
-                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40'
-                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-            {formErrors.days && (
-              <p className="text-red-400 text-xs mt-3">{formErrors.days}</p>
-            )}
-          </div>
+          <DaySelector
+            activeDays={activeDays}
+            onToggleDay={toggleDay}
+            formError={formErrors.days}
+          />
 
           {/* Panel principal: días + catálogo lado a lado */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* ── Columna izquierda: ejercicios del día ── */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
+            <ExerciseListSection
+              activeDay={activeDay}
+              activeDays={activeDays}
+              exercisesByDay={exercisesByDay}
+              formError={formErrors.exercises}
+              searchQuery={searchQuery}
+              searchResults={searchResults}
+              isSearching={isSearching}
+              onSetActiveDay={setActiveDay}
+              onRemoveExercise={removeExercise}
+              onUpdateExercise={updateExercise}
+              onMoveExercise={moveExercise}
+              onSearch={handleSearch}
+              onClearSearch={clearSearch}
+              onAddExercise={addExercise}
+              LABEL_TRANSLATIONS={LABEL_TRANSLATIONS}
+              inputSm={inputSm}
+            />
 
-              {/* Tabs de días */}
-              <div className="flex overflow-x-auto border-b border-slate-800 bg-slate-950 shrink-0">
-                {activeDays.map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setActiveDay(day)}
-                    className={`shrink-0 px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${
-                      activeDay === day
-                        ? 'border-blue-500 text-white bg-slate-900'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-900/50'
-                    }`}
-                  >
-                    {day}
-                    {(exercisesByDay[day]?.length || 0) > 0 && (
-                      <span className="ml-1.5 text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded-full">
-                        {exercisesByDay[day].length}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Lista de ejercicios */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[540px]">
-                {formErrors.exercises && (
-                  <div className="bg-red-950 border border-red-700 rounded-lg px-3 py-2 text-xs text-red-300">
-                    {formErrors.exercises}
-                  </div>
-                )}
-                {(exercisesByDay[activeDay] || []).length === 0 ? (
-                  <div className="text-center py-10 text-slate-500">
-                    <p className="text-4xl mb-3">🏋️</p>
-                    <p className="text-sm">Sin ejercicios para este día.</p>
-                    <p className="text-xs mt-1 text-slate-600">
-                      Busca abajo o usa el catálogo →
-                    </p>
-                  </div>
-                ) : (
-                  (exercisesByDay[activeDay] || []).map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="flex gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3 hover:border-slate-700 transition-colors"
-                    >
-                      {ex.gifUrl ? (
-                        <img
-                          src={ex.gifUrl}
-                          alt={ex.titulo}
-                          className="w-16 h-16 rounded-lg object-cover bg-slate-900 shrink-0"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 text-2xl select-none">
-                          🏋️
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-white text-sm capitalize truncate">
-                              {ex.titulo}
-                            </p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {ex.movementPattern && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-950 border border-blue-800 text-blue-300 capitalize">
-                                  {toSpanishLabel(ex.movementPattern)}
-                                </span>
-                              )}
-                              {ex.primaryMuscle && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-300 capitalize">
-                                  💪 {toSpanishLabel(ex.primaryMuscle)}
-                                </span>
-                              )}
-                              {ex.tags?.[0] && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-950 border border-amber-800 text-amber-300 capitalize">
-                                  🏋️ {toSpanishLabel(ex.tags[0])}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {activeDays.filter((d) => d !== activeDay).length > 0 && (
-                              <select
-                                defaultValue=""
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    moveExercise(activeDay, ex.id, e.target.value);
-                                    e.target.value = '';
-                                  }
-                                }}
-                                className="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1 outline-none cursor-pointer"
-                              >
-                                <option value="" disabled>Mover a…</option>
-                                {activeDays
-                                  .filter((d) => d !== activeDay)
-                                  .map((d) => (
-                                    <option key={d} value={d}>{d}</option>
-                                  ))}
-                              </select>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => removeExercise(activeDay, ex.id)}
-                              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950 rounded-lg transition-colors"
-                              title="Eliminar ejercicio"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            inputMode="numeric"
-                            placeholder="Series"
-                            value={ex.series}
-                            onChange={(e) => updateExercise(activeDay, ex.id, 'series', e.target.value)}
-                            className={inputSm}
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            inputMode="numeric"
-                            placeholder="Reps"
-                            value={ex.repeticiones}
-                            onChange={(e) => updateExercise(activeDay, ex.id, 'repeticiones', e.target.value)}
-                            className={inputSm}
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            inputMode="numeric"
-                            placeholder="Descanso"
-                            value={ex.descanso}
-                            onChange={(e) => updateExercise(activeDay, ex.id, 'descanso', e.target.value)}
-                            className={inputSm}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Buscador rápido */}
-              <div className="p-4 border-t border-slate-800 shrink-0">
-                <div className="relative">
-                  <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 focus-within:border-blue-500 transition-colors">
-                    <Search size={16} className="text-slate-500 shrink-0" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      placeholder="Buscar ejercicio (squat, curl, press…)"
-                      className="flex-1 bg-transparent text-white text-sm placeholder-slate-500 outline-none"
-                    />
-                    {isSearching && (
-                      <span className="text-xs text-slate-500 shrink-0">Buscando…</span>
-                    )}
-                    {searchQuery && !isSearching && (
-                      <button type="button" onClick={clearSearch} className="shrink-0">
-                        <X size={14} className="text-slate-500 hover:text-slate-300" />
-                      </button>
-                    )}
-                  </div>
-                  {searchResults.length > 0 && (
-                    <div className="absolute z-50 bottom-full mb-1 left-0 right-0 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl max-h-64 overflow-y-auto">
-                      {searchResults.map((ex) => (
-                        <button
-                          key={ex.id}
-                          type="button"
-                          onClick={() => addExercise(ex)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800 transition-colors text-left border-b border-slate-800 last:border-0"
-                        >
-                          {ex.gifUrl ? (
-                            <img src={ex.gifUrl} alt={ex.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0" loading="lazy" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-slate-800 shrink-0 flex items-center justify-center text-lg">🏋️</div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium capitalize truncate">{ex.name}</p>
-                            <div className="flex gap-1 mt-0.5">
-                              {ex.movementPattern && (
-                                <span className="text-xs text-blue-400 capitalize">{toSpanishLabel(ex.movementPattern)}</span>
-                              )}
-                              {ex.primaryMuscle && (
-                                <span className="text-xs text-slate-500">· {toSpanishLabel(ex.primaryMuscle)}</span>
-                              )}
-                            </div>
-                          </div>
-                          <Plus size={14} className="text-blue-400 shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Columna derecha: Catálogo por grupo muscular ── */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
-
-              {/* Header catálogo */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-950 shrink-0">
-                <BookOpen size={16} className="text-blue-400" />
-                <span className="font-semibold text-white text-sm">Catálogo de ejercicios</span>
-                <span className="ml-auto text-xs text-slate-500">
-                  Clic para agregar a <span className="text-blue-400 font-semibold">{activeDay}</span>
-                </span>
-              </div>
-
-              {/* Pills de grupos musculares */}
-              <div className="flex flex-wrap gap-2 p-3 border-b border-slate-800 shrink-0">
-                {BODY_PARTS.map((bp) => (
-                  <button
-                    key={bp.key}
-                    type="button"
-                    onClick={() => fetchCatalog(bp.key)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      catalogBodyPart === bp.key
-                        ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/40'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                    }`}
-                  >
-                    {bp.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid de ejercicios */}
-              <div className="flex-1 overflow-y-auto p-4 max-h-[480px]">
-                {!catalogBodyPart && !isCatalogLoading && (
-                  <div className="text-center py-12 text-slate-600">
-                    <p className="text-3xl mb-3">💪</p>
-                    <p className="text-sm">Selecciona un grupo muscular</p>
-                    <p className="text-xs mt-1">para ver el catálogo de ejercicios</p>
-                  </div>
-                )}
-                {isCatalogLoading && (
-                  <div className="text-center py-12 text-slate-500 text-sm">
-                    <div className="text-3xl mb-3 animate-pulse">⏳</div>
-                    Cargando ejercicios…
-                  </div>
-                )}
-                {!isCatalogLoading && catalogBodyPart && catalogExercises.length === 0 && (
-                  <div className="text-center py-12 text-slate-600 text-sm">
-                    Sin resultados para este grupo muscular.
-                  </div>
-                )}
-                {!isCatalogLoading && catalogExercises.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {catalogExercises.map((ex) => (
-                      <button
-                        key={ex.id}
-                        type="button"
-                        onClick={() => addExercise(ex)}
-                        className="flex flex-col bg-slate-950 border border-slate-800 rounded-xl overflow-hidden hover:border-blue-600 hover:shadow-lg hover:shadow-blue-900/20 transition-all text-left group"
-                      >
-                        {ex.gifUrl ? (
-                          <img
-                            src={ex.gifUrl}
-                            alt={ex.name}
-                            className="w-full h-28 object-cover bg-slate-900 group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-28 bg-slate-800 flex items-center justify-center text-3xl">🏋️</div>
-                        )}
-                        <div className="p-2.5">
-                          <p className="text-white text-xs font-semibold capitalize leading-tight line-clamp-2 group-hover:text-blue-300 transition-colors">
-                            {ex.name}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {ex.primaryMuscle && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 capitalize">
-                                {toSpanishLabel(ex.primaryMuscle)}
-                              </span>
-                            )}
-                            {ex.tags?.[0] && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 capitalize">
-                                {toSpanishLabel(ex.tags[0])}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-blue-400 text-xs mt-1.5 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                            + Agregar a {activeDay}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <CatalogSection
+              catalogBodyPart={catalogBodyPart}
+              catalogExercises={catalogExercises}
+              isCatalogLoading={isCatalogLoading}
+              activeDay={activeDay}
+              onFetchCatalog={fetchCatalog}
+              onAddExercise={addExercise}
+              LABEL_TRANSLATIONS={LABEL_TRANSLATIONS}
+            />
           </div>
 
           {/* Archivos */}
