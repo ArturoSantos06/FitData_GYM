@@ -50,7 +50,6 @@ function ClientStore() {
           setProducts(mapped);
         }
         
-        // Cargar usuario y ventas para historial
         const currentUser = getCurrentUser();
         if (currentUser) {
           const userData = await resolveUserFromAuth(currentUser);
