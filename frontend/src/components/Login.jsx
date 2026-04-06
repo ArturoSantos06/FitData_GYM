@@ -26,13 +26,10 @@ function Login({ onLogin }) {
 
       const { user } = result;
       
-      // Verificar si es admin por UID
       const userDoc = await getUser(user.uid);
       const roleFromUid = userDoc.success ? userDoc.data?.role : null;
 
-      // Si no tiene rol por UID, buscar por email
       if (roleFromUid !== 'admin') {
-        // Si el email es admin@fitdata.gym, crear documento automáticamente
         if (user.email === 'admin@fitdata.gym') {
           await createUser(user.uid, {
             email: user.email,
@@ -40,7 +37,6 @@ function Login({ onLogin }) {
             role: 'admin'
           });
         } else {
-          // Buscar por email como fallback para otros usuarios
           const emailDoc = await getUserByEmail(user.email);
           const roleFromEmail = emailDoc.success ? emailDoc.data?.role : null;
 
@@ -59,7 +55,6 @@ function Login({ onLogin }) {
         }
       }
 
-      // Guardar token en localStorage (Firebase maneja automáticamente)
       localStorage.setItem('firebaseUser', JSON.stringify({
         uid: user.uid,
         email: user.email
@@ -68,11 +63,16 @@ function Login({ onLogin }) {
       onLogin();
 
     } catch (err) {
-      const errorMessage = err.message.includes('auth/user-not-found') || err.message.includes('auth/wrong-password')
-        ? 'Usuario o contraseña incorrectos'
-        : err.message.includes('auth/invalid-email')
-        ? 'Email inválido'
-        : err.message;
+      const msg = String(err?.message || '');
+      const errorMessage =
+        msg.includes('auth/invalid-credential') ||
+        msg.includes('auth/user-not-found') ||
+        msg.includes('auth/wrong-password') ||
+        msg.includes('auth/invalid-login-credentials')
+          ? 'Correo o contraseña incorrecta'
+          : msg.includes('auth/invalid-email')
+          ? 'Correo electrónico inválido'
+          : msg;
       
       setError(errorMessage);
       console.error(err);
@@ -136,7 +136,6 @@ function Login({ onLogin }) {
               }`}
             disabled={isLoading}
           >
-            {/* 3. Lógica visual del botón */}
             {isLoading ? (
               <>
                 {/* Spinner SVG */}

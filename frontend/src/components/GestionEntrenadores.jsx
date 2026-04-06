@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Calendar, TrendingUp, DollarSign, Clock, Search, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
+import { getUsers, getAllTrainerRoutines, getAllTrainerNotes } from '../firebase';
 
 function GestionEntrenadores() {
   const [trainingServices, setTrainingServices] = useState([]);
@@ -12,24 +11,143 @@ function GestionEntrenadores() {
   const [sortBy, setSortBy] = useState('daysRemaining');
   const [activeTab, setActiveTab] = useState('clients'); 
 
-  useEffect(() => {
-    loadTrainingData();
-  }, []);
+  const toMs = (value) => {
+    if (!value) return 0;
+    if (typeof value?.toDate === 'function') return value.toDate().getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
 
-  const loadTrainingData = async () => {
+  const normalizeTrainerKey = (routine = {}) => {
+    const uid = String(routine.createdBy || '').trim();
+    const email = String(routine.trainerEmail || '').trim().toLowerCase();
+    return uid || email || 'unknown-trainer';
+  };
+
+  const isTrainerUser = (user = {}) => {
+    const role = String(user.role || user.user_type || '').toLowerCase();
+    return (
+      role === 'trainer' ||
+      role === 'entrenador' ||
+      role === 'coach' ||
+      user.isTrainer === true ||
+      user.is_trainer === true
+    );
+  };
+
+  const loadTrainingData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      
-      setTrainingServices([]);
-      setTrainers([]);
+      const [usersResult, routinesResult, notesResult] = await Promise.all([
+        getUsers(),
+        getAllTrainerRoutines(),
+        getAllTrainerNotes(),
+      ]);
+
+      const users = usersResult.success ? usersResult.data : [];
+      const routines = routinesResult.success ? routinesResult.data : [];
+      const notes = notesResult.success ? notesResult.data : [];
+
+      const trainerUsers = users.filter(isTrainerUser);
+      const trainerMap = new Map();
+
+      trainerUsers.forEach((u) => {
+        const id = String(u.id || u.authUid || '').trim();
+        const email = String(u.email || '').trim().toLowerCase();
+        const fullName = (
+          u.displayName ||
+          `${u.firstName || u.first_name || ''} ${u.lastName || u.last_name || ''}`.trim() ||
+          u.username ||
+          u.email ||
+          'Entrenador'
+        );
+
+        const trainerData = {
+          id: id || email,
+          name: fullName,
+          email: u.email || 'Sin correo',
+          specialty: u.specialty || u.especialidad || 'General',
+          clientsSet: new Set(),
+          activeContracts: 0,
+          monthlyRevenue: Number(u.monthlyRevenue || u.ingresoMensual || 0),
+          contractType: u.contractType || u.tipoContrato || 'Asignación por cliente',
+        };
+
+        if (id) trainerMap.set(id, trainerData);
+        if (email) trainerMap.set(email, trainerData);
+      });
+
+      const serviceMap = new Map();
+      routines.forEach((routine) => {
+        const trainerKey = normalizeTrainerKey(routine);
+        const trainerEmail = String(routine.trainerEmail || '').trim().toLowerCase();
+        const trainerEntry = trainerMap.get(trainerKey) || trainerMap.get(trainerEmail) || null;
+
+        const clientId = String(routine.memberId || '').trim();
+        const updatedMs = toMs(routine.updatedAt || routine.createdAt);
+        const daysSinceUpdate = updatedMs ? Math.floor((Date.now() - updatedMs) / (1000 * 60 * 60 * 24)) : 999;
+        const daysRemaining = Math.max(0, 30 - daysSinceUpdate);
+        const sessionsTotal = Array.isArray(routine.steps) ? routine.steps.length : 0;
+        const serviceId = `${clientId || 'sin-cliente'}_${trainerKey}`;
+
+        if (trainerEntry && clientId) {
+          trainerEntry.clientsSet.add(clientId);
+        }
+
+        serviceMap.set(serviceId, {
+          id: serviceId,
+          clientName: routine.memberName || 'Cliente',
+          clientEmail: routine.memberEmail || 'Sin correo',
+          trainerName: trainerEntry?.name || (routine.trainerEmail || 'Entrenador'),
+          serviceType: routine.routineName || 'Rutina personalizada',
+          sessionsTotal,
+          sessionsUsed: 0,
+          endDate: routine.endDate || routine.updatedAt || new Date().toISOString(),
+          status: daysRemaining > 0 ? 'active' : 'expired',
+          daysRemaining,
+          price: Number(routine.price || 0),
+        });
+      });
+
+      // Complementar conteo de actividad por notas del entrenador
+      const noteCountByTrainer = new Map();
+      notes.forEach((note) => {
+        const key = String(note.createdBy || '').trim() || String(note.trainerEmail || '').trim().toLowerCase();
+        if (!key) return;
+        const current = noteCountByTrainer.get(key) || 0;
+        noteCountByTrainer.set(key, current + 1);
+      });
+
+      const consolidatedTrainers = [];
+      const seen = new Set();
+
+      trainerMap.forEach((trainer) => {
+        if (!trainer?.id || seen.has(trainer.id)) return;
+        seen.add(trainer.id);
+
+        const notesCount = noteCountByTrainer.get(trainer.id) || noteCountByTrainer.get(String(trainer.email || '').toLowerCase()) || 0;
+        const clientsCount = trainer.clientsSet.size;
+        consolidatedTrainers.push({
+          ...trainer,
+          clientsCount,
+          activeContracts: clientsCount,
+          monthlyRevenue: trainer.monthlyRevenue || notesCount * 150,
+        });
+      });
+
+      setTrainingServices(Array.from(serviceMap.values()));
+      setTrainers(consolidatedTrainers);
       
     } catch (error) {
       console.error('Error al cargar datos:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTrainingData();
+  }, [loadTrainingData]);
 
   // Filtrar y ordenar servicios de entrenamiento
   const filteredServices = trainingServices

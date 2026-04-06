@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const [cantidad, setCantidad] = useState(1);
@@ -13,7 +13,6 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     };
 
     const [imgSrc, setImgSrc] = useState(getInitialUrl(producto.imagen || producto.image));
-    useEffect(() => { setImgSrc(getInitialUrl(producto.imagen || producto.image)); }, [producto.imagen, producto.image]);
 
     const incrementar = () => { if (cantidad < producto.stock) setCantidad(cantidad + 1); };
     const decrementar = () => { if (cantidad > 1) setCantidad(cantidad - 1); };
