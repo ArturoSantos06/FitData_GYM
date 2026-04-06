@@ -51,8 +51,8 @@ function Navbar({ onLogout }) {
             <Link to="/admin/gestion-entrenadores" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/gestion-entrenadores')}`}>
               Gestión Entrenadores
             </Link>
-            <Link to="/admin/reportes-facturas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/reportes-facturas')}`}>
-              Reportes Facturación
+            <Link to="/admin/citas-nutri" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-nutri')}`}>
+              Citas Nutriologo
             </Link>
           </div>
 
