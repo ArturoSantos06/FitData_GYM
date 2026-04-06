@@ -769,7 +769,12 @@ exports.registerNutriologoByAdmin = onCall(async (request) => {
     firstName,
     lastName,
     especialidad,
+    first_name,
+    last_name,
   } = request.data || {};
+
+  const resolvedFirstName = firstName || first_name || "";
+  const resolvedLastName = lastName || last_name || "";
 
   if (!email || !password) {
     throw new HttpsError("invalid-argument", "Email y contraseña son requeridos");
@@ -786,7 +791,7 @@ exports.registerNutriologoByAdmin = onCall(async (request) => {
     const authUser = await admin.auth().createUser({
       email,
       password,
-      displayName: `${firstName || ""} ${lastName || ""}`.trim() || undefined,
+      displayName: `${resolvedFirstName} ${resolvedLastName}`.trim() || undefined,
     });
 
     const userDoc = {
@@ -796,8 +801,8 @@ exports.registerNutriologoByAdmin = onCall(async (request) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    if (firstName) userDoc.firstName = firstName;
-    if (lastName) userDoc.lastName = lastName;
+    if (resolvedFirstName) userDoc.firstName = resolvedFirstName;
+    if (resolvedLastName) userDoc.lastName = resolvedLastName;
     if (especialidad) userDoc.especialidad = especialidad;
 
     await db.collection("users").doc(authUser.uid).set(userDoc);

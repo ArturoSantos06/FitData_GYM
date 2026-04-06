@@ -25,7 +25,7 @@ function RegisterUser({ onUserRegistered }) {
 
   // --- ESTADOS PARA NUTRIÓLOGO ---
   const [nutriData, setNutriData] = useState({
-    email: '', password: '', first_name: '', last_name: '', especialidad: 'Nutrición Deportiva'
+    email: '', password: '', firstName: '', lastName: '', especialidad: 'Nutrición Deportiva'
   });
 
   // Estados de UI compartidos
@@ -245,11 +245,11 @@ function RegisterUser({ onUserRegistered }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Nombre(s)</label>
-            <input type="text" name="first_name" value={nutriData.first_name} onChange={handleNutriChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none" required />
+            <input type="text" name="firstName" value={nutriData.firstName} onChange={handleNutriChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
-            <input type="text" name="last_name" value={nutriData.last_name} onChange={handleNutriChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none" required />
+            <input type="text" name="lastName" value={nutriData.lastName} onChange={handleNutriChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none" required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
