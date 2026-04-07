@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AssistantWidget from './asistente/WidgetAsistente';
 
 // --- MODAL DE SELECCIÓN ---
 function UserSelectionModal({ onClose }) {
@@ -40,6 +41,17 @@ function UserSelectionModal({ onClose }) {
               <p className="text-xs text-gray-500">Gestión de rutinas</p>
             </div>
             <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🏋️</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/nutriologo')}
+            className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-emerald-500 hover:bg-gray-700 transition-all duration-300"
+          >
+            <div className="text-left">
+              <h4 className="font-bold text-white group-hover:text-emerald-400 transition-colors">Nutriólogo</h4>
+              <p className="text-xs text-gray-500">Gestión nutricional y macros</p>
+            </div>
+            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🥗</span>
           </button>
 
           <button 
@@ -845,6 +857,8 @@ function LandingPage() {
       <FooterSection />
       
       {showModal && <UserSelectionModal onClose={() => setShowModal(false)} />}
+
+      <AssistantWidget context="public" />
 
     </div>
   );

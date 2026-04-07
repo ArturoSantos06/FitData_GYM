@@ -51,7 +51,7 @@ const isNotFoundError = (error) => {
 const normalizeFirestoreError = (error) => {
   const raw = String(error?.message || error || 'Error desconocido');
   if (isPermissionDeniedError(error)) {
-    return 'No hay permisos para guardar esta rutina en Firestore. Revisa reglas de trainerRoutines.';
+    return 'No hay permisos suficientes para completar esta operacion en Firestore.';
   }
   return raw;
 };
@@ -1350,7 +1350,14 @@ export const createMembershipSale = async (saleData) => {
       total,
       membership_name,
       monto_recibido,
-      tipo_venta = "ALTA_MEMBRESIA"
+      tipo_venta = "ALTA_MEMBRESIA",
+      sellerId = null,
+      sellerEmail = null,
+      vendedorId = null,
+      vendedorEmail = null,
+      cliente_auth_uid = null,
+      cliente_nombre_override = null,
+      cliente_email_override = null
     } = saleData;
 
     const folio = generateSaleFolio();
@@ -1360,16 +1367,28 @@ export const createMembershipSale = async (saleData) => {
     let clienteNombre = null;
 
     if (cliente_id) {
-      const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const nombre = userData.firstName || userData.first_name || "";
-        const apellido = userData.lastName || userData.last_name || "";
-        const nombreCompleto = `${nombre} ${apellido}`.trim();
-        cliente_username = userData.username || userData.email;
-        cliente_email = userData.email;
-        clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+      try {
+        const userDoc = await withAuthRetry(() => getDoc(doc(db, "users", String(cliente_id))));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const nombre = userData.firstName || userData.first_name || "";
+          const apellido = userData.lastName || userData.last_name || "";
+          const nombreCompleto = `${nombre} ${apellido}`.trim();
+          cliente_username = userData.username || userData.email;
+          cliente_email = userData.email;
+          clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+        }
+      } catch {
+        // Si no se puede leer users por reglas, usamos overrides y continuamos con la venta.
       }
+    }
+
+    if (!cliente_email && cliente_email_override) {
+      cliente_email = String(cliente_email_override || '').trim();
+    }
+
+    if (!clienteNombre && cliente_nombre_override) {
+      clienteNombre = String(cliente_nombre_override || '').trim();
     }
 
     const totalNumber = Number(total || 0);
@@ -1378,14 +1397,19 @@ export const createMembershipSale = async (saleData) => {
       ? (Number(monto_recibido) || totalNumber)
       : totalNumber;
 
-    await addDoc(collection(db, "ventas"), {
+    await withAuthRetry(() => addDoc(collection(db, "ventas"), {
       folio,
       cliente: cliente_id || null,
       cliente_id: cliente_id || null,
+      cliente_auth_uid: cliente_auth_uid || null,
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
       clienteNombre,
+      sellerId: sellerId || vendedorId || null,
+      sellerEmail: sellerEmail || vendedorEmail || null,
+      vendedorId: vendedorId || sellerId || null,
+      vendedorEmail: vendedorEmail || sellerEmail || null,
       metodo_pago: payMethod,
       total: totalNumber,
       monto_recibido: receivedAmount,
@@ -1399,10 +1423,13 @@ export const createMembershipSale = async (saleData) => {
       tipo_venta: tipo_venta,
       createdAt: getLocalMXDate(),
       fecha: getLocalMXDateISO()
-    });
+    }));
 
     return { success: true, folio };
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para registrar este cobro en ventas.' };
+    }
     return { success: false, error: error.message };
   }
 };

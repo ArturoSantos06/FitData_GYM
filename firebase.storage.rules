@@ -10,13 +10,56 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function userDocExists() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function userRoleIs(roleValue) {
+      return userDocExists() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == roleValue;
+    }
+
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
         request.auth.token.role == 'ADMIN' ||
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        request.auth.token.email == 'admin@fitdata.gym'
+        request.auth.token.role == 'admin' ||
+        userRoleIs('admin') ||
+        userRoleIs('ADMIN')
       );
+    }
+
+    function isTrainer() {
+      return isAuthenticated() && (
+        request.auth.token.trainer == true ||
+        request.auth.token.role == 'ENTRENADOR' ||
+        request.auth.token.role == 'TRAINER' ||
+        request.auth.token.role == 'entrenador' ||
+        request.auth.token.role == 'trainer' ||
+        userRoleIs('entrenador') ||
+        userRoleIs('trainer') ||
+        userRoleIs('ENTRENADOR') ||
+        userRoleIs('TRAINER')
+      );
+    }
+
+    function isNutritionist() {
+      return isAuthenticated() && (
+        request.auth.token.nutriologo == true ||
+        request.auth.token.role == 'NUTRIOLOGO' ||
+        request.auth.token.role == 'nutriologo' ||
+        request.auth.token.role == 'NUTRI' ||
+        request.auth.token.role == 'nutri' ||
+        userRoleIs('nutriologo') ||
+        userRoleIs('nutri') ||
+        userRoleIs('NUTRIOLOGO') ||
+        userRoleIs('NUTRI')
+      );
+    }
+
+    function isPrivilegedStaff() {
+      return isAdmin() || isTrainer() || isNutritionist();
     }
 
     function ownsMember(memberId) {
@@ -27,24 +70,19 @@ service firebase.storage {
         );
     }
 
-    // Permitir lectura pública de assets en general
-    match /{allPaths=**} {
-      allow read: if true;
-    }
-
-    // Productos - solo admin puede escribir
+    // Productos - publico read, admin write
     match /productos/{productId}/{fileName} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Membresías - solo admin puede escribir
+    // Membresias - publico read, admin write
     match /memberships/{membershipId}/{fileName} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Avatares - el usuario o admin pueden escribir
+    // Avatares - read publico, write owner/admin
     match /avatars/{userId}/{fileName} {
       allow read: if true;
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
@@ -52,29 +90,37 @@ service firebase.storage {
 
     // Adjuntos de rutinas
     match /trainerRoutines/{memberId}/{fileName} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read: if isPrivilegedStaff() || ownsMember(memberId);
+      allow write: if isPrivilegedStaff() &&
+                   request.resource != null &&
+                   request.resource.size <= maxDietFileSize() &&
+                   request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+      allow delete: if isPrivilegedStaff();
     }
 
     // Repositorio digital de dietas (ruta legacy)
     match /dietas/{memberId}/{fileName} {
-      allow read: if isAdmin() || ownsMember(memberId);
-      allow write: if (isAdmin() || isAuthenticated()) &&
+      allow read: if isPrivilegedStaff() || ownsMember(memberId);
+      allow write: if (isPrivilegedStaff() || ownsMember(memberId)) &&
         request.resource != null &&
         request.resource.size <= maxDietFileSize() &&
         request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
-      allow delete: if isAdmin() || isAuthenticated();
+      allow delete: if isPrivilegedStaff() || ownsMember(memberId);
     }
 
     // Repositorio digital de dietas (ruta actual)
     match /dietFiles/{memberId}/{fileName} {
-      allow read: if isAdmin() || ownsMember(memberId);
-      allow write: if (isAdmin() || isAuthenticated()) &&
+      allow read: if isPrivilegedStaff() || ownsMember(memberId);
+      allow write: if (isPrivilegedStaff() || ownsMember(memberId)) &&
         request.resource != null &&
         request.resource.size <= maxDietFileSize() &&
         request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
-      allow delete: if isAdmin() || isAuthenticated();
+      allow delete: if isPrivilegedStaff() || ownsMember(memberId);
+    }
+
+    // Denegar todo lo demas por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

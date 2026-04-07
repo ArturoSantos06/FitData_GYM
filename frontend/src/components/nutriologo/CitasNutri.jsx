@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from "../firebase/config"; 
+import { db } from "../../firebase/config"; 
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import ModalExpedienteNutri from './ModalExpedienteNutri';
 import { User, Activity, ChevronRight } from 'lucide-react';
