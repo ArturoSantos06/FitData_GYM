@@ -11,7 +11,7 @@ const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
 
 admin.initializeApp();
 
-setGlobalOptions({maxInstances: 10, region: "us-east1"});
+setGlobalOptions({maxInstances: 10, region: "us-east1", invoker: "public"});
 
 const formatDate = (value) => {
   if (!value) return "N/A";
@@ -475,7 +475,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-exports.createUserAccount = onCall(async (request) => {
+exports.createUserAccount = onCall({cors: true, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new Error("No autenticado");
   }
@@ -514,7 +514,222 @@ exports.createUserAccount = onCall(async (request) => {
   }
 });
 
-exports.registerClientByAdmin = onCall(async (request) => {
+const assertAdminRequest = async (request, db) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  if (request.auth.token?.admin === true ||
+      String(request.auth.token?.role || "").toLowerCase() === "admin") {
+    return;
+  }
+
+  const directUserDoc = await db.collection("users").doc(request.auth.uid).get();
+  if (directUserDoc.exists && String(directUserDoc.data()?.role || "").toLowerCase() === "admin") {
+    return;
+  }
+
+  const byAuthUid = await db.collection("users")
+      .where("authUid", "==", request.auth.uid)
+      .limit(1)
+      .get();
+
+  if (!byAuthUid.empty) {
+    const role = String(byAuthUid.docs[0].data()?.role || "").toLowerCase();
+    if (role === "admin") {
+      return;
+    }
+  }
+
+  throw new HttpsError("permission-denied", "No tienes permisos de administrador");
+};
+
+const buildUsernameFromEmail = (email = "") => {
+  const localPart = String(email).split("@")[0] || "usuario";
+  return localPart
+      .replace(/[^a-zA-Z0-9._-]/g, "")
+      .slice(0, 40) || "usuario";
+};
+
+exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+  const db = admin.firestore();
+
+  const {
+    username,
+    email,
+    password,
+    firstName,
+    lastName,
+    contractType,
+  } = request.data || {};
+
+  if (!email || !password || !firstName || !lastName) {
+    throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro del entrenador");
+  }
+
+  let createdAuthUid = null;
+
+  try {
+    await assertAdminRequest(request, db);
+
+    const authUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: `${firstName} ${lastName}`.trim(),
+    });
+    createdAuthUid = authUser.uid;
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const resolvedUsername = String(username || "").trim() || buildUsernameFromEmail(email);
+
+    await db.collection("users").doc(authUser.uid).set({
+      email,
+      username: resolvedUsername,
+      firstName,
+      lastName,
+      displayName: `${firstName} ${lastName}`.trim(),
+      role: "trainer",
+      contractType: contractType || "Asignación por cliente",
+      tipoContrato: contractType || "Asignación por cliente",
+      isStaff: true,
+      isSuperuser: false,
+      isActive: true,
+      authUid: authUser.uid,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }, {merge: true});
+
+    await admin.auth().setCustomUserClaims(authUser.uid, {
+      role: "TRAINER",
+      trainer: true,
+    });
+
+    return {
+      success: true,
+      id: authUser.uid,
+      authUid: authUser.uid,
+      email,
+      role: "trainer",
+    };
+  } catch (error) {
+    if (createdAuthUid) {
+      try {
+        await admin.auth().deleteUser(createdAuthUid);
+      } catch (rollbackError) {
+        logger.error("No se pudo revertir usuario auth de entrenador", {
+          uid: createdAuthUid,
+          error: String(rollbackError.message || rollbackError),
+        });
+      }
+    }
+
+    logger.error("Error en registerTrainerByAdmin", {
+      email,
+      error: String(error.message || error),
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "No se pudo registrar al entrenador");
+  }
+});
+
+const registerNutriologoByAdminHandler = async (request) => {
+  const db = admin.firestore();
+
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    especialidad,
+  } = request.data || {};
+
+  if (!email || !password || !firstName || !lastName) {
+    throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro del nutriólogo");
+  }
+
+  let createdAuthUid = null;
+
+  try {
+    await assertAdminRequest(request, db);
+
+    const authUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: `${firstName} ${lastName}`.trim(),
+    });
+    createdAuthUid = authUser.uid;
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    await db.collection("users").doc(authUser.uid).set({
+      email,
+      username: buildUsernameFromEmail(email),
+      firstName,
+      lastName,
+      displayName: `${firstName} ${lastName}`.trim(),
+      role: "nutriologo",
+      especialidad: String(especialidad || "Nutrición general").trim(),
+      isStaff: true,
+      isSuperuser: false,
+      isActive: true,
+      authUid: authUser.uid,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }, {merge: true});
+
+    await admin.auth().setCustomUserClaims(authUser.uid, {
+      role: "NUTRIOLOGO",
+      nutriologo: true,
+    });
+
+    return {
+      success: true,
+      id: authUser.uid,
+      authUid: authUser.uid,
+      email,
+      role: "nutriologo",
+    };
+  } catch (error) {
+    if (createdAuthUid) {
+      try {
+        await admin.auth().deleteUser(createdAuthUid);
+      } catch (rollbackError) {
+        logger.error("No se pudo revertir usuario auth de nutriologo", {
+          uid: createdAuthUid,
+          error: String(rollbackError.message || rollbackError),
+        });
+      }
+    }
+
+    logger.error("Error en registerNutriologoByAdmin", {
+      email,
+      error: String(error.message || error),
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "No se pudo registrar al nutriólogo");
+  }
+};
+
+exports.registerNutriologoByAdmin = onCall(
+    {cors: true, invoker: "public"},
+    registerNutriologoByAdminHandler,
+);
+
+// Alias para evitar endpoint legacy con permisos atascados.
+exports.registerNutriologoByAdminV2 = onCall(
+    {cors: true, invoker: "public"},
+    registerNutriologoByAdminHandler,
+);
+
+exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -543,10 +758,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
   const db = admin.firestore();
 
   try {
-    const adminUserDoc = await db.collection("users").doc(request.auth.uid).get();
-    if (!adminUserDoc.exists || adminUserDoc.data()?.role !== "admin") {
-      throw new HttpsError("permission-denied", "No tienes permisos de administrador");
-    }
+    await assertAdminRequest(request, db);
 
     const normalizedUsername = normalizeComparableText(username);
     if (!normalizedUsername) {
@@ -783,7 +995,7 @@ exports.registerClientByAdmin = onCall(async (request) => {
 });
 
 
-exports.updateClientEmail = onCall(async (request) => {
+exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -851,7 +1063,7 @@ exports.updateClientEmail = onCall(async (request) => {
   }
 });
 
-exports.updateSelfProfile = onCall(async (request) => {
+exports.updateSelfProfile = onCall({cors: true, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
