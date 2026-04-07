@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Calendar, TrendingUp, DollarSign, Clock, Search, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
-import { getUsers, getAllTrainerRoutines, getAllTrainerNotes } from '../firebase';
+import { getUsers, getAllTrainerRoutines, getAllTrainerNotes } from '../../firebase';
 
 function GestionEntrenadores() {
   const [trainingServices, setTrainingServices] = useState([]);

@@ -1,9 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, LogIn, ArrowLeft } from 'lucide-react';
-import { loginUser, getUser, getUserByEmail, logoutUser } from '../firebase';
+import { getUser, getUserByEmail, loginUser, logoutUser } from '../../firebase';
 
-function EntrenadorLogin() {
+const NUTRITIONIST_ROLES = [
+  'nutritionist',
+  'nutriologo',
+  'nutriologa',
+  'nutriologo/a',
+  'nutricionista',
+  'nutri'
+];
+
+function hasNutritionistRole(role) {
+  return NUTRITIONIST_ROLES.includes(String(role || '').toLowerCase());
+}
+
+function NutriologoLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,24 +24,24 @@ function EntrenadorLogin() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem('trainer_token');
-    localStorage.removeItem('trainer_username');
+    localStorage.removeItem('nutritionist_token');
+    localStorage.removeItem('nutritionist_username');
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      const result = await loginUser(email, password);
-      if (!result.success) {
-        throw new Error(result.error || 'Correo o contrasena incorrectos');
+      const loginResponse = await loginUser(email, password);
+      if (!loginResponse.success) {
+        throw new Error(loginResponse.error || 'Credenciales incorrectas');
       }
 
-      const firebaseUser = result.user;
+      const firebaseUser = loginResponse.user;
+      let role = '';
 
-      let role = null;
       const byUid = await getUser(firebaseUser.uid);
       if (byUid.success) {
         role = String(byUid.data?.role || '').toLowerCase();
@@ -41,32 +54,32 @@ function EntrenadorLogin() {
         }
       }
 
-      if (role !== 'trainer' && role !== 'entrenador') {
+      if (!hasNutritionistRole(role)) {
         await logoutUser();
-        localStorage.removeItem('trainer_token');
-        localStorage.removeItem('trainer_username');
-        throw new Error('Tu cuenta no tiene permisos de entrenador');
+        localStorage.removeItem('nutritionist_token');
+        localStorage.removeItem('nutritionist_username');
+        throw new Error('Tu cuenta no tiene permisos de nutriologo');
       }
 
       const idToken = await firebaseUser.getIdToken();
-      localStorage.setItem('trainer_token', idToken);
-      localStorage.setItem('trainer_username', firebaseUser.email || email);
-      navigate('/entrenador');
-    } catch (err) {
-      const msg = String(err?.message || '');
+      localStorage.setItem('nutritionist_token', idToken);
+      localStorage.setItem('nutritionist_username', firebaseUser.email || email);
+      navigate('/nutriologo');
+    } catch (submitError) {
+      const message = String(submitError?.message || '');
       const friendlyError =
-        msg.includes('auth/invalid-credential') ||
-        msg.includes('auth/invalid-login-credentials') ||
-        msg.includes('auth/user-not-found') ||
-        msg.includes('auth/wrong-password')
-          ? 'Correo o contraseña incorrecta'
-          : msg.includes('auth/invalid-email')
-          ? 'Correo electrónico inválido'
-          : msg || 'No se pudo iniciar sesión';
+        message.includes('auth/invalid-credential') ||
+        message.includes('auth/invalid-login-credentials') ||
+        message.includes('auth/user-not-found') ||
+        message.includes('auth/wrong-password')
+          ? 'Correo o contrasena incorrecta'
+          : message.includes('auth/invalid-email')
+          ? 'Correo electronico invalido'
+          : message || 'No se pudo iniciar sesion';
 
       setError(friendlyError);
-      localStorage.removeItem('trainer_token');
-      localStorage.removeItem('trainer_username');
+      localStorage.removeItem('nutritionist_token');
+      localStorage.removeItem('nutritionist_username');
       setIsLoading(false);
     }
   };
@@ -76,8 +89,8 @@ function EntrenadorLogin() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/fitdata-logo.png" alt="FitData Logo" className="h-20 mx-auto mb-4 opacity-90" />
-          <h1 className="text-3xl font-bold text-white mb-2">Portal de Entrenador</h1>
-          <p className="text-slate-400">Inicia sesión con tu usuario y contraseña</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Portal de Nutriologo</h1>
+          <p className="text-slate-400">Inicia sesion con tu usuario y contrasena</p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
@@ -89,22 +102,22 @@ function EntrenadorLogin() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="entrenador@fitdata.gym"
+                  placeholder="nutriologo@fitdata.gym"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Contrasena</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 text-slate-500" size={18} />
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   placeholder="••••••••"
                   required
@@ -152,4 +165,5 @@ function EntrenadorLogin() {
   );
 }
 
-export default EntrenadorLogin;
+export default NutriologoLogin;
+

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { db } from "../firebase/config"; 
+import { db } from "../../firebase/config"; 
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Trash2, Edit3, Save, X, ClipboardList, CalendarClock } from 'lucide-react';
-import DialogoSistemaNutri from './DialogoSistemaNutri';
+import DialogoSistemaNutri from '../DialogoSistemaNutri';
 
 const ModalDetalleNutri = ({ cita, onClose }) => {
   const [isEditing, setIsEditing] = useState(false);

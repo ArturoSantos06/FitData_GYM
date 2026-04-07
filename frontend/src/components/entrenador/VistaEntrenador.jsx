@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Users, ArrowLeft, LogOut, CalendarDays, NotebookPen } from 'lucide-react';
-import { getAllMembers, logoutUser, ensureUserClaim } from '../firebase';
+import { getAllMembers, logoutUser, ensureUserClaim } from '../../firebase';
 
 function VistaEntrenador() {
   const navigate = useNavigate();
