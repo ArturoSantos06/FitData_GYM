@@ -42,9 +42,31 @@ service cloud.firestore {
              );
     }
 
+    function isRoutineTrainer(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.ownerUid ||
+        request.auth.uid == data.createdBy ||
+        request.auth.token.email == data.trainerEmail
+      );
+    }
+
+    function isRoutineMember(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.memberAuthUid ||
+        request.auth.uid == data.memberUserId ||
+        request.auth.token.email == data.memberEmail ||
+        ownsMember(data.memberId)
+      );
+    }
+
+    function canReadRoutine(data) {
+      return isAdmin() || isRoutineTrainer(data) || isRoutineMember(data);
+    }
+
     // Users Collection - Restrict access to own data or admins
     match /users/{userId} {
-      allow read: if isOwner(userId) ||
+      allow read: if isSignedIn() ||
+                  isOwner(userId) ||
                   (isAuthenticated() && (
                     resource.data.authUid == request.auth.uid ||
                     resource.data.email == request.auth.token.email
@@ -105,9 +127,7 @@ service cloud.firestore {
 
     // Attendance Records - Own records + admin
     match /asistencias/{recordId} {
-      allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) || isAdmin()
-      );
+      allow read: if isAuthenticated();
       allow create: if isAdmin() || isAuthenticated();
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -154,11 +174,25 @@ service cloud.firestore {
 
     // Trainer routines
     match /trainerRoutines/{routineId} {
-      allow read, write: if isAuthenticated();
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
     match /memberRoutines/{memberId} {
-      allow read, write: if isAuthenticated();
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
     // Sesiones de entrenamiento agendadas por el entrenador
