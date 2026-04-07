@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../firebase';
 import TrainerNavbar from './TrainerNavbar';
 import TrainerManagement from './TrainerManagement';
-import HomeTrainer from './HomeTrainer';
+import HomeTrainer from './entrenador/HomeTrainer';
 import CitasTrainer from './CitasTrainer';
 
 function TrainerPortal() {

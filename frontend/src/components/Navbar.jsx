@@ -74,6 +74,9 @@ function Navbar({ onLogout }) {
             <Link to="/admin/citas-nutri" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/citas-nutri')}`}>
               Citas Nutriologo
             </Link>
+            <Link to="/admin/chatbot" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/chatbot')}`}>
+              Chatbot NLP
+            </Link>
           </div>
 
           <div className="hidden md:flex">
@@ -190,6 +193,13 @@ function Navbar({ onLogout }) {
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/gestion-entrenadores')}`}
           >
             👥 Gestión Entrenadores
+          </Link>
+          <Link
+            to="/admin/chatbot"
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/chatbot')}`}
+          >
+            🤖 Chatbot NLP
           </Link>
           
           {/* Botón Salir Móvil */}

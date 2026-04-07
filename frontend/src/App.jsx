@@ -14,8 +14,8 @@ import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
-import GestionEntrenadores from './components/GestionEntrenadores';
-import CitasNutri from './components/CitasNutri';
+import GestionEntrenadores from './components/entrenador/GestionEntrenadores';
+import CitasNutri from './components/nutriologo/CitasNutri';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
 // Nuevos Componentes Públicos
@@ -23,12 +23,14 @@ import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
-import RutinaEntrenador from './components/RutinaEntrenador';
-import EntrenadorLogin from './components/EntrenadorLogin';
-import NutriologoPortal from './components/NutriologoPortal';
+import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
+import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
+import NutriologoPortal from './components/nutriologo/NutriologoPortal';
 import ReportesFacturacion from './components/ReportesFacturacion';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
+import { AssistantProvider } from './components/asistente/ContextoAsistente';
+import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
@@ -99,6 +101,89 @@ function RequireTrainerAuth({ children }) {
 
   if (!hasTrainerRole) {
     return <Navigate to="/entrenador/login" replace />;
+  }
+
+  return children;
+}
+
+function RequireNutritionistAuth({ children }) {
+  const isNutritionistAuthenticated = Boolean(localStorage.getItem('nutritionist_token'));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+  const [hasNutritionistRole, setHasNutritionistRole] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setHasFirebaseSession(false);
+        setHasNutritionistRole(false);
+        setIsAuthReady(true);
+        return;
+      }
+
+      setHasFirebaseSession(true);
+
+      try {
+        let role = '';
+
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const nutritionistRoles = [
+          'nutritionist',
+          'nutriologo',
+          'nutriologa',
+          'nutriologo/a',
+          'nutricionista',
+          'nutri'
+        ];
+        const isNutritionist = nutritionistRoles.includes(role);
+
+        setHasNutritionistRole(isNutritionist);
+
+        if (!isNutritionist) {
+          localStorage.removeItem('nutritionist_token');
+          localStorage.removeItem('nutritionist_username');
+        }
+      } catch {
+        setHasNutritionistRole(false);
+        localStorage.removeItem('nutritionist_token');
+        localStorage.removeItem('nutritionist_username');
+      } finally {
+        setIsAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isNutritionistAuthenticated) {
+    return <Navigate to="/nutriologo/login" replace />;
+  }
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">
+        Cargando sesion...
+      </div>
+    );
+  }
+
+  if (!hasFirebaseSession) {
+    return <Navigate to="/nutriologo/login" replace />;
+  }
+
+  if (!hasNutritionistRole) {
+    return <Navigate to="/nutriologo/login" replace />;
   }
 
   return children;
@@ -230,6 +315,9 @@ function AdminArea() {
           {/* 11. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
 
+          {/* 12. Configuración Chatbot NLP */}
+          <Route path="chatbot" element={<AssistantAdminConfig />} />
+
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </main>
@@ -241,8 +329,9 @@ function AdminArea() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
+      <AssistantProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
 
         <Route path="/equipo" element={<AboutTeam />} />
 
@@ -251,6 +340,7 @@ function App() {
         <Route path="/nutriologo/login" element={<NutriologoLogin />} />
         <Route path="/nutriologo" element={<NutriologoArea />} />
         <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
         <Route
           path="/entrenador"
           element={
@@ -258,6 +348,10 @@ function App() {
               <TrainerPortal />
             </RequireTrainerAuth>
           }
+        />
+        <Route
+          path="/nutriologo"
+          element={<NutriologoPortal />}
         />
         <Route
           path="/entrenador/rutina/:memberId"
@@ -289,8 +383,9 @@ function App() {
         <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
 
         {/* Comodín: Cualquier otra cosa redirige al inicio */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AssistantProvider>
     </BrowserRouter>
   );
 }

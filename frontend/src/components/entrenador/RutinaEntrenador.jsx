@@ -13,7 +13,7 @@ import {
   getTrainerRoutineByMember,
   searchExerciseCatalog,
   uploadRoutineAttachment
-} from '../firebase';
+} from '../../firebase';
 
 const WEEK_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 

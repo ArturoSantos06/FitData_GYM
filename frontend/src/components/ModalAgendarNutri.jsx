@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { db } from "../firebase/config"; 
 import { collection, addDoc } from 'firebase/firestore';
+import { getCurrentUser } from '../firebase';
 import DialogoSistemaNutri from './DialogoSistemaNutri';
 import { Clock, Calendar as CalIcon, MessageSquare } from 'lucide-react';
 
@@ -44,6 +45,8 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
     }
 
     try {
+        const currentUser = getCurrentUser();
+
         await addDoc(collection(db, "citas"), {
           clienteId: miembro.id,
           nombrePaciente: `${miembro.nombre} ${miembro.apellido}`,
@@ -52,6 +55,9 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
           horaInicio: horaInicio,
           horaFin: horaFin,
           nota: notaIncial,
+          nutriologoId: currentUser?.uid || '',
+          nutriologoEmail: currentUser?.email || localStorage.getItem('nutritionist_username') || '',
+          createdBy: currentUser?.uid || '',
           fechaRegistro: new Date().toISOString()
         });
 
