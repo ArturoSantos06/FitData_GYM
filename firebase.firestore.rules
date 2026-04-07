@@ -156,6 +156,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Solicitudes de factura (cliente crea, admin gestiona)
+    match /facturaRequests/{requestId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.requesterUid == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        request.resource.data.requesterUid == request.auth.uid &&
+        request.resource.data.ventaId is string;
+      allow update, delete: if isAdmin();
+    }
+
     // Inventory Entries - Admin only (internal operations)
     match /inventario_entradas/{entryId} {
       allow read: if isAdmin() || isAuthenticated();

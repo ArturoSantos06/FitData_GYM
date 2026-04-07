@@ -51,7 +51,7 @@ const isNotFoundError = (error) => {
 const normalizeFirestoreError = (error) => {
   const raw = String(error?.message || error || 'Error desconocido');
   if (isPermissionDeniedError(error)) {
-    return 'No hay permisos para guardar esta rutina en Firestore. Revisa reglas de trainerRoutines.';
+    return 'No hay permisos suficientes para completar esta operacion en Firestore.';
   }
   return raw;
 };
@@ -112,6 +112,38 @@ let _exCachePromise = null;
 
 const _delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE_URL = 'https://exercisedb.dev/api/v1/exercises?limit=100&offset=';
+const FALLBACK_EXERCISES_URL =
+  'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
+
+const buildFallbackImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  return encodeURI(`https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${imagePath}`);
+};
+
+const inferBodyPartsFromFallback = (ex = {}) => {
+  const parts = new Set();
+  const muscles = [
+    ...(Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : []),
+    ...(Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : []),
+  ].map(normalizeText);
+
+  if (normalizeText(ex.category) === 'cardio') parts.add('cardio');
+  if (muscles.some((m) => ['pectorals', 'chest'].includes(m))) parts.add('chest');
+  if (muscles.some((m) => ['lats', 'traps', 'middle back', 'lower back', 'back', 'spine'].includes(m))) parts.add('back');
+  if (muscles.some((m) => ['shoulders', 'delts', 'deltoids'].includes(m))) parts.add('shoulders');
+  if (muscles.some((m) => ['biceps', 'triceps', 'upper arms'].includes(m))) parts.add('upper arms');
+  if (muscles.some((m) => ['forearms', 'brachialis', 'wrist flexors', 'wrist extensors', 'lower arms'].includes(m))) parts.add('lower arms');
+  if (muscles.some((m) => ['glutes', 'hamstrings', 'quadriceps', 'quads', 'adductors', 'abductors', 'upper legs'].includes(m))) parts.add('upper legs');
+  if (muscles.some((m) => ['calves', 'gastrocnemius', 'soleus', 'lower legs'].includes(m))) parts.add('lower legs');
+  if (muscles.some((m) => ['abdominals', 'abs', 'obliques', 'waist'].includes(m))) parts.add('waist');
+
+  if (parts.size === 0) {
+    const fallback = normalizeText(ex.primaryMuscles?.[0] || ex.category || 'general');
+    parts.add(fallback);
+  }
+
+  return Array.from(parts);
+};
 
 const loadAllExercises = () => {
   if (_exCache) return Promise.resolve(_exCache);
@@ -132,6 +164,33 @@ const loadAllExercises = () => {
       );
       pages.forEach((p) => all.push(...p));
     }
+
+    // Fallback: el endpoint principal puede estar temporalmente caído.
+    if (all.length === 0) {
+      const fallbackResp = await fetch(FALLBACK_EXERCISES_URL);
+      const fallbackJson = await fallbackResp.json();
+      const fallbackExercises = Array.isArray(fallbackJson)
+        ? fallbackJson.map((ex) => {
+            const inferredBodyParts = inferBodyPartsFromFallback(ex);
+            return {
+              exerciseId: ex.id || '',
+              id: ex.id || '',
+              name: ex.name || '',
+              bodyPart: inferredBodyParts[0] || ex.primaryMuscles?.[0] || ex.category || '',
+              bodyParts: inferredBodyParts,
+              target: ex.primaryMuscles?.[0] || '',
+              targetMuscles: Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : [],
+              secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
+              equipment: ex.equipment || '',
+              equipments: ex.equipment ? [ex.equipment] : [],
+              gifUrl: buildFallbackImageUrl(Array.isArray(ex.images) ? ex.images[0] : null),
+              instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
+            };
+          })
+        : [];
+      all.push(...fallbackExercises);
+    }
+
     _exCache = all;
     return _exCache;
   })();
@@ -142,11 +201,19 @@ const mapExercise = (ex) => ({
   id: ex.exerciseId || ex.id || '',
   name: ex.name || '',
   nameLower: normalizeText(ex.name),
-  movementPattern: (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) || '',
-  primaryMuscle: (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) || '',
+  movementPattern:
+    (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) ||
+    (Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles[0] : ex.primaryMuscles) ||
+    '',
+  primaryMuscle:
+    (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) ||
+    (Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles[0] : ex.primaryMuscles) ||
+    '',
   secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
-  tags: Array.isArray(ex.equipments) ? ex.equipments : (ex.equipment ? [ex.equipment] : []),
-  gifUrl: ex.gifUrl || null,
+  tags: Array.isArray(ex.equipments)
+    ? ex.equipments
+    : (ex.equipment ? [ex.equipment] : []),
+  gifUrl: ex.gifUrl || ex.gif || buildFallbackImageUrl(Array.isArray(ex.images) ? ex.images[0] : null) || null,
   instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
 });
 
@@ -1350,7 +1417,14 @@ export const createMembershipSale = async (saleData) => {
       total,
       membership_name,
       monto_recibido,
-      tipo_venta = "ALTA_MEMBRESIA"
+      tipo_venta = "ALTA_MEMBRESIA",
+      sellerId = null,
+      sellerEmail = null,
+      vendedorId = null,
+      vendedorEmail = null,
+      cliente_auth_uid = null,
+      cliente_nombre_override = null,
+      cliente_email_override = null
     } = saleData;
 
     const folio = generateSaleFolio();
@@ -1360,16 +1434,28 @@ export const createMembershipSale = async (saleData) => {
     let clienteNombre = null;
 
     if (cliente_id) {
-      const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const nombre = userData.firstName || userData.first_name || "";
-        const apellido = userData.lastName || userData.last_name || "";
-        const nombreCompleto = `${nombre} ${apellido}`.trim();
-        cliente_username = userData.username || userData.email;
-        cliente_email = userData.email;
-        clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+      try {
+        const userDoc = await withAuthRetry(() => getDoc(doc(db, "users", String(cliente_id))));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const nombre = userData.firstName || userData.first_name || "";
+          const apellido = userData.lastName || userData.last_name || "";
+          const nombreCompleto = `${nombre} ${apellido}`.trim();
+          cliente_username = userData.username || userData.email;
+          cliente_email = userData.email;
+          clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+        }
+      } catch {
+        // Si no se puede leer users por reglas, usamos overrides y continuamos con la venta.
       }
+    }
+
+    if (!cliente_email && cliente_email_override) {
+      cliente_email = String(cliente_email_override || '').trim();
+    }
+
+    if (!clienteNombre && cliente_nombre_override) {
+      clienteNombre = String(cliente_nombre_override || '').trim();
     }
 
     const totalNumber = Number(total || 0);
@@ -1378,14 +1464,19 @@ export const createMembershipSale = async (saleData) => {
       ? (Number(monto_recibido) || totalNumber)
       : totalNumber;
 
-    await addDoc(collection(db, "ventas"), {
+    await withAuthRetry(() => addDoc(collection(db, "ventas"), {
       folio,
       cliente: cliente_id || null,
       cliente_id: cliente_id || null,
+      cliente_auth_uid: cliente_auth_uid || null,
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
       clienteNombre,
+      sellerId: sellerId || vendedorId || null,
+      sellerEmail: sellerEmail || vendedorEmail || null,
+      vendedorId: vendedorId || sellerId || null,
+      vendedorEmail: vendedorEmail || sellerEmail || null,
       metodo_pago: payMethod,
       total: totalNumber,
       monto_recibido: receivedAmount,
@@ -1399,10 +1490,13 @@ export const createMembershipSale = async (saleData) => {
       tipo_venta: tipo_venta,
       createdAt: getLocalMXDate(),
       fecha: getLocalMXDateISO()
-    });
+    }));
 
     return { success: true, folio };
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para registrar este cobro en ventas.' };
+    }
     return { success: false, error: error.message };
   }
 };
