@@ -40,6 +40,13 @@ function NutriologoLogin({ onLogin }) {
         throw new Error('Acceso denegado: solo nutriólogos pueden acceder aquí');
       }
 
+      // Forzar refresh del token para que las reglas de Storage validen el rol
+      try {
+        await user.getIdToken(true);
+      } catch (tokenError) {
+        console.warn('Token refresh failed:', tokenError);
+      }
+
       // Guardar info del usuario en localStorage
       localStorage.setItem('firebaseUser', JSON.stringify(user));
 
@@ -50,14 +57,31 @@ function NutriologoLogin({ onLogin }) {
         navigate('/nutriologo', { replace: true });
       }
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || '';
+      let errorDisplay = 'Email o contraseña incorrectos';
+      
+      if (msg.includes('auth/invalid-credential')) {
+        errorDisplay = 'Email o contraseña incorrectos';
+      } else if (msg.includes('auth/user-not-found')) {
+        errorDisplay = 'Email o contraseña incorrectos';
+      } else if (msg.includes('auth/wrong-password')) {
+        errorDisplay = 'Email o contraseña incorrectos';
+      } else if (msg.includes('Acceso denegado')) {
+        errorDisplay = msg;
+      } else if (msg.includes('auth/')) {
+        errorDisplay = 'Email o contraseña incorrectos';
+      } else {
+        errorDisplay = msg || 'Error al iniciar sesión';
+      }
+      
+      setError(errorDisplay);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

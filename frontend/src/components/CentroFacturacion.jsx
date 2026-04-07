@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Loader, AlertCircle } from 'lucide-react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase/config';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { getSales, getCurrentUser } from '../firebase';
 
 function CentroFacturacion({ ventasIniciales = [] }) {
@@ -13,6 +13,15 @@ function CentroFacturacion({ ventasIniciales = [] }) {
   const [filterAnio, setFilterAnio] = useState('all');
 
   const currentUser = getCurrentUser();
+
+  const refreshVentas = async () => {
+    const result = await getSales();
+    if (result.success) {
+      setVentas(result.data || []);
+      return result.data || [];
+    }
+    return [];
+  };
 
   useEffect(() => {
     if (ventasIniciales?.length) {
@@ -46,21 +55,35 @@ function CentroFacturacion({ ventasIniciales = [] }) {
     setError('');
 
     try {
-      const generarFacturaFn = httpsCallable(functions, 'generarFactura');
-      const result = await generarFacturaFn({ ventaId });
+      if (!currentUser?.uid) {
+        throw new Error('No hay sesión activa para solicitar factura');
+      }
 
-      if (result.data.success) {
-        // Actualizar la venta localmente
-        setVentas(prev => prev.map(v => 
-          v.id === ventaId 
-            ? { 
-                ...v, 
-                factura_numero: result.data.facturaNumeroCodigo,
-                factura_url: result.data.factura_url,
-                factura_estado: 'generada'
-              }
-            : v
-        ));
+      await addDoc(collection(db, 'facturaRequests'), {
+        ventaId: String(ventaId),
+        requesterUid: String(currentUser.uid),
+        requesterEmail: String(currentUser.email || '').toLowerCase(),
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        requestedFrom: 'client-store'
+      });
+
+      let generated = false;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        // Espera breve mientras la Cloud Function procesa la solicitud
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 1800));
+        // eslint-disable-next-line no-await-in-loop
+        const updatedSales = await refreshVentas();
+        const target = updatedSales.find((sale) => String(sale.id) === String(ventaId));
+        if (target?.factura_estado === 'generada' && target?.factura_url) {
+          generated = true;
+          break;
+        }
+      }
+
+      if (!generated) {
+        console.log('Solicitud de factura enviada; sigue en proceso en servidor.');
       }
     } catch (err) {
       console.error('Error generando factura:', err);

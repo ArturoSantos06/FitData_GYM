@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
+import ClientGymOccupancy from './ClientGymOccupancy';
 import {
   auth,
   getUser,
@@ -601,6 +602,8 @@ function ClientMembership() {
           ></div>
         </div>
       </div>
+
+      <ClientGymOccupancy />
 
       {/* Botón de Descarga */}
       <div className="w-full max-w-2xl flex justify-center">

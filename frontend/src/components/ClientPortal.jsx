@@ -35,7 +35,9 @@ function ClientPortal() {
       <div className="max-w-7xl mx-auto pt-2 md:pt-4">
         
         {activeTab === 'inicio' && (
-          <ClientMembership />
+          <div className="animate-fade-in">
+            <ClientMembership />
+          </div>
         )}
         
         {/* MI PLAN: El nuevo menú dividido por áreas */}

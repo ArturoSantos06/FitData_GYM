@@ -1,7 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, AlertCircle, Loader } from 'lucide-react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase/config';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
+
+const toJsDate = (value) => {
+  if (!value) return null;
+  if (typeof value?.toDate === 'function') return value.toDate();
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getSaleDate = (data = {}) => {
+  return toJsDate(data.createdAt) || toJsDate(data.fecha) || null;
+};
+
+const buildFacturaDescripcion = (saleData = {}) => {
+  const rawDetail = saleData.detalle_productos;
+  if (rawDetail) {
+    try {
+      const parsed = JSON.parse(rawDetail);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const names = parsed
+          .map((item) => String(item?.nombre || item?.name || item?.producto || '').trim())
+          .filter(Boolean);
+        if (names.length > 0) {
+          return names.length === 1 ? names[0] : names.join(', ');
+        }
+      }
+    } catch {
+    }
+  }
+
+  return String(
+    saleData.membership_name ||
+    saleData.membershipName ||
+    saleData.producto ||
+    saleData.producto_nombre ||
+    saleData.productoNombre ||
+    saleData.tipo_venta ||
+    'Producto'
+  );
+};
+
+const normalizeFacturaItem = (docSnap) => {
+  const data = docSnap.data() || {};
+  const totalNumber = Number(data.total || 0);
+  const subtotalNumber = Number(data.subtotal || (totalNumber > 0 ? totalNumber / 1.16 : 0));
+  const ivaNumber = Number(data.totalIVA || (totalNumber - subtotalNumber));
+  const saleDate = getSaleDate(data) || new Date();
+
+  return {
+    id: docSnap.id,
+    fecha: saleDate,
+    factura_numero: String(data.folio || data.factura_numero || data.numeroFactura || data.saleFolio || docSnap.id),
+    cliente_nombre: String(data.clienteNombre || data.cliente_nombre || data.nombreCliente || data.userName || data.customerName || 'Sin nombre'),
+    membership_name: String(data.membership_name || data.membershipName || ''),
+    producto: buildFacturaDescripcion(data),
+    subtotal: subtotalNumber,
+    total: totalNumber,
+    totalIVA: ivaNumber,
+    estado: String(data.estado || 'Generada')
+  };
+};
 
 function ReportesFacturacion() {
   const [reportData, setReportData] = useState(null);
@@ -15,17 +75,35 @@ function ReportesFacturacion() {
     setLoading(true);
     setError('');
     try {
-      const obtenerReporteFacturasFn = httpsCallable(functions, 'obtenerReporteFacturas');
-      const result = await obtenerReporteFacturasFn({
-        mes: parseInt(filterMes),
-        anio: parseInt(filterAnio)
+      const querySnapshot = await getDocs(collection(db, 'ventas'));
+      const facturas = querySnapshot.docs
+        .map(normalizeFacturaItem)
+        .filter((item) => {
+          const saleDate = item.fecha;
+          return saleDate &&
+            saleDate.getFullYear() === Number(filterAnio) &&
+            saleDate.getMonth() + 1 === Number(filterMes);
+        })
+        .sort((a, b) => b.fecha - a.fecha);
+
+      const totals = facturas.reduce((accumulator, factura) => {
+        accumulator.totalFacturas += 1;
+        accumulator.totalIngresos += Number(factura.total || 0);
+        accumulator.subtotal += Number(factura.subtotal || 0);
+        accumulator.totalIVA += Number(factura.totalIVA || 0);
+        return accumulator;
+      }, {
+        totalFacturas: 0,
+        totalIngresos: 0,
+        subtotal: 0,
+        totalIVA: 0,
       });
 
-      if (result.data.success) {
-        setReportData(result.data);
-      } else {
-        setError(result.data.error || 'Error cargando reporte');
-      }
+      setReportData({
+        success: true,
+        ...totals,
+        facturas,
+      });
     } catch (err) {
       console.error('Error:', err);
       setError(`Error: ${err.message}`);
@@ -104,7 +182,7 @@ function ReportesFacturacion() {
       {/* Error */}
       {error && (
         <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="text-red-400 flex-shrink-0 mt-1" size={20} />
+          <AlertCircle className="text-red-400 shrink-0 mt-1" size={20} />
           <div>
             <h3 className="font-semibold text-red-400">Error</h3>
             <p className="text-red-200 text-sm mt-1">{error}</p>
@@ -117,7 +195,7 @@ function ReportesFacturacion() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Total de facturas */}
-            <div className="bg-gradient-to-br from-blue-900 to-blue-800 border border-blue-700 rounded-lg p-6">
+            <div className="bg-linear-to-br from-blue-900 to-blue-800 border border-blue-700 rounded-lg p-6">
               <p className="text-slate-300 text-sm font-medium">Total Facturas</p>
               <p className="text-3xl font-bold text-cyan-400 mt-2">
                 {reportData.totalFacturas || 0}
@@ -125,7 +203,7 @@ function ReportesFacturacion() {
             </div>
 
             {/* Total ingresos */}
-            <div className="bg-gradient-to-br from-emerald-900 to-emerald-800 border border-emerald-700 rounded-lg p-6">
+            <div className="bg-linear-to-br from-emerald-900 to-emerald-800 border border-emerald-700 rounded-lg p-6">
               <p className="text-slate-300 text-sm font-medium">Total Ingresos</p>
               <p className="text-3xl font-bold text-emerald-400 mt-2">
                 {formatearMoneda(reportData.totalIngresos || 0)}
@@ -133,7 +211,7 @@ function ReportesFacturacion() {
             </div>
 
             {/* Subtotal */}
-            <div className="bg-gradient-to-br from-purple-900 to-purple-800 border border-purple-700 rounded-lg p-6">
+            <div className="bg-linear-to-br from-purple-900 to-purple-800 border border-purple-700 rounded-lg p-6">
               <p className="text-slate-300 text-sm font-medium">Subtotal</p>
               <p className="text-3xl font-bold text-purple-400 mt-2">
                 {formatearMoneda(reportData.subtotal || 0)}
@@ -141,7 +219,7 @@ function ReportesFacturacion() {
             </div>
 
             {/* IVA */}
-            <div className="bg-gradient-to-br from-orange-900 to-orange-800 border border-orange-700 rounded-lg p-6">
+            <div className="bg-linear-to-br from-orange-900 to-orange-800 border border-orange-700 rounded-lg p-6">
               <p className="text-slate-300 text-sm font-medium">IVA Cobrado</p>
               <p className="text-3xl font-bold text-orange-400 mt-2">
                 {formatearMoneda(reportData.totalIVA || 0)}

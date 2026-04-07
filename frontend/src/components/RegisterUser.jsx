@@ -62,6 +62,7 @@ function RegisterUser({ onUserRegistered }) {
   };
 
   const onlyLettersRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+$/;
+  const lettersWithSpacesRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
   const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const validateNutriologo = () => {
@@ -69,11 +70,11 @@ function RegisterUser({ onUserRegistered }) {
     const lastName = formData.last_name.trim();
     const email = formData.email.trim();
 
-    if (!onlyLettersRegex.test(firstName)) {
-      return 'El nombre debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y/o espacios.';
     }
-    if (!onlyLettersRegex.test(lastName)) {
-      return 'El apellido debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y/o espacios.';
     }
     if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
       return 'El correo no debe tener espacios en blanco.';
@@ -102,11 +103,11 @@ function RegisterUser({ onUserRegistered }) {
     if (!onlyLettersRegex.test(username)) {
       return 'El nombre de usuario debe contener solo letras y sin espacios.';
     }
-    if (!onlyLettersRegex.test(firstName)) {
-      return 'El nombre debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y/o espacios.';
     }
-    if (!onlyLettersRegex.test(lastName)) {
-      return 'El apellido debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y/o espacios.';
     }
     if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
       return 'El correo no debe tener espacios en blanco.';
