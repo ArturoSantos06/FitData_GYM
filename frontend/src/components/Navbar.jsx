@@ -75,7 +75,7 @@ function Navbar({ onLogout }) {
               Citas Nutriologo
             </Link>
             <Link to="/admin/chatbot" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/chatbot')}`}>
-              Chatbot NLP
+              Chat Bot
             </Link>
           </div>
 
@@ -199,7 +199,7 @@ function Navbar({ onLogout }) {
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/chatbot')}`}
           >
-            🤖 Chatbot NLP
+            🤖 Chat Bot
           </Link>
           
           {/* Botón Salir Móvil */}

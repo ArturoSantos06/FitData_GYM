@@ -68,6 +68,34 @@ const toSpanishLabel = (value) => {
   return LABEL_TRANSLATIONS[key] || value;
 };
 
+const EXERCISE_TEXT_REPLACEMENTS = [
+  [/\bone arm\b/gi, 'un brazo'],
+  [/\bshoulders\b/gi, 'deltoides'],
+  [/\bshoulder\b/gi, 'deltoides'],
+  [/\bshoulder-width\b/gi, 'ancho de hombros'],
+  [/\bstanding\b/gi, 'de pie'],
+  [/\bcable\b/gi, 'cable'],
+  [/\bexternal rotation\b/gi, 'rotacion externa'],
+  [/\bhold\b/gi, 'sostener'],
+  [/\braise\b/gi, 'elevacion'],
+  [/\bbench\b/gi, 'banco'],
+  [/\bdumbbell\b/gi, 'mancuerna'],
+  [/\bbarbell\b/gi, 'barra'],
+  [/\breps?\b/gi, 'repeticiones'],
+  [/\bsets?\b/gi, 'series'],
+  [/\brest\b/gi, 'descanso'],
+  [/\bStep\s*:?\s*(\d+)\b/gi, 'Paso $1'],
+];
+
+const toSpanishExerciseText = (value) => {
+  if (!value || typeof value !== 'string') return value || '';
+  let output = value;
+  EXERCISE_TEXT_REPLACEMENTS.forEach(([pattern, replacement]) => {
+    output = output.replace(pattern, replacement);
+  });
+  return output;
+};
+
 const DEFAULT_ACTIVE_DAYS = ['Lunes', 'Miércoles', 'Viernes'];
 const DEFAULT_EXERCISES_BY_DAY = { Lunes: [], Miércoles: [], Viernes: [] };
 
@@ -75,7 +103,7 @@ const normalizeStoredExercise = (ex = {}) => ({
   ...createExerciseEntry(),
   ...ex,
   id: ex.id || Date.now() + Math.random(),
-  titulo: ex.titulo || ex.name || '',
+  titulo: toSpanishExerciseText(ex.titulo || ex.name || ''),
   exerciseId: ex.exerciseId || ex.id || '',
   movementPattern: ex.movementPattern || '',
   primaryMuscle: ex.primaryMuscle || '',
@@ -91,7 +119,7 @@ const normalizeStoredExercise = (ex = {}) => ({
 
 const createExerciseEntry = (ex = {}) => ({
   id: Date.now() + Math.random(),
-  titulo: ex.name || '',
+  titulo: toSpanishExerciseText(ex.name || ''),
   exerciseId: ex.id || '',
   movementPattern: ex.movementPattern || '',
   primaryMuscle: ex.primaryMuscle || '',
@@ -101,7 +129,7 @@ const createExerciseEntry = (ex = {}) => ({
   instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
   descripcion:
     Array.isArray(ex.instructions) && ex.instructions.length
-      ? ex.instructions.map((l, i) => `${i + 1}. ${l}`).join('\n')
+      ? ex.instructions.map((l, i) => `${i + 1}. ${toSpanishExerciseText(l)}`).join('\n')
       : '',
   series: '',
   repeticiones: '',
@@ -277,23 +305,11 @@ function RutinaEntrenador() {
     setCatalogExercises([]);
     setIsCatalogLoading(true);
 
-    const mapEx = (ex) => ({
-      id: ex.exerciseId || String(ex.id) || '',
-      name: ex.name || '',
-      movementPattern: ex.bodyParts?.[0] || '',
-      primaryMuscle: ex.targetMuscles?.[0] || '',
-      secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
-      tags: Array.isArray(ex.equipments) ? ex.equipments : [],
-      gifUrl: ex.gifUrl || null,
-      instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
-    });
-
     try {
-      const response = await fetch(
-        `https://exercisedb.dev/api/v1/bodyparts/${encodeURIComponent(bodyPart)}/exercises?limit=20&offset=0`
-      );
-      const json = await response.json();
-      const final = (Array.isArray(json?.data) ? json.data : []).slice(0, 20).map(mapEx);
+      const result = await searchExerciseCatalog({ bodyPart, limitCount: 20 });
+      const final = result?.success && Array.isArray(result.data)
+        ? result.data
+        : [];
       if (final.length > 0) {
         catalogCacheRef.current[bodyPart] = final;
       }
@@ -880,12 +896,12 @@ function RutinaEntrenador() {
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800 transition-colors text-left border-b border-slate-800 last:border-0"
                         >
                           {ex.gifUrl ? (
-                            <img src={ex.gifUrl} alt={ex.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0" loading="lazy" />
+                            <img src={ex.gifUrl} alt={toSpanishExerciseText(ex.name)} className="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0" loading="lazy" />
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-slate-800 shrink-0 flex items-center justify-center text-lg">🏋️</div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium capitalize truncate">{ex.name}</p>
+                            <p className="text-white text-sm font-medium capitalize truncate">{toSpanishExerciseText(ex.name)}</p>
                             <div className="flex gap-1 mt-0.5">
                               {ex.movementPattern && (
                                 <span className="text-xs text-blue-400 capitalize">{toSpanishLabel(ex.movementPattern)}</span>
@@ -966,7 +982,7 @@ function RutinaEntrenador() {
                         {ex.gifUrl ? (
                           <img
                             src={ex.gifUrl}
-                            alt={ex.name}
+                            alt={toSpanishExerciseText(ex.name)}
                             className="w-full h-28 object-cover bg-slate-900 group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
                           />
@@ -975,7 +991,7 @@ function RutinaEntrenador() {
                         )}
                         <div className="p-2.5">
                           <p className="text-white text-xs font-semibold capitalize leading-tight line-clamp-2 group-hover:text-blue-300 transition-colors">
-                            {ex.name}
+                            {toSpanishExerciseText(ex.name)}
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {ex.primaryMuscle && (
