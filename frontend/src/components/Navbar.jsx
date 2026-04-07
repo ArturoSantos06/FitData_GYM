@@ -1,8 +1,10 @@
 import React, { useState } from 'react'; 
 import { Link, useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 
 function Navbar({ onLogout }) {
-  const [isOpen, setIsOpen] = useState(false); 
+  const [isOpen, setIsOpen] = useState(false);
+  const [isVentasOpen, setIsVentasOpen] = useState(false); 
   const location = useLocation();
 
   const isActive = (path) => {
@@ -36,12 +38,30 @@ function Navbar({ onLogout }) {
             <Link to="/admin/configuracion" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/configuracion')}`}>
               Creación de Membresía
             </Link>
-            <Link to="/admin/ventas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/ventas')}`}>
-              Punto de Venta
-            </Link>
-            <Link to="/admin/inventario" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/inventario')}`}>
-              Inventario
-            </Link>
+
+            {/* Dropdown Ventas e Inventario */}
+            <div className="relative group">
+              <button className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1 ${
+                isActive('/admin/ventas') || isActive('/admin/inventario') || isActive('/admin/reportes-facturas')
+                  ? 'bg-slate-700 text-white shadow-md border-b-2 border-cyan-400'
+                  : 'text-gray-200 hover:bg-gray-700 hover:text-white'
+              }`}>
+                Ventas
+                <ChevronDown size={16} className="group-hover:rotate-180 transition-transform" />
+              </button>
+              <div className="absolute hidden group-hover:block bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2 mt-0 min-w-max z-50">
+                <Link to="/admin/ventas" onClick={closeMenu} className={`block px-4 py-2 text-sm font-semibold ${isActive('/admin/ventas')}`}>
+                  Punto de Venta
+                </Link>
+                <Link to="/admin/inventario" onClick={closeMenu} className={`block px-4 py-2 text-sm font-semibold ${isActive('/admin/inventario')}`}>
+                  Inventario
+                </Link>
+                <Link to="/admin/reportes-facturas" onClick={closeMenu} className={`block px-4 py-2 text-sm font-semibold ${isActive('/admin/reportes-facturas')}`}>
+                  Reportes de Facturación
+                </Link>
+              </div>
+            </div>
+
             <Link to="/admin/fichas-medicas" className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin/fichas-medicas')}`}>
               Fichas Médicas
             </Link>
@@ -113,20 +133,43 @@ function Navbar({ onLogout }) {
           >
             Configurar Tipos
           </Link>
-          <Link 
-            to="/admin/ventas" 
-            onClick={closeMenu}
-            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/ventas')}`}
-          >
-            Punto de Venta
-          </Link>
-          <Link 
-            to="/admin/inventario" 
-            onClick={closeMenu}
-            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/inventario')}`}
-          >
-            Inventario
-          </Link>
+
+          {/* Dropdown Ventas Móvil */}
+          <div>
+            <button
+              onClick={() => setIsVentasOpen(!isVentasOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-base font-semibold text-gray-200 hover:bg-gray-700 hover:text-white"
+            >
+              <span>💰 Ventas</span>
+              <ChevronDown size={18} className={`transition-transform ${isVentasOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isVentasOpen && (
+              <div className="pl-4 space-y-2 mt-2 border-l-2 border-gray-700">
+                <Link 
+                  to="/admin/ventas" 
+                  onClick={closeMenu}
+                  className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/ventas')}`}
+                >
+                  Punto de Venta
+                </Link>
+                <Link 
+                  to="/admin/inventario" 
+                  onClick={closeMenu}
+                  className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/inventario')}`}
+                >
+                  Inventario
+                </Link>
+                <Link 
+                  to="/admin/reportes-facturas" 
+                  onClick={closeMenu}
+                  className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/reportes-facturas')}`}
+                >
+                  Reportes de Facturación
+                </Link>
+              </div>
+            )}
+          </div>
+
           <Link 
             to="/admin/check-in-out" 
             onClick={closeMenu}

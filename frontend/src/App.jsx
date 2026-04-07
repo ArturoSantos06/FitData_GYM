@@ -25,6 +25,9 @@ import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/RutinaEntrenador';
 import EntrenadorLogin from './components/EntrenadorLogin';
+import NutriologoPortal from './components/NutriologoPortal';
+import NutriologoLogin from './components/NutriologoLogin';
+import ReportesFacturacion from './components/ReportesFacturacion';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 
 function RequireTrainerAuth({ children }) {
@@ -104,6 +107,48 @@ function RequireTrainerAuth({ children }) {
 //Componete para el entrenador//
 import TrainerPortal from './components/TrainerPortal';
 
+// --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
+function NutriologoArea() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = () => setIsAuthenticated(true);
+
+  const handleLogout = () => {
+    localStorage.removeItem('firebaseUser');
+    setIsAuthenticated(false);
+    window.location.href = "/";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-white bg-gray-900 h-screen flex items-center justify-center">
+        Cargando...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+        <NutriologoLogin onLogin={handleLogin} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-900 text-gray-100 min-h-screen">
+      <NutriologoPortal onLogout={handleLogout} />
+    </div>
+  );
+}
+
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
@@ -177,6 +222,7 @@ function AdminArea() {
           
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
+          <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
           {/* 10. Citas de Nutrición */}
           <Route path="citas-nutri" element={<CitasNutri />} />
@@ -202,6 +248,8 @@ function App() {
 
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+        <Route path="/nutriologo" element={<NutriologoArea />} />
         <Route path="/entrenador/login" element={<EntrenadorLogin />} />
         <Route
           path="/entrenador"
