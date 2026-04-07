@@ -19,11 +19,11 @@ const ProductCardClient = ({ title, price, stock, image }) => {
         )}
       </div>
 
-      <div className="aspect-square bg-slate-800 relative overflow-hidden">
+      <div className="aspect-square relative overflow-hidden">
         {image ? (
           <img src={image} alt={title} className={`w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110 ${!hasStock ? 'grayscale opacity-50' : ''}`} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-700 bg-slate-800/50">
+          <div className="w-full h-full flex items-center justify-center text-slate-700">
             <div className="w-16 h-16 opacity-20"><ShoppingBag size={64} /></div>
           </div>
         )}

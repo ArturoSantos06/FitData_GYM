@@ -5,6 +5,8 @@ import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
 import ClientNavbar from './ClientNavbar';
 import ClientPlanView from './ClientPlanView'; 
+import AssistantSupportCenter from './asistente/CentroSoporteAsistente';
+import AssistantWidget from './asistente/WidgetAsistente';
 
 function ClientPortal() {
   const navigate = useNavigate();
@@ -33,7 +35,9 @@ function ClientPortal() {
       <div className="max-w-7xl mx-auto pt-2 md:pt-4">
         
         {activeTab === 'inicio' && (
-          <ClientMembership />
+          <div className="animate-fade-in">
+            <ClientMembership />
+          </div>
         )}
         
         {/* MI PLAN: El nuevo menú dividido por áreas */}
@@ -52,10 +56,7 @@ function ClientPortal() {
         
         {/* MENSAJES: Sección en construcción */}
         {activeTab === 'mensajes' && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in bg-slate-900/50 rounded-xl border border-slate-800">
-            <h2 className="text-2xl font-bold text-white mb-2">Mensajería</h2>
-            <p className="text-slate-400">Próximamente podrás chatear con tu entrenador y nutriólogo aquí.</p>
-          </div>
+          <AssistantSupportCenter />
         )}
         
         {activeTab === 'perfil' && (
@@ -65,6 +66,8 @@ function ClientPortal() {
         )}
 
       </div>
+
+      <AssistantWidget context="cliente" />
     </div>
   );
 }
