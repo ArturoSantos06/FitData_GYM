@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown } from 'lucide-react';
+import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown, ClipboardList } from 'lucide-react';
 
 import ClientRoutine from './ClientRoutine';
 import ClientCoachView from './ClientCoachView';
 import ClientDietViewer from './ClientDietViewer';
+import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
 
 function ClientPlanView() {
   const [currentView, setCurrentView] = useState('menu');
@@ -73,7 +74,24 @@ function ClientPlanView() {
                 <ChevronRight className="text-slate-500 group-hover:text-cyan-400" size={24}/>
               </button>
 
-              {/* Opción 3: Detener Servicio  */}
+              {/* Opción 3: Análisis de Necesidades */}
+              <button 
+                onClick={() => setCurrentView('entrenador_analisis')} 
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-amber-500/50"
+              >
+                <div className="flex items-center gap-5 text-left">
+                  <div className="p-3.5 bg-amber-500/10 rounded-xl text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-inner">
+                    <ClipboardList size={28} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-amber-300 font-bold text-lg">Análisis de Necesidades</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Responde un cuestionario y recibe una recomendación automática.</span>
+                  </div>
+                </div>
+                <ChevronRight className="text-slate-500 group-hover:text-amber-400" size={24}/>
+              </button>
+
+              {/* Opción 4: Detener Servicio  */}
               <button 
                 onClick={() => setCurrentView('entrenador_cancelar')} 
                 className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-red-500/50"
@@ -112,6 +130,15 @@ function ClientPlanView() {
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
         <ClientCoachView />
+      </div>
+    );
+  }
+
+  if (currentView === 'entrenador_analisis') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
+        <ClientTrainingNeedsAnalysis />
       </div>
     );
   }

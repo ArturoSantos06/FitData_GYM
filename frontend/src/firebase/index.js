@@ -8,6 +8,7 @@ export {
   createUserWithoutSessionChange,
   registerClientByAdmin,
   registerTrainerByAdmin,
+  registerNutriologoByAdmin,
   ensureUserClaim,
   updateSelfProfile,
   logoutUser,
@@ -110,3 +111,5 @@ export {
   uploadDietDocument,
   downloadDietDocument
 } from './storage';
+
+

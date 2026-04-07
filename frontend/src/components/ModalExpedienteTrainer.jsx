@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { X, User, Zap } from 'lucide-react';
 import ModalAgendarTrainer from './ModalAgendarTrainer';
-import ModalDetalleTrainer from './ModalDetalleTrainer';
+import ModalDetalleTrainer from './entrenador/ModalDetalleTrainer';
 import DialogoSistemaNutri from './DialogoSistemaNutri';
 
 const ModalExpedienteTrainer = ({ miembro, onClose }) => {

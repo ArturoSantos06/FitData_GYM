@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, ClipboardList, StickyNote, Dumbbell, UserMinus, ArrowLeft, Search, BookOpen } from 'lucide-react';
+import { ChevronRight, ClipboardList, StickyNote, Dumbbell, UserMinus, ArrowLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAllMembers, ensureUserClaim } from '../firebase';
 
 import TrainerClientUnlink from './TrainerClientUnlink';
 import BitacoraEntrenador from './BitacoraEntrenador';
-import DietaRepositorio from './DietaRepositorio';
 import HealthProfilesCoach from './HealthProfilesCoach';
 
 function RoutineManagementPanel() {
@@ -142,10 +141,6 @@ function TrainerManagement() {
         {currentView === 'desvinculacion' && (
           <TrainerClientUnlink />
         )}
-
-        {currentView === 'dietas' && (
-          <DietaRepositorio />
-        )}
       </div>
     );
   }
@@ -222,20 +217,6 @@ function TrainerManagement() {
               </div>
             </div>
             <ChevronRight className="text-slate-500 group-hover:text-red-400 transition-transform group-hover:translate-x-1" size={24}/>
-          </button>
-
-          {/* Tarjeta 5: Repositorio de Dietas */}
-          <button onClick={() => setCurrentView('dietas')} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between group transition-all duration-200">
-            <div className="flex items-center gap-4 text-left">
-              <div className="p-3 bg-orange-500/10 rounded-lg text-orange-400 group-hover:text-orange-300 group-hover:scale-110 transition-transform">
-                <BookOpen size={24} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-orange-300 font-bold group-hover:text-white text-lg">Repositorio de Dietas</span>
-                <span className="text-slate-400 text-sm hidden md:block">Planes nutricionales y archivos de dieta</span>
-              </div>
-            </div>
-            <ChevronRight className="text-slate-500 group-hover:text-orange-400 transition-transform group-hover:translate-x-1" size={24}/>
           </button>
 
         </div>
