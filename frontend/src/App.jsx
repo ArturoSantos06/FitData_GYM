@@ -15,7 +15,6 @@ import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/entrenador/GestionEntrenadores';
-import CitasNutri from './components/nutriologo/CitasNutri';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
 // Nuevos Componentes Públicos
@@ -220,18 +219,10 @@ function NutriologoArea() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
-        <NutriologoLogin onLogin={handleLogin} />
-      </div>
-    );
+    return <NutriologoLogin onLogin={handleLogin} />;
   }
 
-  return (
-    <div className="bg-gray-900 text-gray-100 min-h-screen">
-      <NutriologoPortal onLogout={handleLogout} />
-    </div>
-  );
+  return <NutriologoPortal onLogout={handleLogout} />;
 }
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
@@ -309,10 +300,7 @@ function AdminArea() {
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
           <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
-          {/* 10. Citas de Nutrición */}
-          <Route path="citas-nutri" element={<CitasNutri />} />
-
-          {/* 11. Feedback y comunicación */}
+          {/* 9. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
 
           {/* 12. Configuración Chatbot NLP */}

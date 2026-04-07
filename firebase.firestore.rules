@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helpers base
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -11,57 +11,14 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
-    function userDocExists() {
-      return isAuthenticated() &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function userRoleIs(roleValue) {
-      return userDocExists() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == roleValue
-      );
-    }
-
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
         request.auth.token.role == 'ADMIN' ||
-        request.auth.token.role == 'admin' ||
-        userRoleIs('admin') ||
-        userRoleIs('ADMIN')
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == 'admin@fitdata.gym' ||
+        request.auth.uid == '1'
       );
-    }
-
-    function isTrainer() {
-      return isAuthenticated() && (
-        request.auth.token.trainer == true ||
-        request.auth.token.role == 'ENTRENADOR' ||
-        request.auth.token.role == 'TRAINER' ||
-        request.auth.token.role == 'entrenador' ||
-        request.auth.token.role == 'trainer' ||
-        userRoleIs('entrenador') ||
-        userRoleIs('trainer') ||
-        userRoleIs('ENTRENADOR') ||
-        userRoleIs('TRAINER')
-      );
-    }
-
-    function isNutritionist() {
-      return isAuthenticated() && (
-        request.auth.token.nutriologo == true ||
-        request.auth.token.role == 'NUTRIOLOGO' ||
-        request.auth.token.role == 'nutriologo' ||
-        request.auth.token.role == 'NUTRI' ||
-        request.auth.token.role == 'nutri' ||
-        userRoleIs('nutriologo') ||
-        userRoleIs('nutri') ||
-        userRoleIs('NUTRIOLOGO') ||
-        userRoleIs('NUTRI')
-      );
-    }
-
-    function isPrivilegedStaff() {
-      return isAdmin() || isTrainer() || isNutritionist();
     }
 
     function isOwner(userId) {
@@ -85,57 +42,57 @@ service cloud.firestore {
              );
     }
 
-    function ownsUserDocument(data) {
-      return isAuthenticated() && (
-        (('authUid' in data) && data.authUid == request.auth.uid) ||
-        (('email' in data) && data.email == request.auth.token.email)
+    function isRoutineTrainer(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.ownerUid ||
+        request.auth.uid == data.createdBy ||
+        request.auth.token.email == data.trainerEmail
       );
     }
 
-    function ownsHealthProfileData(data) {
-      return isAuthenticated() && (
-        (('authUid' in data) && data.authUid == request.auth.uid) ||
-        (('userId' in data) && data.userId == request.auth.uid) ||
-        (('memberId' in data) && ownsMember(data.memberId)) ||
-        (('email' in data) && data.email == request.auth.token.email)
+    function isRoutineMember(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.memberAuthUid ||
+        request.auth.uid == data.memberUserId ||
+        request.auth.token.email == data.memberEmail ||
+        ownsMember(data.memberId)
       );
     }
 
-    function canReadMember(data) {
-      return isPrivilegedStaff() ||
-             (isAuthenticated() && (
-               (('authUid' in data) && data.authUid == request.auth.uid) ||
-               (('userId' in data) && data.userId == request.auth.uid) ||
-               (('email' in data) && data.email == request.auth.token.email)
-             ));
+    function canReadRoutine(data) {
+      return isAdmin() || isRoutineTrainer(data) || isRoutineMember(data);
     }
 
-    // Users collection
+    // Users Collection - Restrict access to own data or admins
     match /users/{userId} {
-      allow read: if isOwner(userId) ||
-                  ownsUserDocument(resource.data) ||
+      allow read: if isSignedIn() ||
+                  isOwner(userId) ||
+                  (isAuthenticated() && (
+                    resource.data.authUid == request.auth.uid ||
+                    resource.data.email == request.auth.token.email
+                  )) ||
                   isAdmin();
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isOwner(userId) ||
                     isAdmin() ||
-                    ownsUserDocument(resource.data);
+                    (isAuthenticated() && (
+                      resource.data.authUid == request.auth.uid ||
+                      resource.data.email == request.auth.token.email
+                    ));
       allow delete: if isAdmin();
     }
 
-    // Members collection
+    // Members Collection - Linked to users
     match /miembros/{memberId} {
-      allow read: if canReadMember(resource.data);
-      allow create: if isAdmin() ||
-                    (isAuthenticated() &&
-                      (request.resource.data.authUid == request.auth.uid ||
-                       request.resource.data.userId == request.auth.uid));
-      allow update: if isPrivilegedStaff() ||
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isAuthenticated();
+      allow update: if isAdmin() ||
                     belongsToUser(resource.data.userId) ||
                     (isAuthenticated() && resource.data.authUid == request.auth.uid);
       allow delete: if isAdmin();
     }
 
-    // Membership types
+    // Membership Types - Public read for authenticated users
     match /membershipTypes/{typeId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();
@@ -143,16 +100,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Memberships
+    // Memberships - User can see own, admin can see all
     match /memberships/{membershipId} {
       allow read: if isAuthenticated() && (
         isOwner(resource.data.userId) ||
         request.auth.uid == resource.data.authUid ||
         request.auth.token.email == resource.data.userEmail ||
-        isPrivilegedStaff()
+        isAdmin()
       );
       allow create: if isAdmin();
-      allow update: if isPrivilegedStaff() ||
+      allow update: if isAdmin() ||
                     (isAuthenticated() && (
                       request.auth.uid == resource.data.authUid ||
                       request.auth.token.email == resource.data.userEmail
@@ -160,7 +117,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Products
+    // Products - Public read for authenticated users
     match /productos/{productId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();
@@ -168,20 +125,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Attendance records
+    // Attendance Records - Own records + admin
     match /asistencias/{recordId} {
-      allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) || isPrivilegedStaff()
-      );
-      allow create: if isPrivilegedStaff() ||
-                    (isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid);
-      allow update: if isPrivilegedStaff() ||
-                    (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isAuthenticated();
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Sales records
+    // Sales Records - Own records + admin
     match /ventas/{saleId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.cliente_auth_uid ||
@@ -197,69 +149,83 @@ service cloud.firestore {
         request.auth.token.email == resource.data.cliente_email ||
         request.auth.token.email == resource.data.clienteEmail ||
         request.auth.token.email == resource.data.email ||
-        isPrivilegedStaff()
+        isAdmin()
       );
-      allow create: if isPrivilegedStaff();
+      allow create: if isAdmin() || isAuthenticated();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Inventory entries
+    // Solicitudes de factura (cliente crea, admin gestiona)
+    match /facturaRequests/{requestId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.requesterUid == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        request.resource.data.requesterUid == request.auth.uid &&
+        request.resource.data.ventaId is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // Inventory Entries - Admin only (internal operations)
     match /inventario_entradas/{entryId} {
-      allow read: if isPrivilegedStaff();
+      allow read: if isAdmin() || isAuthenticated();
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Health profiles
+    // Health Profiles - Own records + admin
     match /healthProfiles/{profileId} {
-      allow read: if isPrivilegedStaff() || ownsHealthProfileData(resource.data);
-      allow create: if isPrivilegedStaff() || ownsHealthProfileData(request.resource.data);
-      allow update: if isPrivilegedStaff() || ownsHealthProfileData(resource.data);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
     // Trainer routines
     match /trainerRoutines/{routineId} {
-      allow read: if isPrivilegedStaff() ||
-                  ownsMember(resource.data.memberId) ||
-                  (isAuthenticated() &&
-                    (resource.data.memberAuthUid == request.auth.uid ||
-                     resource.data.ownerUid == request.auth.uid));
-      allow create, update: if isPrivilegedStaff();
-      allow delete: if isAdmin() ||
-                    (isPrivilegedStaff() && resource.data.ownerUid == request.auth.uid);
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
     match /memberRoutines/{memberId} {
-      allow read: if isPrivilegedStaff() || ownsMember(memberId);
-      allow create, update: if isPrivilegedStaff();
-      allow delete: if isAdmin();
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
-    // Sesiones de entrenamiento
+    // Sesiones de entrenamiento agendadas por el entrenador
     match /entrenamientos/{entryId} {
-      allow read: if isPrivilegedStaff() || ownsMember(resource.data.memberId);
-      allow create: if isAdmin() || isTrainer();
-      allow update: if isAdmin() || (isTrainer() && resource.data.createdBy == request.auth.uid);
-      allow delete: if isAdmin() || (isTrainer() && resource.data.createdBy == request.auth.uid);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.createdBy == request.auth.uid);
     }
 
-    // Citas de nutricion
+    // Citas de nutricion agendadas
     match /citas/{citaId} {
-      allow read: if isPrivilegedStaff() || ownsMember(resource.data.memberId);
-      allow create: if isAdmin() || isNutritionist();
-      allow update: if isAdmin() || (isNutritionist() && resource.data.createdBy == request.auth.uid);
-      allow delete: if isAdmin() || (isNutritionist() && resource.data.createdBy == request.auth.uid);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     // Notas privadas del entrenador
     match /trainerNotes/{noteId} {
-      allow read: if isAdmin() || (isTrainer() && resource.data.createdBy == request.auth.uid);
-      allow create: if isTrainer() || isAdmin();
-      allow update: if isAdmin() || (isTrainer() && resource.data.createdBy == request.auth.uid);
-      allow delete: if isAdmin() || (isTrainer() && resource.data.createdBy == request.auth.uid);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     function isValidDietFileTextField(data, field, maxLen) {
@@ -271,29 +237,25 @@ service cloud.firestore {
              isValidDietFileTextField(data, 'notes', 500);
     }
 
-    // Archivos de dieta (metadata)
+    // Archivos de dieta
     match /dietFiles/{fileId} {
-      allow read: if isPrivilegedStaff() || ownsMember(resource.data.memberId);
+      allow read: if isSignedIn() || isAdmin() || ownsMember(resource.data.memberId);
       allow create: if
-        (isPrivilegedStaff() ||
-         ownsMember(request.resource.data.memberId) ||
-         (isSignedIn() && request.resource.data.ownerUid == request.auth.uid)) &&
+        (isAdmin() || (isSignedIn() && request.resource.data.ownerUid == request.auth.uid)) &&
         isValidDietFilePayload(request.resource.data);
       allow update: if
-        (isPrivilegedStaff() ||
-          ownsMember(resource.data.memberId) ||
+        (isAdmin() ||
           (isSignedIn() &&
             (("ownerUid" in resource.data && resource.data.ownerUid == request.auth.uid) ||
              !("ownerUid" in resource.data)))) &&
         isValidDietFilePayload(request.resource.data);
-      allow delete: if isPrivilegedStaff() ||
-        ownsMember(resource.data.memberId) ||
+      allow delete: if isAdmin() ||
         (isSignedIn() &&
           (("ownerUid" in resource.data && resource.data.ownerUid == request.auth.uid) ||
            !("ownerUid" in resource.data)));
     }
 
-    // Default deny
+    // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
     }

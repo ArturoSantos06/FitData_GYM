@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { logoutUser } from '../../firebase';
-import { Activity, Calculator } from 'lucide-react';
+import { Activity, Calculator, Stethoscope, BookOpen } from 'lucide-react';
 import MacroCalculatorForm from '../MacroCalculatorForm';
 import NutriFinancialDashboard from './NutriFinancialDashboard';
+import CitasNutri from './CitasNutri';
+import DietaRepositorio from '../DietaRepositorio';
 
 function NutriologoPortal() {
   const nutritionistName = localStorage.getItem('nutritionist_username') || 'Nutriologo';
@@ -44,10 +46,23 @@ function NutriologoPortal() {
 
       <main className="mx-auto w-full max-w-6xl px-5 py-8">
         <div className="mb-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5 text-sm text-cyan-100">
-          Este portal incluye una calculadora nutricional y una pestana financiera para medir ingresos por consultas y planes.
+          Este portal incluye gestión de citas, calculadora nutricional y una pestaña financiera para medir ingresos por consultas y planes.
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('citas')}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              activeTab === 'citas'
+                ? 'bg-purple-500/20 text-purple-200 border border-purple-400/40'
+                : 'border border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <Stethoscope size={16} />
+            Citas y Expedientes
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('calculadora')}
@@ -59,6 +74,19 @@ function NutriologoPortal() {
           >
             <Calculator size={16} />
             Calculadora
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('dietas')}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              activeTab === 'dietas'
+                ? 'bg-orange-500/20 text-orange-200 border border-orange-400/40'
+                : 'border border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <BookOpen size={16} />
+            Repositorio de Dietas
           </button>
 
           <button
@@ -75,7 +103,9 @@ function NutriologoPortal() {
           </button>
         </div>
 
+        {activeTab === 'citas' && <CitasNutri />}
         {activeTab === 'calculadora' && <MacroCalculatorForm />}
+        {activeTab === 'dietas' && <DietaRepositorio />}
         {activeTab === 'financiero' && <NutriFinancialDashboard />}
       </main>
     </div>
