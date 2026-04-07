@@ -63,18 +63,6 @@ function UserSelectionModal({ onClose }) {
             </div>
             <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">💪</span>
           </button>
-
-          <button 
-          onClick={() => navigate('nutriologo')}
-          className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-cyan-500 hover:bg-gray-700 transition-all duration-300"
-          >
-            <div className="text-left">
-              <h4 className="font-bold text-white group-hover:text-cyan-400 transition-colors">Nutriólogo</h4>
-              <p className="text-xs text-gray-500">Mi portal</p>
-            </div>
-            <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">🥗</span>
-
-          </button>
         </div>
       </div>
     </div>
