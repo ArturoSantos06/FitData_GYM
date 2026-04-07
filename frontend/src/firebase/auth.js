@@ -158,23 +158,29 @@ export const getCurrentUser = () => {
 
 export const registerNutriologoByAdmin = async (payload) => {
   try {
-    const registerFn = httpsCallable(functions, 'registerNutriologoByAdmin');
-    const result = await registerFn(payload);
-    return { success: true, data: result.data };
+    const registerV2Fn = httpsCallable(functions, 'registerNutriologoByAdminV2');
+    const resultV2 = await registerV2Fn(payload);
+    return { success: true, data: resultV2.data };
   } catch (error) {
-    console.error('Error en registerNutriologoByAdmin:', error);
-    const friendlyError =
-      error?.details?.message ||
-      error?.details ||
-      error?.message ||
-      error?.customData?.message ||
-      'No se pudo completar el registro del nutriólogo';
+    try {
+      const registerFn = httpsCallable(functions, 'registerNutriologoByAdmin');
+      const result = await registerFn(payload);
+      return { success: true, data: result.data };
+    } catch (fallbackError) {
+      console.error('Error en registerNutriologoByAdmin:', fallbackError);
+      const friendlyError =
+        fallbackError?.details?.message ||
+        fallbackError?.details ||
+        fallbackError?.message ||
+        fallbackError?.customData?.message ||
+        'No se pudo completar el registro del nutriólogo';
 
-    return {
-      success: false,
-      error: friendlyError,
-      code: error?.code || null,
-      raw: error,
-    };
+      return {
+        success: false,
+        error: friendlyError,
+        code: fallbackError?.code || null,
+        raw: fallbackError,
+      };
+    }
   }
 };
