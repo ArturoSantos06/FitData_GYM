@@ -12,6 +12,37 @@ service cloud.firestore {
       );
     }
 
+    function ownsMember(memberId) {
+      return isSignedIn() &&
+             memberId != null &&
+             exists(/databases/$(database)/documents/miembros/$(memberId)) &&
+             (
+               get(/databases/$(database)/documents/miembros/$(memberId)).data.userId == request.auth.uid ||
+               get(/databases/$(database)/documents/miembros/$(memberId)).data.authUid == request.auth.uid
+             );
+    }
+
+    function isRoutineTrainer(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.ownerUid ||
+        request.auth.uid == data.createdBy ||
+        request.auth.token.email == data.trainerEmail
+      );
+    }
+
+    function isRoutineMember(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.memberAuthUid ||
+        request.auth.uid == data.memberUserId ||
+        request.auth.token.email == data.memberEmail ||
+        ownsMember(data.memberId)
+      );
+    }
+
+    function canReadRoutine(data) {
+      return isAdmin() || isRoutineTrainer(data) || isRoutineMember(data);
+    }
+
     // Necesario para validar rol en EntrenadorLogin y listar alumnos en VistaEntrenador.
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -23,12 +54,44 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Portal Nutriologo: agenda y expediente
+    match /citas/{citaId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if isSignedIn() || isAdmin();
+    }
+
+    // Portal Nutriologo: panel financiero y cobros
+    match /ventas/{saleId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Portal Nutriologo: lectura de fichas de salud
+    match /healthProfiles/{profileId} {
+      allow read, create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
     match /trainerRoutines/{routineId} {
-      allow read, write: if isSignedIn();
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
     match /memberRoutines/{memberId} {
-      allow read, write: if isSignedIn();
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
   }
 }

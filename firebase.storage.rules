@@ -13,9 +13,12 @@ service firebase.storage {
     }
 
     match /trainerRoutines/{memberId}/{fileName} {
-      allow write: if true;
-      allow read: if true;
-      allow delete: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+        request.resource != null &&
+        request.resource.size <= 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+      allow delete: if isSignedIn();
     }
   }
 }

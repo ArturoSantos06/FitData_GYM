@@ -57,6 +57,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Appointments (Nutri) - authenticated users
+    match /citas/{citaId} {
+      allow read, create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() || isAdmin();
+    }
+
     // Membership Types - Public read for authenticated users
     match /membershipTypes/{typeId} {
       allow read: if isAuthenticated();
@@ -154,6 +160,57 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    function isRoutineTrainer(data) {
+      return isAuthenticated() && (
+        request.auth.uid == data.ownerUid ||
+        request.auth.uid == data.createdBy ||
+        request.auth.token.email == data.trainerEmail
+      );
+    }
+
+    function isRoutineMember(data) {
+      return isAuthenticated() && (
+        request.auth.uid == data.memberAuthUid ||
+        request.auth.uid == data.memberUserId ||
+        request.auth.token.email == data.memberEmail ||
+        ownsMember(data.memberId)
+      );
+    }
+
+    function canReadRoutine(data) {
+      return isAdmin() || isRoutineTrainer(data) || isRoutineMember(data);
+    }
+
+    // Trainer routines - owner trainer, related member, or admin
+    match /trainerRoutines/{routineId} {
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isAuthenticated() && (isAdmin() || isRoutineTrainer(resource.data));
+    }
+
+    // Member routines mirror trainer routines for client access
+    match /memberRoutines/{memberId} {
+      allow read: if canReadRoutine(resource.data);
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isRoutineTrainer(resource.data) ||
+        isRoutineTrainer(request.resource.data)
+      );
+      allow delete: if isAuthenticated() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
     function isValidDietFileTextField(data, field, maxLen) {

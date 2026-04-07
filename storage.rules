@@ -50,5 +50,15 @@ service firebase.storage {
         request.resource.size <= maxDietFileSize() &&
         request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
     }
+
+    // Adjuntos de rutina de entrenador
+    match /trainerRoutines/{memberId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+        request.resource != null &&
+        request.resource.size <= maxDietFileSize() &&
+        request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+      allow delete: if isAuthenticated();
+    }
   }
 }
