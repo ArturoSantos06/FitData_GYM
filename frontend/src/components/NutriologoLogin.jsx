@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { loginUser, getUser, getUserByEmail } from '../firebase';
 
-function NutriologoLogin() {
+function NutriologoLogin({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -43,10 +43,15 @@ function NutriologoLogin() {
       // Guardar info del usuario en localStorage
       localStorage.setItem('firebaseUser', JSON.stringify(user));
 
-      // Redirigir al portal de nutriólogo
-      navigate('/nutriologo');
+      // Si se renderiza dentro de NutriologoArea, notificar al padre para mostrar portal.
+      if (typeof onLogin === 'function') {
+        onLogin();
+      } else {
+        navigate('/nutriologo', { replace: true });
+      }
     } catch (err) {
       setError(err.message);
+    } finally {
       setIsLoading(false);
     }
   };
