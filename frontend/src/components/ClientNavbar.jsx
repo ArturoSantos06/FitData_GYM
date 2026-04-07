@@ -1,11 +1,13 @@
 import React from 'react';
-import { QrCode, ShoppingBag, Dumbbell, User, LogOut } from 'lucide-react';
+import { QrCode, ShoppingBag, Dumbbell, User, LogOut, MessageSquare } from 'lucide-react';
 
 const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
+  // Solo las 5 pestañas principales para un UX perfecto en móvil
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
-    { id: 'catalogo', label: 'Tienda', icon: ShoppingBag },
-    { id: 'rutina', label: 'Rutina', icon: Dumbbell },
+    { id: 'plan', label: 'Mi Plan', icon: Dumbbell }, // <-- Agrupa Rutina, Entrenador y Nutriólogo
+    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare }, 
+    { id: 'tienda', label: 'Tienda', icon: ShoppingBag }, // <-- Agrupa Catálogo y Servicios
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
 
@@ -20,12 +22,11 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
           <nav className="flex items-center gap-5">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+                  className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
                     isActive
                       ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] -translate-y-px'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-b-2 border-transparent'
@@ -41,7 +42,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
         <div className="pl-8 border-l border-slate-800/50">
           <button
             onClick={onLogout}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-md shadow-lg shadow-red-600/20 transition-transform active:scale-95 text-sm"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-md shadow-lg shasdow-red-600/20 transition-transform active:scale-95 text-sm"
           >
             Salir
           </button>
@@ -49,7 +50,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
       </header>
 
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-        <div className="grid grid-cols-5 h-full">
+        <div className="grid grid-cols-6 h-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -66,10 +67,11 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
                 }`}>
                   <Icon size={24} />
                 </div>
-                <span className="text-[10px] font-medium">{tab.label}</span>
+                <span className="text-[9px] font-medium truncate w-full px-1 text-center">{tab.label}</span>
               </button>
             );
           })}
+
           <button
             onClick={onLogout}
             className="flex flex-col items-center justify-center gap-1 text-red-400"

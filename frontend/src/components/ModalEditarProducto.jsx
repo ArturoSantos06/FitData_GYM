@@ -5,7 +5,7 @@ import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCu
 const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado }) => {
     const [datos, setDatos] = useState({ nombre: '', precio: '', stock: '', imagen: null });
     const [showSuccess, setShowSuccess] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (producto) {

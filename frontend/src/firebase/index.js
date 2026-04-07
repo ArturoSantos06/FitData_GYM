@@ -8,7 +8,9 @@ export {
   createUserWithoutSessionChange,
   registerClientByAdmin,
   registerTrainerByAdmin,
+  registerNutriologoByAdmin,
   ensureUserClaim,
+  updateSelfProfile,
   logoutUser,
   onAuthChanged,
   getCurrentUser
@@ -28,6 +30,7 @@ export {
   getMembers,
   getAllMembers,
   getMemberByUserId,
+  updateMemberByUserId,
   getMemberByAuthUid,
   getMemberByEmail,
   createMember,
@@ -86,6 +89,14 @@ export {
   deleteTrainerNote
 } from './firestore';
 
+// Export Diet File services (re-export from firestore)
+export {
+  getAllDietFiles,
+  getDietFilesByMember,
+  createDietFileRecord,
+  deleteDietFileRecord
+} from './firestore';
+
 // Export Storage services
 export {
   uploadImage,
@@ -95,3 +106,10 @@ export {
   uploadMemberAvatar,
   uploadRoutineAttachment
 } from './storage';
+
+export {
+  uploadDietDocument,
+  downloadDietDocument
+} from './storage';
+
+

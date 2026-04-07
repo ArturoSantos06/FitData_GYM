@@ -6,7 +6,8 @@ import {
   updateProfile
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { auth, functions } from "./config";
+import { auth, functions, db } from "./config";
+import { doc, setDoc } from 'firebase/firestore';
 
 // Login con email y contraseña
 export const loginUser = async (email, password) => {
@@ -114,6 +115,27 @@ export const ensureUserClaim = async () => {
   }
 };
 
+export const updateSelfProfile = async (payload) => {
+  try {
+    const fn = httpsCallable(functions, 'updateSelfProfile');
+    const result = await fn(payload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en updateSelfProfile:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo actualizar el perfil';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null,
+    };
+  }
+};
+
 // Logout
 export const logoutUser = async () => {
   try {
@@ -132,4 +154,33 @@ export const onAuthChanged = (callback) => {
 // Obtener usuario actual
 export const getCurrentUser = () => {
   return auth.currentUser;
+};
+
+export const registerNutriologoByAdmin = async (payload) => {
+  try {
+    const registerV2Fn = httpsCallable(functions, 'registerNutriologoByAdminV2');
+    const resultV2 = await registerV2Fn(payload);
+    return { success: true, data: resultV2.data };
+  } catch (error) {
+    try {
+      const registerFn = httpsCallable(functions, 'registerNutriologoByAdmin');
+      const result = await registerFn(payload);
+      return { success: true, data: result.data };
+    } catch (fallbackError) {
+      console.error('Error en registerNutriologoByAdmin:', fallbackError);
+      const friendlyError =
+        fallbackError?.details?.message ||
+        fallbackError?.details ||
+        fallbackError?.message ||
+        fallbackError?.customData?.message ||
+        'No se pudo completar el registro del nutriólogo';
+
+      return {
+        success: false,
+        error: friendlyError,
+        code: fallbackError?.code || null,
+        raw: fallbackError,
+      };
+    }
+  }
 };

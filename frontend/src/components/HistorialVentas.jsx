@@ -26,7 +26,7 @@ const HistorialVentas = ({ reloadTrigger }) => {
             if (typeof venta.detalle_productos === 'string') {
                 try {
                     productos = JSON.parse(venta.detalle_productos);
-                } catch (jsonError) {
+                } catch {
                     const jsonFijo = venta.detalle_productos.replace(/'/g, '"');
                     productos = JSON.parse(jsonFijo);
                 }
@@ -36,7 +36,7 @@ const HistorialVentas = ({ reloadTrigger }) => {
                 return [];
             }
             
-            const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || Date.now());
+            const fechaObj = venta.createdAt?.toDate?.() || new Date(venta.fecha || venta.createdAt || 0);
             
             return productos.map(prod => ({
                 id_unico: `${venta.id}-${prod.id}`,
@@ -49,7 +49,7 @@ const HistorialVentas = ({ reloadTrigger }) => {
                 total_linea: prod.cantidad * prod.precio,
                 metodo: venta.metodo_pago
             }));
-        } catch (e) {
+        } catch {
             return [];
         }
     });

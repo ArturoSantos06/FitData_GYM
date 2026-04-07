@@ -14,26 +14,69 @@ import Inventario from './components/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
-import GestionEntrenadores from './components/GestionEntrenadores';
+import GestionEntrenadores from './components/entrenador/GestionEntrenadores';
+import CitasTrainer from './components/CitasTrainer';
+import FeedbackClie from './components/FeedbackClie';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
 import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
-import VistaEntrenador from './components/VistaEntrenador';
-import RutinaEntrenador from './components/RutinaEntrenador';
-import EntrenadorLogin from './components/EntrenadorLogin';
-import { logoutUser, getCurrentUser, onAuthChanged } from './firebase';
+import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
+import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
+import NutriologoLogin from './components/NutriologoLogin';
+import NutriologoPortal from './components/nutriologo/NutriologoPortal';
+import ReportesFacturacion from './components/ReportesFacturacion';
+import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
+import { AssistantProvider } from './components/asistente/ContextoAsistente';
+import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+  const [hasTrainerRole, setHasTrainerRole] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthChanged((user) => {
-      setHasFirebaseSession(Boolean(user));
-      setIsAuthReady(true);
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setHasFirebaseSession(false);
+        setHasTrainerRole(false);
+        setIsAuthReady(true);
+        return;
+      }
+
+      setHasFirebaseSession(true);
+
+      try {
+        let role = '';
+
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const isTrainer = role === 'trainer' || role === 'entrenador';
+        setHasTrainerRole(isTrainer);
+
+        if (!isTrainer) {
+          localStorage.removeItem('trainer_token');
+          localStorage.removeItem('trainer_username');
+        }
+      } catch {
+        setHasTrainerRole(false);
+        localStorage.removeItem('trainer_token');
+        localStorage.removeItem('trainer_username');
+      } finally {
+        setIsAuthReady(true);
+      }
     });
 
     return () => unsubscribe();
@@ -55,12 +98,136 @@ function RequireTrainerAuth({ children }) {
     return <Navigate to="/entrenador/login" replace />;
   }
 
+  if (!hasTrainerRole) {
+    return <Navigate to="/entrenador/login" replace />;
+  }
+
   return children;
 }
 
+function RequireNutritionistAuth({ children }) {
+  const isNutritionistAuthenticated = Boolean(localStorage.getItem('nutritionist_token'));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
+  const [hasNutritionistRole, setHasNutritionistRole] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setHasFirebaseSession(false);
+        setHasNutritionistRole(false);
+        setIsAuthReady(true);
+        return;
+      }
+
+      setHasFirebaseSession(true);
+
+      try {
+        let role = '';
+
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const nutritionistRoles = [
+          'nutritionist',
+          'nutriologo',
+          'nutriologa',
+          'nutriologo/a',
+          'nutricionista',
+          'nutri'
+        ];
+        const isNutritionist = nutritionistRoles.includes(role);
+
+        setHasNutritionistRole(isNutritionist);
+
+        if (!isNutritionist) {
+          localStorage.removeItem('nutritionist_token');
+          localStorage.removeItem('nutritionist_username');
+        }
+      } catch {
+        setHasNutritionistRole(false);
+        localStorage.removeItem('nutritionist_token');
+        localStorage.removeItem('nutritionist_username');
+      } finally {
+        setIsAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isNutritionistAuthenticated) {
+    return <Navigate to="/nutriologo/login" replace />;
+  }
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">
+        Cargando sesion...
+      </div>
+    );
+  }
+
+  if (!hasFirebaseSession) {
+    return <Navigate to="/nutriologo/login" replace />;
+  }
+
+  if (!hasNutritionistRole) {
+    return <Navigate to="/nutriologo/login" replace />;
+  }
+
+  return children;
+}
+
+//Componete para el entrenador//
+import TrainerPortal from './components/TrainerPortal';
+
+// --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
+function NutriologoArea() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = () => setIsAuthenticated(true);
+
+  const handleLogout = () => {
+    localStorage.removeItem('firebaseUser');
+    setIsAuthenticated(false);
+    window.location.href = "/";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-white bg-gray-900 h-screen flex items-center justify-center">
+        Cargando...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <NutriologoLogin onLogin={handleLogin} />;
+  }
+
+  return <NutriologoPortal onLogout={handleLogout} />;
+}
+
+// --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
-  const [isLoading, setIsLoading] = useState(false);
   
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
@@ -74,12 +241,6 @@ function AdminArea() {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
-  useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (firebaseUser) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
-
   const handleLogin = () => setIsAuthenticated(true);
   
   const handleLogout = async () => {
@@ -90,8 +251,6 @@ function AdminArea() {
     // Al salir, redirigir a la Landing Page
     window.location.href = "/"; 
   };
-
-  if (isLoading) return <div className="text-white bg-gray-900 h-screen flex items-center justify-center">Cargando...</div>;
 
   // Si NO está autenticado, mostramos el Login del Admin
   if (!isAuthenticated) {
@@ -135,13 +294,18 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
+
           
-          {/* 8. Bitácora de Notas Privadas del Entrenador */}
-          <Route path="bitacora" element={<BitacoraEntrenador />} />
-          
-          {/* 9. Gestión de Entrenadores (RF-018) */}
+          {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
-          
+          <Route path="reportes-facturas" element={<ReportesFacturacion />} />
+
+          {/* 9. Feedback y comunicación */}
+          <Route path="feedback" element={<FeedbackClie />} />
+
+          {/* 12. Configuración Chatbot NLP */}
+          <Route path="chatbot" element={<AssistantAdminConfig />} />
+
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </main>
@@ -153,21 +317,29 @@ function AdminArea() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
+      <AssistantProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
 
         <Route path="/equipo" element={<AboutTeam />} />
 
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente" element={<ClientPortal />} />
+        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+        <Route path="/nutriologo" element={<NutriologoArea />} />
         <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
         <Route
           path="/entrenador"
           element={
             <RequireTrainerAuth>
-              <VistaEntrenador />
+              <TrainerPortal />
             </RequireTrainerAuth>
           }
+        />
+        <Route
+          path="/nutriologo"
+          element={<NutriologoPortal />}
         />
         <Route
           path="/entrenador/rutina/:memberId"
@@ -177,11 +349,31 @@ function App() {
             </RequireTrainerAuth>
           }
         />
+        <Route
+          path="/entrenador/citas"
+          element={
+            <RequireTrainerAuth>
+              <CitasTrainer />
+            </RequireTrainerAuth>
+          }
+        />
+        <Route
+          path="/entrenador/bitacora"
+          element={
+            <RequireTrainerAuth>
+              <BitacoraEntrenador />
+            </RequireTrainerAuth>
+          }
+        />
 
         <Route path="/admin/*" element={<AdminArea />} />
 
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+        <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+
+        {/* Comodín: Cualquier otra cosa redirige al inicio */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AssistantProvider>
     </BrowserRouter>
   );
 }

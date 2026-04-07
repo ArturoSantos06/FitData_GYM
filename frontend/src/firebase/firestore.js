@@ -51,7 +51,7 @@ const isNotFoundError = (error) => {
 const normalizeFirestoreError = (error) => {
   const raw = String(error?.message || error || 'Error desconocido');
   if (isPermissionDeniedError(error)) {
-    return 'No hay permisos para guardar esta rutina en Firestore. Revisa reglas de trainerRoutines.';
+    return 'No hay permisos suficientes para completar esta operacion en Firestore.';
   }
   return raw;
 };
@@ -112,6 +112,38 @@ let _exCachePromise = null;
 
 const _delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE_URL = 'https://exercisedb.dev/api/v1/exercises?limit=100&offset=';
+const FALLBACK_EXERCISES_URL =
+  'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
+
+const buildFallbackImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  return encodeURI(`https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${imagePath}`);
+};
+
+const inferBodyPartsFromFallback = (ex = {}) => {
+  const parts = new Set();
+  const muscles = [
+    ...(Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : []),
+    ...(Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : []),
+  ].map(normalizeText);
+
+  if (normalizeText(ex.category) === 'cardio') parts.add('cardio');
+  if (muscles.some((m) => ['pectorals', 'chest'].includes(m))) parts.add('chest');
+  if (muscles.some((m) => ['lats', 'traps', 'middle back', 'lower back', 'back', 'spine'].includes(m))) parts.add('back');
+  if (muscles.some((m) => ['shoulders', 'delts', 'deltoids'].includes(m))) parts.add('shoulders');
+  if (muscles.some((m) => ['biceps', 'triceps', 'upper arms'].includes(m))) parts.add('upper arms');
+  if (muscles.some((m) => ['forearms', 'brachialis', 'wrist flexors', 'wrist extensors', 'lower arms'].includes(m))) parts.add('lower arms');
+  if (muscles.some((m) => ['glutes', 'hamstrings', 'quadriceps', 'quads', 'adductors', 'abductors', 'upper legs'].includes(m))) parts.add('upper legs');
+  if (muscles.some((m) => ['calves', 'gastrocnemius', 'soleus', 'lower legs'].includes(m))) parts.add('lower legs');
+  if (muscles.some((m) => ['abdominals', 'abs', 'obliques', 'waist'].includes(m))) parts.add('waist');
+
+  if (parts.size === 0) {
+    const fallback = normalizeText(ex.primaryMuscles?.[0] || ex.category || 'general');
+    parts.add(fallback);
+  }
+
+  return Array.from(parts);
+};
 
 const loadAllExercises = () => {
   if (_exCache) return Promise.resolve(_exCache);
@@ -132,6 +164,33 @@ const loadAllExercises = () => {
       );
       pages.forEach((p) => all.push(...p));
     }
+
+    // Fallback: el endpoint principal puede estar temporalmente caído.
+    if (all.length === 0) {
+      const fallbackResp = await fetch(FALLBACK_EXERCISES_URL);
+      const fallbackJson = await fallbackResp.json();
+      const fallbackExercises = Array.isArray(fallbackJson)
+        ? fallbackJson.map((ex) => {
+            const inferredBodyParts = inferBodyPartsFromFallback(ex);
+            return {
+              exerciseId: ex.id || '',
+              id: ex.id || '',
+              name: ex.name || '',
+              bodyPart: inferredBodyParts[0] || ex.primaryMuscles?.[0] || ex.category || '',
+              bodyParts: inferredBodyParts,
+              target: ex.primaryMuscles?.[0] || '',
+              targetMuscles: Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : [],
+              secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
+              equipment: ex.equipment || '',
+              equipments: ex.equipment ? [ex.equipment] : [],
+              gifUrl: buildFallbackImageUrl(Array.isArray(ex.images) ? ex.images[0] : null),
+              instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
+            };
+          })
+        : [];
+      all.push(...fallbackExercises);
+    }
+
     _exCache = all;
     return _exCache;
   })();
@@ -142,11 +201,19 @@ const mapExercise = (ex) => ({
   id: ex.exerciseId || ex.id || '',
   name: ex.name || '',
   nameLower: normalizeText(ex.name),
-  movementPattern: (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) || '',
-  primaryMuscle: (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) || '',
+  movementPattern:
+    (Array.isArray(ex.bodyParts) ? ex.bodyParts[0] : ex.bodyPart) ||
+    (Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles[0] : ex.primaryMuscles) ||
+    '',
+  primaryMuscle:
+    (Array.isArray(ex.targetMuscles) ? ex.targetMuscles[0] : ex.target) ||
+    (Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles[0] : ex.primaryMuscles) ||
+    '',
   secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
-  tags: Array.isArray(ex.equipments) ? ex.equipments : (ex.equipment ? [ex.equipment] : []),
-  gifUrl: ex.gifUrl || null,
+  tags: Array.isArray(ex.equipments)
+    ? ex.equipments
+    : (ex.equipment ? [ex.equipment] : []),
+  gifUrl: ex.gifUrl || ex.gif || buildFallbackImageUrl(Array.isArray(ex.images) ? ex.images[0] : null) || null,
   instructions: Array.isArray(ex.instructions) ? ex.instructions : [],
 });
 
@@ -192,7 +259,15 @@ export const getUser = async (uid) => {
   try {
     const docSnap = await getDoc(doc(db, "users", uid));
     if (docSnap.exists()) {
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -206,7 +281,15 @@ export const getUserByEmail = async (email) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -220,7 +303,15 @@ export const getUserByAuthUid = async (authUid) => {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
-      return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      const userData = docSnap.data();
+      return {
+        success: true,
+        data: {
+          ...userData,
+          legacyId: userData.id ?? null,
+          id: docSnap.id,
+        },
+      };
     }
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
@@ -230,11 +321,53 @@ export const getUserByAuthUid = async (authUid) => {
 
 export const updateUser = async (uid, userData) => {
   try {
-    await updateDoc(doc(db, "users", uid), {
+    const payload = {
       ...userData,
       updatedAt: serverTimestamp()
-    });
-    return { success: true };
+    };
+
+    const candidateDocIds = Array.from(new Set([
+      String(uid || '').trim(),
+      String(auth.currentUser?.uid || '').trim(),
+    ].filter(Boolean)));
+
+    for (const docId of candidateDocIds) {
+      try {
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    const currentAuthUid = String(auth.currentUser?.uid || '').trim();
+    const currentEmail = String(auth.currentUser?.email || '').trim().toLowerCase();
+
+    const fallbackQueries = [];
+    if (currentAuthUid) {
+      fallbackQueries.push(query(collection(db, "users"), where("authUid", "==", currentAuthUid), limit(1)));
+    }
+    if (currentEmail) {
+      fallbackQueries.push(query(collection(db, "users"), where("email", "==", currentEmail), limit(1)));
+    }
+
+    for (const q of fallbackQueries) {
+      try {
+        const snap = await getDocs(q);
+        if (snap.empty) continue;
+        const docId = snap.docs[0].id;
+        await updateDoc(doc(db, "users", docId), payload);
+        return { success: true };
+      } catch (err) {
+        if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
+          throw err;
+        }
+      }
+    }
+
+    return { success: false, error: 'Missing or insufficient permissions.' };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -243,10 +376,14 @@ export const updateUser = async (uid, userData) => {
 export const getUsers = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
-    const users = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const users = querySnapshot.docs.map(doc => {
+      const userData = doc.data();
+      return {
+        ...userData,
+        legacyId: userData.id ?? null,
+        id: doc.id,
+      };
+    });
     return { success: true, data: users };
   } catch (error) {
     return { success: false, error: error.message };
@@ -297,6 +434,40 @@ export const getMemberByUserId = async (userId) => {
       };
     }
     return { success: false, error: "Miembro no encontrado" };
+  } catch (error) {
+    return { success: false, error: normalizeFirestoreError(error) };
+  }
+};
+
+export const updateMemberByUserId = async (userId, memberData = {}) => {
+  try {
+    const candidates = [userId];
+    const numericId = Number(userId);
+    if (!Number.isNaN(numericId)) candidates.push(numericId);
+
+    const snapshots = await Promise.all(
+      candidates.map((candidate) =>
+        withAuthRetry(() => getDocs(query(collection(db, "miembros"), where("userId", "==", candidate), limit(1))))
+      )
+    );
+
+    const docSnap = snapshots.find((snap) => !snap.empty)?.docs?.[0];
+    if (!docSnap) {
+      return { success: false, error: "Miembro no encontrado" };
+    }
+
+    const payload = {};
+    if (memberData.telefono !== undefined) payload.telefono = memberData.telefono;
+    if (memberData.email !== undefined) payload.email = memberData.email;
+    if (memberData.nombre !== undefined) payload.nombre = memberData.nombre;
+    if (memberData.apellido !== undefined) payload.apellido = memberData.apellido;
+
+    await updateDoc(doc(db, "miembros", docSnap.id), {
+      ...payload,
+      updatedAt: serverTimestamp()
+    });
+
+    return { success: true, id: docSnap.id };
   } catch (error) {
     return { success: false, error: normalizeFirestoreError(error) };
   }
@@ -1246,7 +1417,14 @@ export const createMembershipSale = async (saleData) => {
       total,
       membership_name,
       monto_recibido,
-      tipo_venta = "ALTA_MEMBRESIA"
+      tipo_venta = "ALTA_MEMBRESIA",
+      sellerId = null,
+      sellerEmail = null,
+      vendedorId = null,
+      vendedorEmail = null,
+      cliente_auth_uid = null,
+      cliente_nombre_override = null,
+      cliente_email_override = null
     } = saleData;
 
     const folio = generateSaleFolio();
@@ -1256,16 +1434,28 @@ export const createMembershipSale = async (saleData) => {
     let clienteNombre = null;
 
     if (cliente_id) {
-      const userDoc = await getDoc(doc(db, "users", String(cliente_id)));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const nombre = userData.firstName || userData.first_name || "";
-        const apellido = userData.lastName || userData.last_name || "";
-        const nombreCompleto = `${nombre} ${apellido}`.trim();
-        cliente_username = userData.username || userData.email;
-        cliente_email = userData.email;
-        clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+      try {
+        const userDoc = await withAuthRetry(() => getDoc(doc(db, "users", String(cliente_id))));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const nombre = userData.firstName || userData.first_name || "";
+          const apellido = userData.lastName || userData.last_name || "";
+          const nombreCompleto = `${nombre} ${apellido}`.trim();
+          cliente_username = userData.username || userData.email;
+          cliente_email = userData.email;
+          clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || "Cliente";
+        }
+      } catch {
+        // Si no se puede leer users por reglas, usamos overrides y continuamos con la venta.
       }
+    }
+
+    if (!cliente_email && cliente_email_override) {
+      cliente_email = String(cliente_email_override || '').trim();
+    }
+
+    if (!clienteNombre && cliente_nombre_override) {
+      clienteNombre = String(cliente_nombre_override || '').trim();
     }
 
     const totalNumber = Number(total || 0);
@@ -1274,14 +1464,19 @@ export const createMembershipSale = async (saleData) => {
       ? (Number(monto_recibido) || totalNumber)
       : totalNumber;
 
-    await addDoc(collection(db, "ventas"), {
+    await withAuthRetry(() => addDoc(collection(db, "ventas"), {
       folio,
       cliente: cliente_id || null,
       cliente_id: cliente_id || null,
+      cliente_auth_uid: cliente_auth_uid || null,
       cliente_username,
       cliente_email,
       clienteEmail: cliente_email,
       clienteNombre,
+      sellerId: sellerId || vendedorId || null,
+      sellerEmail: sellerEmail || vendedorEmail || null,
+      vendedorId: vendedorId || sellerId || null,
+      vendedorEmail: vendedorEmail || sellerEmail || null,
       metodo_pago: payMethod,
       total: totalNumber,
       monto_recibido: receivedAmount,
@@ -1295,10 +1490,13 @@ export const createMembershipSale = async (saleData) => {
       tipo_venta: tipo_venta,
       createdAt: getLocalMXDate(),
       fecha: getLocalMXDateISO()
-    });
+    }));
 
     return { success: true, folio };
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para registrar este cobro en ventas.' };
+    }
     return { success: false, error: error.message };
   }
 };
@@ -1568,7 +1766,6 @@ export const createOrUpdateTrainerRoutine = async (routineData) => {
     } catch (error) {
       const isPermissionError = isPermissionDeniedError(error);
       if (!isPermissionError || !trainerScopedRef) {
-        // Ultimo fallback para evitar bloquear el flujo por reglas en trainerRoutines.
         await upsertRoutineDoc(memberRoutineRef);
         return { success: true, id: `memberRoutines_${memberId}`, fallback: true };
       }
@@ -1811,6 +2008,68 @@ export const updateTrainerNote = async (noteId, noteData) => {
 export const deleteTrainerNote = async (noteId) => {
   try {
     await deleteDoc(doc(db, "trainerNotes", noteId));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// REPOSITORIO DE DIETAS
+export const getAllDietFiles = async () => {
+  try {
+    const q = query(collection(db, 'dietFiles'), orderBy('createdAt', 'desc'));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getDietFilesByMember = async (memberId) => {
+  try {
+    const safeMemberId = String(memberId || '').trim();
+    if (!safeMemberId) {
+      return { success: true, data: [] };
+    }
+
+    const q = query(collection(db, 'dietFiles'), where('memberId', '==', safeMemberId));
+    const snap = await withAuthRetry(() => getDocs(q));
+    const data = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const aTime = a.createdAt?.seconds || a.updatedAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || b.updatedAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const createDietFileRecord = async (recordData) => {
+  try {
+    const ownerUid = String(auth.currentUser?.uid || '');
+    const docRef = await withAuthRetry(() =>
+      addDoc(collection(db, 'dietFiles'), {
+        ...recordData,
+        ownerUid,
+        uploadedByUid: ownerUid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    );
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteDietFileRecord = async (fileId) => {
+  try {
+    await withAuthRetry(() => deleteDoc(doc(db, 'dietFiles', fileId)));
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

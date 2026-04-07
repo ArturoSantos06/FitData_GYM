@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ProductoCard from './ProductoCard';
 import ModalNuevoProducto from './ModalNuevoProducto';
 import ModalEditarProducto from './ModalEditarProducto';
@@ -57,15 +57,15 @@ function PuntoDeVenta() {
         }
     };
 
-    const calcularTotal = () => {
+    const calcularTotal = useCallback(() => {
         return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
-    };
+    }, [carrito]);
 
     useEffect(() => {
         const total = calcularTotal();
         const recibido = parseFloat(montoRecibido) || 0;
         setCambio(recibido - total);
-    }, [montoRecibido, carrito]);
+    }, [montoRecibido, calcularTotal]);
 
     const cargarDatos = async () => {
         try {
@@ -123,7 +123,7 @@ function PuntoDeVenta() {
             } else {
                 alert("Error al eliminar: " + result.error);
             }
-        } catch (error) { alert("Error al eliminar"); }
+        } catch { alert("Error al eliminar"); }
     };
 
     // --- Eliminación Carrito ---
@@ -181,6 +181,13 @@ function PuntoDeVenta() {
             setShowErrorModal(true);
             return;
         }
+
+        if (!clienteSeleccionado) {
+            setErrorTitle("Cliente Requerido");
+            setErrorMessage("Debes seleccionar un cliente para registrar la venta.");
+            setShowErrorModal(true);
+            return;
+        }
         
         const total = calcularTotal();
         if (metodoPago === 'EFECTIVO') {
@@ -194,7 +201,7 @@ function PuntoDeVenta() {
 
         setIsLoading(true);
         const data = {
-            cliente_id: clienteSeleccionado || null,
+            cliente_id: clienteSeleccionado,
             metodo_pago: metodoPago,
             total: total,
             productos: carrito.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre, precio: i.precio })),
@@ -333,7 +340,6 @@ function PuntoDeVenta() {
                             />
                             {mostrarDropdown && (
                                 <ul className="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl">
-                                    <li onClick={() => seleccionarCliente('', '-- Público General --')} className="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 font-bold text-cyan-400">-- Público General --</li>
                                     {clientesFiltrados.map(c => {
                                         const nombreCompleto = c.first_name ? `${c.first_name} ${c.last_name}` : c.username;
                                         return (
@@ -393,8 +399,8 @@ function PuntoDeVenta() {
                         <button 
                             style={s.btnPay} 
                             onClick={procesarVenta}
-                            disabled={isLoading}
-                            className={`${isLoading ? 'opacity-70 cursor-not-allowed' : ''} flex justify-center items-center gap-2`}
+                            disabled={isLoading || !clienteSeleccionado}
+                            className={`${isLoading || !clienteSeleccionado ? 'opacity-70 cursor-not-allowed' : ''} flex justify-center items-center gap-2`}
                         >
                             {isLoading ? (
                                 <>
