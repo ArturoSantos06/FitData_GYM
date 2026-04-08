@@ -85,7 +85,6 @@ const ClientCoachView = () => {
         <div className="w-full flex justify-center animate-fade-in">
             <div className="relative w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">
                 
-                {/* LÍNEA SUPERIOR DEGRADADA */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-red-500 to-orange-400"></div>
                 
                 <div className="text-center md:text-left mb-8">
