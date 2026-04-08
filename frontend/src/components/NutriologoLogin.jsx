@@ -17,10 +17,13 @@ function NutriologoLogin({ onLogin }) {
     setIsLoading(true);
 
     try {
-      const result = await loginUser(email, password);
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const result = await loginUser(normalizedEmail, password);
 
       if (!result.success) {
-        throw new Error(result.error || 'Email o contraseña incorrectos');
+        const loginError = new Error(result.error || 'Email o contraseña incorrectos');
+        loginError.code = result.code || null;
+        throw loginError;
       }
 
       const { user } = result;
@@ -41,14 +44,20 @@ function NutriologoLogin({ onLogin }) {
       }
 
       // Forzar refresh del token para que las reglas de Storage validen el rol
+      let idToken = null;
       try {
-        await user.getIdToken(true);
+        idToken = await user.getIdToken(true);
       } catch (tokenError) {
         console.warn('Token refresh failed:', tokenError);
       }
 
+      if (idToken) {
+        localStorage.setItem('nutritionist_token', idToken);
+      }
+      localStorage.setItem('nutritionist_username', user.email || normalizedEmail);
+
       // Guardar info del usuario en localStorage
-      localStorage.setItem('firebaseUser', JSON.stringify(user));
+      localStorage.setItem('firebaseUser', JSON.stringify({ uid: user.uid, email: user.email }));
 
       // Si se renderiza dentro de NutriologoArea, notificar al padre para mostrar portal.
       if (typeof onLogin === 'function') {
@@ -66,6 +75,8 @@ function NutriologoLogin({ onLogin }) {
         errorDisplay = 'Email o contraseña incorrectos';
       } else if (msg.includes('auth/wrong-password')) {
         errorDisplay = 'Email o contraseña incorrectos';
+      } else if (msg.includes('auth/invalid-email')) {
+        errorDisplay = 'Correo electrónico inválido';
       } else if (msg.includes('Acceso denegado')) {
         errorDisplay = msg;
       } else if (msg.includes('auth/')) {
@@ -73,8 +84,9 @@ function NutriologoLogin({ onLogin }) {
       } else {
         errorDisplay = msg || 'Error al iniciar sesión';
       }
-      
-      setError(errorDisplay);
+
+      console.warn('NutriologoLogin error', err.message, err.code || 'no-code');
+      setError(`${errorDisplay}${err.code ? ` (${err.code})` : ''}`);
     } finally {
       setIsLoading(false);
     }
