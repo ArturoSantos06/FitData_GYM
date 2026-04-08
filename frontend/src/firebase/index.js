@@ -97,6 +97,13 @@ export {
   deleteDietFileRecord
 } from './firestore';
 
+// Export Nutritionist Assignment services
+export {
+  assignNutritionistToClient,
+  getClientNutritionistAssignment,
+  removeNutritionistFromClient
+} from './firestore';
+
 // Export Storage services
 export {
   uploadImage,

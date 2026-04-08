@@ -1,20 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { User, Star, Award, CheckCircle } from 'lucide-react';
+import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
+import { getCurrentUser, assignNutritionistToClient, getClientNutritionistAssignment } from '../firebase';
 
 const NutriologosList = () => {
   const [nutris, setNutris] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedNutri, setSelectedNutri] = useState(null);
+  const [currentClientId, setCurrentClientId] = useState(null);
+  const [assignedNutritionistId, setAssignedNutritionistId] = useState(null);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    const fetchNutris = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        console.log("Iniciando consulta a Firestore...");
         
+        // Obtener cliente actual
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+          setError('No se pudo identificar al cliente actual');
+          return;
+        }
+        setCurrentClientId(currentUser.uid);
+        
+        // Verificar si ya tiene nutriólogo asignado
+        const assignment = await getClientNutritionistAssignment(currentUser.uid);
+        if (assignment.success) {
+          setAssignedNutritionistId(assignment.data.nutritionistId);
+        }
+        
+        // Obtener lista de nutriólogos
+        console.log("Iniciando consulta a Firestore...");
         const q = query(collection(db, "users"), where("role", "==", "nutriologo"));
         const querySnapshot = await getDocs(q);
         
@@ -33,13 +52,42 @@ const NutriologosList = () => {
       }
     };
 
-    fetchNutris();
+    fetchData();
   }, []);
 
-  const handleSelectNutri = (nutri) => {
-    setSelectedNutri(nutri);
-    // Aquí puedes agregar lógica para guardar la selección del nutriólogo
-    alert(`Has seleccionado a ${nutri.nombre} como tu nutriólogo. Esta funcionalidad estará disponible próximamente.`);
+  const handleSelectNutri = async (nutri) => {
+    if (!currentClientId) {
+      alert('Error: No se pudo identificar al cliente');
+      return;
+    }
+    
+    if (assignedNutritionistId) {
+      alert('Ya tienes un nutriólogo asignado. Si deseas cambiar, contacta a recepción.');
+      return;
+    }
+    
+    const confirmSelection = window.confirm(
+      `¿Estás seguro de seleccionar a ${nutri.displayName || `${nutri.firstName} ${nutri.lastName}`.trim() || nutri.nombre} como tu nutriólogo?\n\nEsto iniciará tu plan de nutrición personalizado.`
+    );
+    
+    if (!confirmSelection) return;
+    
+    setAssigning(true);
+    try {
+      const result = await assignNutritionistToClient(currentClientId, nutri.id);
+      if (result.success) {
+        setAssignedNutritionistId(nutri.id);
+        setSelectedNutri(nutri);
+        alert(`¡Felicidades! Has contratado a ${nutri.displayName || `${nutri.firstName} ${nutri.lastName}`.trim() || nutri.nombre} como tu nutriólogo.\n\nPronto recibirás tu plan nutricional personalizado.`);
+      } else {
+        alert(`Error al asignar nutriólogo: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error asignando nutriólogo:', err);
+      alert('Error al procesar la selección. Inténtalo de nuevo.');
+    } finally {
+      setAssigning(false);
+    }
   };
 
   if (error) return (
@@ -69,6 +117,16 @@ const NutriologosList = () => {
 
   return (
     <div className="space-y-6">
+      {assignedNutritionistId && (
+        <div className="bg-green-900/20 border border-green-500 rounded-xl p-4 text-green-400">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5" />
+            <p className="font-semibold">Ya tienes un nutriólogo asignado</p>
+          </div>
+          <p className="text-sm mt-1">Si deseas cambiar de especialista, contacta a recepción del gimnasio.</p>
+        </div>
+      )}
+      
       {nutris.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {nutris.map((n) => (
@@ -112,13 +170,28 @@ const NutriologosList = () => {
 
                 <button
                   onClick={() => handleSelectNutri(n)}
+                  disabled={assigning || assignedNutritionistId === n.id}
                   className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
-                    selectedNutri?.id === n.id
+                    assignedNutritionistId === n.id
+                      ? 'bg-green-600 hover:bg-green-500 text-white cursor-not-allowed'
+                      : selectedNutri?.id === n.id
                       ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50'
                   }`}
                 >
-                  {selectedNutri?.id === n.id ? 'Seleccionado' : 'Seleccionar'}
+                  {assigning && selectedNutri?.id === n.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
+                      Asignando...
+                    </>
+                  ) : assignedNutritionistId === n.id ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 inline mr-2" />
+                      Asignado
+                    </>
+                  ) : (
+                    'Seleccionar'
+                  )}
                 </button>
               </div>
             </div>
