@@ -176,7 +176,7 @@ const mergeSaleSnapshots = (snapshots) => {
   return Array.from(mergedById.values());
 };
 
-exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.obtenerReporteFacturas = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para consultar el reporte.");
   }
@@ -260,7 +260,7 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
   };
 });
 
-exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.generarFactura = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar facturas.");
   }
@@ -1128,7 +1128,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-exports.createUserAccount = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.createUserAccount = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new Error("No autenticado");
   }
@@ -1204,7 +1204,7 @@ const buildUsernameFromEmail = (email = "") => {
       .slice(0, 40) || "usuario";
 };
 
-exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   const db = admin.firestore();
 
   const {
@@ -1300,7 +1300,9 @@ const registerNutriologoByAdminHandler = async (request) => {
     especialidad,
   } = request.data || {};
 
-  if (!email || !password || !firstName || !lastName) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (!normalizedEmail || !password || !firstName || !lastName) {
     throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro del nutriólogo");
   }
 
@@ -1310,7 +1312,7 @@ const registerNutriologoByAdminHandler = async (request) => {
     await assertAdminRequest(request, db);
 
     const authUser = await admin.auth().createUser({
-      email,
+      email: normalizedEmail,
       password,
       displayName: `${firstName} ${lastName}`.trim(),
     });
@@ -1319,8 +1321,8 @@ const registerNutriologoByAdminHandler = async (request) => {
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
     await db.collection("users").doc(authUser.uid).set({
-      email,
-      username: buildUsernameFromEmail(email),
+      email: normalizedEmail,
+      username: buildUsernameFromEmail(normalizedEmail),
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`.trim(),
@@ -1372,17 +1374,17 @@ const registerNutriologoByAdminHandler = async (request) => {
 };
 
 exports.registerNutriologoByAdmin = onCall(
-    {cors: true, invoker: "public"},
+    {cors: {origin: true}, invoker: "public"},
     registerNutriologoByAdminHandler,
 );
 
 // Alias para evitar endpoint legacy con permisos atascados.
 exports.registerNutriologoByAdminV2 = onCall(
-    {cors: true, invoker: "public"},
+    {cors: {origin: true}, invoker: "public"},
     registerNutriologoByAdminHandler,
 );
 
-exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerClientByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1648,7 +1650,7 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
 });
 
 
-exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateClientEmail = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1716,7 +1718,7 @@ exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (reque
   }
 });
 
-exports.updateSelfProfile = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateSelfProfile = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
