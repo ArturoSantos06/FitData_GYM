@@ -193,6 +193,11 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
+    match /users/{userId}/aiRoutineHistory/{historyId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create, update, delete: if false;
+    }
+
     match /memberRoutines/{memberId} {
       allow read: if canReadRoutine(resource.data);
       allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
