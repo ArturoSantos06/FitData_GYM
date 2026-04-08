@@ -5,6 +5,8 @@ import ClientRoutine from './ClientRoutine';
 import ClientCoachView from './ClientCoachView';
 import ClientDietViewer from './ClientDietViewer';
 import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
+import NutriologosList from './NutriologosList';
+import EntrenadoresList from './EntrenadoresList';
 
 function ClientPlanView() {
   const [currentView, setCurrentView] = useState('menu');
@@ -41,8 +43,8 @@ function ClientPlanView() {
 
             <div className="space-y-4">
               {/* Opción 1: Seleccionar Entrenador */}
-              <button
-                onClick={() => alert('Próximamente: Aquí podrás ver el catálogo y elegir a tu nuevo entrenador.')}
+              <button 
+                onClick={() => setCurrentView('entrenador_seleccionar')} 
                 className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-blue-500/50"
               >
                 <div className="flex items-center gap-5 text-left">
@@ -143,6 +145,30 @@ function ClientPlanView() {
     );
   }
 
+  if (currentView === 'entrenador_seleccionar') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
+        <div className="w-full flex justify-center">
+          <div className="relative w-full max-w-4xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 to-cyan-400"></div>
+
+            <div className="mb-8 text-center md:text-left">
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-300">
+                Seleccionar Entrenador
+              </h2>
+              <p className="text-slate-400 font-medium mt-1.5">
+                Elige al entrenador que mejor se adapte a tus objetivos y estilo de entrenamiento.
+              </p>
+            </div>
+
+            <EntrenadoresList />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // SUBMENÚ NUTRIÓLOGO ///
   if (currentView === 'nutriologo_menu') {
     return (
@@ -162,20 +188,38 @@ function ClientPlanView() {
             </div>
 
             <div className="space-y-4">
-              <button
-                onClick={() => setCurrentView('nutriologo_dieta')}
+              {/* Opción 1: Seleccionar Nutriólogo */}
+              <button 
+                onClick={() => setCurrentView('nutriologo_seleccionar')} 
                 className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-emerald-500/50"
               >
                 <div className="flex items-center gap-5 text-left">
                   <div className="p-3.5 bg-emerald-500/10 rounded-xl text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-inner">
+                    <Users size={28} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-emerald-300 font-bold text-lg">Seleccionar Nutriólogo</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Explora el catálogo y elige a tu especialista en nutrición.</span>
+                  </div>
+                </div>
+                <ChevronRight className="text-slate-500 group-hover:text-emerald-400" size={24}/>
+              </button>
+
+              {/* Opción 2: Consultar y Descargar Dieta */}
+              <button
+                onClick={() => setCurrentView('nutriologo_dieta')}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-lime-500/50"
+              >
+                <div className="flex items-center gap-5 text-left">
+                  <div className="p-3.5 bg-lime-500/10 rounded-xl text-lime-400 group-hover:bg-lime-500 group-hover:text-white transition-all shadow-inner">
                     <FileDown size={28} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-emerald-300 font-bold text-lg">Consultar y Descargar Dieta</span>
+                    <span className="text-lime-300 font-bold text-lg">Consultar y Descargar Dieta</span>
                     <span className="text-slate-400 text-sm mt-0.5">Consulta o descarga tu dieta vigente.</span>
                   </div>
                 </div>
-                <ChevronRight className="text-slate-500 group-hover:text-emerald-400" size={24} />
+                <ChevronRight className="text-slate-500 group-hover:text-lime-400" size={24}/>
               </button>
             </div>
           </div>
@@ -189,6 +233,30 @@ function ClientPlanView() {
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
         <ClientDietViewer />
+      </div>
+    );
+  }
+
+  if (currentView === 'nutriologo_seleccionar') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
+        <div className="w-full flex justify-center">
+          <div className="relative w-full max-w-4xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 to-lime-400"></div>
+
+            <div className="mb-8 text-center md:text-left">
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-emerald-300 to-lime-300">
+                Seleccionar Nutriólogo
+              </h2>
+              <p className="text-slate-400 font-medium mt-1.5">
+                Elige al especialista en nutrición que mejor se adapte a tus necesidades.
+              </p>
+            </div>
+
+            <NutriologosList />
+          </div>
+        </div>
       </div>
     );
   }

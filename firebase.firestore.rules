@@ -260,6 +260,17 @@ service cloud.firestore {
            !("ownerUid" in resource.data)));
     }
 
+    // Asignaciones de nutriólogos a clientes
+    match /client_nutritionist_assignments/{clientId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == clientId || // Cliente puede leer su propia asignación
+        isAdmin() // Admin puede leer todas
+      );
+      allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
+      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
