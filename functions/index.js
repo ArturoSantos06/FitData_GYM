@@ -1,20 +1,26 @@
-const {setGlobalOptions} = require("firebase-functions/v2");
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
-const {defineSecret} = require("firebase-functions/params");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const PDFDocument = require("pdfkit");
-const {Readable} = require("stream");
-const {randomUUID} = require("crypto");
+const { Readable } = require("stream");
+const { randomUUID } = require("crypto");
+const {
+  buildAiRoutinePrompt,
+  extractGeminiText,
+  saveAiRoutineHistory,
+} = require("./aiRutinas/geminiRoutineService");
 
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 admin.initializeApp();
 
-setGlobalOptions({maxInstances: 10, region: "us-east1", invoker: "public"});
+setGlobalOptions({ maxInstances: 10, region: "us-east1", invoker: "public" });
 
 const formatDate = (value) => {
   if (!value) return "N/A";
@@ -24,11 +30,11 @@ const formatDate = (value) => {
 };
 
 const normalizeComparableText = (value = "") => String(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLowerCase();
 
 const generateSaleFolio = () => {
   const timestamp = Date.now();
@@ -38,7 +44,7 @@ const generateSaleFolio = () => {
 
 const nodemailer = require("nodemailer");
 
-const sendGmailSmtp = async ({toEmail, subject, message, defaultFrom}) => {
+const sendGmailSmtp = async ({ toEmail, subject, message, defaultFrom }) => {
   const gmailUser = GMAIL_USER.value();
   const appPassword = GMAIL_APP_PASSWORD.value();
   const fromEmail = defaultFrom || "FitData GYM <fitdatagym@gmail.com>";
@@ -63,7 +69,7 @@ const sendGmailSmtp = async ({toEmail, subject, message, defaultFrom}) => {
     html: `<pre>${message}</pre>`,
   });
 
-  return {id: info.messageId};
+  return { id: info.messageId };
 };
 
 const isPrivilegedRole = (roleValue = "") => {
@@ -85,9 +91,9 @@ const getMemberIdFromPath = (path = "") => {
 };
 
 const sanitizeDownloadName = (value = "archivo") => String(value || "archivo")
-    .replace(/[\r\n]/g, " ")
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(0, 180) || "archivo";
+  .replace(/[\r\n]/g, " ")
+  .replace(/[^a-zA-Z0-9._-]/g, "_")
+  .slice(0, 180) || "archivo";
 
 const toJsDate = (value) => {
   if (!value) return null;
@@ -124,8 +130,8 @@ const buildFacturaDescripcion = (saleData = {}) => {
       const parsed = JSON.parse(rawDetail);
       if (Array.isArray(parsed) && parsed.length > 0) {
         const names = parsed
-            .map((item) => String(item?.nombre || item?.name || item?.producto || "").trim())
-            .filter(Boolean);
+          .map((item) => String(item?.nombre || item?.name || item?.producto || "").trim())
+          .filter(Boolean);
         if (names.length > 0) {
           return names.length === 1 ? names[0] : names.join(", ");
         }
@@ -135,13 +141,13 @@ const buildFacturaDescripcion = (saleData = {}) => {
   }
 
   return String(
-      saleData.membership_name ||
-      saleData.membershipName ||
-      saleData.producto ||
-      saleData.producto_nombre ||
-      saleData.productoNombre ||
-      saleData.tipo_venta ||
-      "Producto"
+    saleData.membership_name ||
+    saleData.membershipName ||
+    saleData.producto ||
+    saleData.producto_nombre ||
+    saleData.productoNombre ||
+    saleData.tipo_venta ||
+    "Producto"
   );
 };
 
@@ -176,7 +182,463 @@ const mergeSaleSnapshots = (snapshots) => {
   return Array.from(mergedById.values());
 };
 
-exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (request) => {
+const buildFallbackRoutineText = (payload = {}) => {
+  const goal = String(payload.goalLabel || payload.goal || "Objetivo general");
+  const level = String(payload.levelLabel || payload.level || "principiante");
+  const daysPerWeek = Math.max(2, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+  const sessionLength = Math.max(30, Math.min(120, Number(payload.sessionLength || 60) || 60));
+  const limitations = String(payload.limitations || "sin limitaciones especificadas");
+
+  const templates = {
+    2: [
+      {
+        day: "Lunes",
+        focus: "Pierna y core",
+        exercises: [
+          ["Sentadilla goblet", "4 series x 8-10 repeticiones"],
+          ["Prensa de piernas", "4 series x 10-12 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Peso muerto rumano", "3 series x 10 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Torso completo",
+        exercises: [
+          ["Press de banca", "4 series x 8-10 repeticiones"],
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Press militar", "3 series x 8-10 repeticiones"],
+          ["Face pull", "3 series x 12-15 repeticiones"],
+        ],
+      },
+    ],
+    3: [
+      {
+        day: "Lunes",
+        focus: "Pierna y core",
+        exercises: [
+          ["Sentadilla libre o goblet", "4 series x 8-10 repeticiones"],
+          ["Prensa de piernas", "4 series x 10-12 repeticiones"],
+          ["Peso muerto rumano", "3 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Pecho y espalda",
+        exercises: [
+          ["Press de banca", "4 series x 8-10 repeticiones"],
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "3 series x 10-12 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Gluteo, hombro y core",
+        exercises: [
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Press militar", "4 series x 8-10 repeticiones"],
+          ["Elevaciones laterales", "3 series x 12-15 repeticiones"],
+          ["Face pull", "3 series x 12-15 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+        ],
+      },
+    ],
+    4: [
+      {
+        day: "Lunes",
+        focus: "Pierna y gluteo",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y triceps",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Fondos asistidos", "3 series x 10 repeticiones"],
+          ["Extension de triceps en polea", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Face pull", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Hombro y core",
+        exercises: [
+          ["Press militar", "4 series x 8 repeticiones"],
+          ["Elevaciones laterales", "4 series x 12 repeticiones"],
+          ["Pajaro en banco inclinado", "3 series x 12 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch en polea o suelo", "3 series x 15 repeticiones"],
+        ],
+      },
+    ],
+    5: [
+      {
+        day: "Lunes",
+        focus: "Pierna anterior",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Extensiones de cuádriceps", "3 series x 12 repeticiones"],
+          ["Zancadas", "3 series x 10 repeticiones por pierna"],
+          ["Plancha frontal", "3 series x 30 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y hombro",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Press militar", "3 series x 8 repeticiones"],
+          ["Elevaciones laterales", "3 series x 12 repeticiones"],
+          ["Aperturas", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+          ["Face pull", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Pierna posterior y gluteo",
+        exercises: [
+          ["Peso muerto rumano", "4 series x 8-10 repeticiones"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Puente de gluteo", "3 series x 12 repeticiones"],
+          ["Pantorrillas de pie", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Core y cardio",
+        exercises: [
+          ["Plancha frontal", "3 series x 40 segundos"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch abdominal", "3 series x 15 repeticiones"],
+          ["Bicicleta abdominal", "3 series x 20 repeticiones"],
+          ["Cardio suave en caminadora", "20 minutos"],
+        ],
+      },
+    ],
+    6: [
+      {
+        day: "Lunes",
+        focus: "Pierna anterior",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Extensiones de cuádriceps", "3 series x 12 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Plancha frontal", "3 series x 30 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y triceps",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Fondos asistidos", "3 series x 10 repeticiones"],
+          ["Extension de triceps en polea", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Face pull", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Pierna posterior y gluteo",
+        exercises: [
+          ["Peso muerto rumano", "4 series x 8-10 repeticiones"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Puente de gluteo", "3 series x 12 repeticiones"],
+          ["Pantorrillas de pie", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Hombro y core",
+        exercises: [
+          ["Press militar", "4 series x 8 repeticiones"],
+          ["Elevaciones laterales", "4 series x 12 repeticiones"],
+          ["Pajaro en banco inclinado", "3 series x 12 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch abdominal", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Sabado",
+        focus: "Cardio y movilidad",
+        exercises: [
+          ["Caminadora inclinada", "20-25 minutos"],
+          ["Bicicleta estatica", "15-20 minutos"],
+          ["Movilidad de cadera", "3 series x 10 repeticiones"],
+          ["Movilidad de hombro", "3 series x 10 repeticiones"],
+          ["Estiramientos globales", "10 minutos"],
+        ],
+      },
+    ],
+  };
+
+  const routineDays = templates[daysPerWeek] || templates[4];
+  const extraDaysText = daysPerWeek >= 5 ? "Cardio moderado y movilidad" : "Cardio suave opcional";
+
+  return [
+    "Rutina temporal (modo respaldo)",
+    `Objetivo: ${goal}.`,
+    `Nivel: ${level}.`,
+    `Frecuencia: ${daysPerWeek} dias por semana.`,
+    `Duracion por sesion: ${sessionLength} minutos.`,
+    "",
+    "Calentamiento (8-10 min):",
+    "- Caminata inclinada o bicicleta suave 5 min",
+    "- Movilidad dinamica de cadera, hombro y tobillo 3-5 min",
+    "",
+    ...routineDays.flatMap((item) => ([
+      `${item.day}: ${item.focus}`,
+      ...item.exercises.map(([exerciseName, prescription], index) => `${index + 1}. ${exerciseName} - ${prescription}`),
+      "",
+    ])),
+    `Dia extra: ${extraDaysText}`,
+    "- 20-30 min de cardio moderado",
+    "- Movilidad de cadera, hombro y tobillo",
+    "",
+    "Parametros base:",
+    "- 4-6 ejercicios por sesion",
+    "- 3-4 series por ejercicio",
+    "- 8-12 repeticiones (fuerza/hipertrofia general)",
+    "- Descanso 60-90 segundos",
+    "",
+    "Recomendaciones de seguridad:",
+    `- Considerar limitaciones: ${limitations}`,
+    "- Priorizar tecnica antes de subir carga",
+    "- Detener si aparece dolor agudo",
+    "",
+    "Nota: esta rutina se genero en modo respaldo porque GEMINI_API_KEY no esta configurada en Cloud Functions.",
+  ].join("\n");
+};
+
+const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => {
+  const safeUid = String(uid || "").trim();
+  if (!safeUid) {
+    throw new HttpsError("unauthenticated", "No se pudo identificar al usuario.");
+  }
+
+  const safePayload = payload || {};
+  const prompt = buildAiRoutinePrompt(safePayload);
+  const apiKey = String(process.env.GEMINI_API_KEY || "").trim();
+
+  if (!apiKey) {
+    const routineText = buildFallbackRoutineText(safePayload);
+    const historyEntry = await saveAiRoutineHistory({
+      admin,
+      uid: safeUid,
+      payload: {
+        ...safePayload,
+        ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+        ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+      },
+      prompt,
+      routineText,
+      model: "fallback-template",
+      provider: "local",
+    });
+
+    return {
+      success: true,
+      provider: "local",
+      model: "fallback-template",
+      prompt,
+      routineText,
+      historyEntry,
+    };
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: "Eres un entrenador personal experto en rutinas de gimnasio." }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.6,
+          topP: 0.9,
+          maxOutputTokens: 1400,
+        },
+      }),
+    }
+  );
+
+  const responseData = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const errorMessage = responseData?.error?.message || responseData?.message || "No se pudo generar la rutina con Gemini.";
+    logger.error("Gemini API error", { status: response.status, errorMessage });
+    throw new HttpsError("internal", errorMessage);
+  }
+
+  const routineText = extractGeminiText(responseData);
+  if (!routineText) {
+    throw new HttpsError("internal", "Gemini no devolvió contenido de rutina.");
+  }
+
+  const historyEntry = await saveAiRoutineHistory({
+    admin,
+    uid: safeUid,
+    payload: {
+      ...safePayload,
+      ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+      ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+    },
+    prompt,
+    routineText,
+    model: GEMINI_MODEL,
+    provider: "gemini",
+  });
+
+  return {
+    success: true,
+    provider: "gemini",
+    model: GEMINI_MODEL,
+    prompt,
+    routineText,
+    historyEntry,
+  };
+};
+
+const mapHttpsErrorToStatus = (code = "internal") => {
+  const mapping = {
+    "invalid-argument": 400,
+    unauthenticated: 401,
+    "permission-denied": 403,
+    "not-found": 404,
+    "already-exists": 409,
+    aborted: 409,
+    "failed-precondition": 412,
+    "resource-exhausted": 429,
+    internal: 500,
+    unavailable: 503,
+    "deadline-exceeded": 504,
+  };
+  return mapping[code] || 500;
+};
+
+const applyRoutineCorsHeaders = (req, res) => {
+  const origin = String(req.headers.origin || "*");
+  res.set("Access-Control-Allow-Origin", origin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Max-Age", "3600");
+};
+
+exports.generateClientAiRoutine = onCall(
+  { cors: true, invoker: "public" },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar una rutina.");
+    }
+
+    return generateClientAiRoutineCore({
+      uid: request.auth.uid,
+      payload: request.data || {},
+      authToken: request.auth.token || {},
+    });
+  }
+);
+
+exports.generateClientAiRoutineHttp = onRequest(
+  { cors: true, invoker: "public" },
+  async (req, res) => {
+    applyRoutineCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send("");
+    }
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "method-not-allowed", message: "Método no permitido" });
+    }
+
+    try {
+      const authHeader = String(req.headers.authorization || "");
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+      if (!idToken) {
+        return res.status(401).json({ error: "unauthenticated", message: "Debes iniciar sesión para generar una rutina." });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const result = await generateClientAiRoutineCore({
+        uid: decodedToken.uid,
+        payload: req.body || {},
+        authToken: decodedToken,
+      });
+
+      return res.status(200).json(result);
+    } catch (error) {
+      const code = error?.code || "internal";
+      const message = error?.message || "No se pudo generar la rutina con IA.";
+      logger.error("generateClientAiRoutineHttp error", { code, message });
+
+      return res.status(mapHttpsErrorToStatus(code)).json({ error: code, message });
+    }
+  }
+);
+
+exports.obtenerReporteFacturas = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para consultar el reporte.");
   }
@@ -205,15 +667,15 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
 
   const [timestampSnapshot, fechaSnapshot] = await Promise.allSettled([
     ventasRef
-        .where("createdAt", ">=", startTimestamp)
-        .where("createdAt", "<", endTimestamp)
-        .orderBy("createdAt", "desc")
-        .get(),
+      .where("createdAt", ">=", startTimestamp)
+      .where("createdAt", "<", endTimestamp)
+      .orderBy("createdAt", "desc")
+      .get(),
     ventasRef
-        .where("fecha", ">=", startIso)
-        .where("fecha", "<", endIso)
-        .orderBy("fecha", "desc")
-        .get()
+      .where("fecha", ">=", startIso)
+      .where("fecha", "<", endIso)
+      .orderBy("fecha", "desc")
+      .get()
   ]);
 
   let docs = [];
@@ -231,14 +693,14 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
   }
 
   const facturas = docs
-      .map(normalizeFacturaItem)
-      .filter((item) => {
-        const saleDate = item.fecha;
-        return saleDate &&
-          saleDate.getFullYear() === anio &&
-          saleDate.getMonth() + 1 === mes;
-      })
-      .sort((a, b) => b.fecha - a.fecha);
+    .map(normalizeFacturaItem)
+    .filter((item) => {
+      const saleDate = item.fecha;
+      return saleDate &&
+        saleDate.getFullYear() === anio &&
+        saleDate.getMonth() + 1 === mes;
+    })
+    .sort((a, b) => b.fecha - a.fecha);
 
   const totals = facturas.reduce((accumulator, factura) => {
     accumulator.totalFacturas += 1;
@@ -260,7 +722,7 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
   };
 });
 
-exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.generarFactura = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar facturas.");
   }
@@ -339,9 +801,9 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
 
   const existingFacturaNumero = String(
-      ventaData.factura_numero ||
-      ventaData.numeroFactura ||
-      ""
+    ventaData.factura_numero ||
+    ventaData.numeroFactura ||
+    ""
   ).trim();
   const existingFacturaUrl = String(ventaData.factura_url || "").trim();
   if (existingFacturaNumero && existingFacturaUrl) {
@@ -382,18 +844,18 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
 
   const clienteNombre = String(
-      ventaData.clienteNombre ||
-      ventaData.cliente_nombre ||
-      ventaData.userName ||
-      ventaData.customerName ||
-      "Cliente"
+    ventaData.clienteNombre ||
+    ventaData.cliente_nombre ||
+    ventaData.userName ||
+    ventaData.customerName ||
+    "Cliente"
   );
 
-  const pdfDoc = new PDFDocument({size: "A4", margin: 50});
+  const pdfDoc = new PDFDocument({ size: "A4", margin: 50 });
   const chunks = [];
   pdfDoc.on("data", (chunk) => chunks.push(chunk));
 
-  pdfDoc.fontSize(20).text("FitData GYM - Factura", {align: "left"});
+  pdfDoc.fontSize(20).text("FitData GYM - Factura", { align: "left" });
   pdfDoc.moveDown(0.5);
   pdfDoc.fontSize(10).fillColor("#666").text(`No. Factura: ${facturaNumeroCodigo}`);
   pdfDoc.text(`Fecha: ${fechaStr}`);
@@ -406,7 +868,7 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
   pdfDoc.moveDown();
 
-  pdfDoc.fillColor("#000").fontSize(12).text("Conceptos", {underline: true});
+  pdfDoc.fillColor("#000").fontSize(12).text("Conceptos", { underline: true });
   pdfDoc.moveDown(0.4);
 
   detalleItems.forEach((item) => {
@@ -418,13 +880,13 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   });
 
   pdfDoc.moveDown();
-  pdfDoc.fontSize(11).fillColor("#000").text(`Subtotal: $${subtotal.toFixed(2)}`, {align: "right"});
-  pdfDoc.text(`IVA: $${iva.toFixed(2)}`, {align: "right"});
-  pdfDoc.font("Helvetica-Bold").text(`Total: $${total.toFixed(2)}`, {align: "right"});
+  pdfDoc.fontSize(11).fillColor("#000").text(`Subtotal: $${subtotal.toFixed(2)}`, { align: "right" });
+  pdfDoc.text(`IVA: $${iva.toFixed(2)}`, { align: "right" });
+  pdfDoc.font("Helvetica-Bold").text(`Total: $${total.toFixed(2)}`, { align: "right" });
   pdfDoc.font("Helvetica");
 
   pdfDoc.moveDown(1.5);
-  pdfDoc.fontSize(9).fillColor("#666").text("Documento generado automáticamente por FitData GYM.", {align: "center"});
+  pdfDoc.fontSize(9).fillColor("#666").text("Documento generado automáticamente por FitData GYM.", { align: "center" });
   pdfDoc.end();
 
   const pdfBuffer = await new Promise((resolve, reject) => {
@@ -477,7 +939,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
   }
 
   if (req.method !== "GET") {
-    res.status(405).json({error: "Method not allowed"});
+    res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
@@ -487,13 +949,13 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const requestedName = sanitizeDownloadName(req.query.name || "dieta_vigente");
 
     if (!cleanPath) {
-      res.status(400).json({error: "El parámetro path es requerido."});
+      res.status(400).json({ error: "El parámetro path es requerido." });
       return;
     }
 
     const authHeader = String(req.headers.authorization || "");
     if (!authHeader.startsWith("Bearer ")) {
-      res.status(401).json({error: "Falta token de autenticación."});
+      res.status(401).json({ error: "Falta token de autenticación." });
       return;
     }
 
@@ -501,7 +963,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = String(decodedToken.uid || "");
     if (!uid) {
-      res.status(401).json({error: "Token inválido."});
+      res.status(401).json({ error: "Token inválido." });
       return;
     }
 
@@ -519,13 +981,13 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     if (!hasPrivilegedAccess) {
       const memberId = getMemberIdFromPath(cleanPath);
       if (!memberId) {
-        res.status(403).json({error: "Ruta de archivo no autorizada."});
+        res.status(403).json({ error: "Ruta de archivo no autorizada." });
         return;
       }
 
       const memberSnap = await admin.firestore().doc(`miembros/${memberId}`).get();
       if (!memberSnap.exists) {
-        res.status(404).json({error: "Miembro no encontrado para este archivo."});
+        res.status(404).json({ error: "Miembro no encontrado para este archivo." });
         return;
       }
 
@@ -533,7 +995,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
       const ownerByUserId = String(memberData.userId || "") === uid;
       const ownerByAuthUid = String(memberData.authUid || "") === uid;
       if (!ownerByUserId && !ownerByAuthUid) {
-        res.status(403).json({error: "No tienes permisos para descargar este archivo."});
+        res.status(403).json({ error: "No tienes permisos para descargar este archivo." });
         return;
       }
     }
@@ -542,7 +1004,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const file = bucket.file(cleanPath);
     const [exists] = await file.exists();
     if (!exists) {
-      res.status(404).json({error: "Archivo no encontrado en Storage."});
+      res.status(404).json({ error: "Archivo no encontrado en Storage." });
       return;
     }
 
@@ -554,16 +1016,16 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     res.set("Cache-Control", "private, max-age=60");
 
     file.createReadStream()
-        .on("error", (error) => {
-          logger.error("Error al transmitir archivo de dieta", {error: String(error?.message || error)});
-          if (!res.headersSent) {
-            res.status(500).json({error: "No se pudo descargar el archivo."});
-          }
-        })
-        .pipe(res);
+      .on("error", (error) => {
+        logger.error("Error al transmitir archivo de dieta", { error: String(error?.message || error) });
+        if (!res.headersSent) {
+          res.status(500).json({ error: "No se pudo descargar el archivo." });
+        }
+      })
+      .pipe(res);
   } catch (error) {
-    logger.error("downloadDietFile error", {error: String(error?.message || error)});
-    res.status(500).json({error: "No se pudo completar la descarga."});
+    logger.error("downloadDietFile error", { error: String(error?.message || error) });
+    res.status(500).json({ error: "No se pudo completar la descarga." });
   }
 });
 
@@ -617,7 +1079,7 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
 
   const recipient = membership.userEmail;
   if (!recipient) {
-    logger.warn("Membresía sin userEmail, no se envía correo", {membershipId: event.params.membershipId});
+    logger.warn("Membresía sin userEmail, no se envía correo", { membershipId: event.params.membershipId });
     return;
   }
 
@@ -749,7 +1211,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
 
   const recipient = venta.clienteEmail;
   if (!recipient) {
-    logger.warn("Venta sin clienteEmail, no se envía correo", {ventaId: event.params.ventaId});
+    logger.warn("Venta sin clienteEmail, no se envía correo", { ventaId: event.params.ventaId });
     return;
   }
 
@@ -773,7 +1235,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
       productos = venta.detalle_productos;
     }
   } catch (e) {
-    logger.warn("Error parseando detalle_productos", {error: e});
+    logger.warn("Error parseando detalle_productos", { error: e });
   }
 
   const detalleProductos = productos
@@ -946,11 +1408,11 @@ exports.onFacturaRequestCreated = onDocumentCreated({
   }
 
   const clienteNombre = String(
-      ventaData.clienteNombre ||
-      ventaData.cliente_nombre ||
-      ventaData.userName ||
-      ventaData.customerName ||
-      "Cliente"
+    ventaData.clienteNombre ||
+    ventaData.cliente_nombre ||
+    ventaData.userName ||
+    ventaData.customerName ||
+    "Cliente"
   );
 
   const lines = detalleItems.map((item) => {
@@ -1028,7 +1490,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
 
   const recipient = miembro.email;
   if (!recipient) {
-    logger.warn("Miembro sin email, no se envía correo", {memberId: event.params.memberId});
+    logger.warn("Miembro sin email, no se envía correo", { memberId: event.params.memberId });
     return;
   }
 
@@ -1128,12 +1590,12 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-exports.createUserAccount = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.createUserAccount = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new Error("No autenticado");
   }
 
-  const {email, password, displayName} = request.data;
+  const { email, password, displayName } = request.data;
 
   if (!email || !password) {
     throw new Error("Email y contraseña son requeridos");
@@ -1173,7 +1635,7 @@ const assertAdminRequest = async (request, db) => {
   }
 
   if (request.auth.token?.admin === true ||
-      String(request.auth.token?.role || "").toLowerCase() === "admin") {
+    String(request.auth.token?.role || "").toLowerCase() === "admin") {
     return;
   }
 
@@ -1183,9 +1645,9 @@ const assertAdminRequest = async (request, db) => {
   }
 
   const byAuthUid = await db.collection("users")
-      .where("authUid", "==", request.auth.uid)
-      .limit(1)
-      .get();
+    .where("authUid", "==", request.auth.uid)
+    .limit(1)
+    .get();
 
   if (!byAuthUid.empty) {
     const role = String(byAuthUid.docs[0].data()?.role || "").toLowerCase();
@@ -1200,11 +1662,11 @@ const assertAdminRequest = async (request, db) => {
 const buildUsernameFromEmail = (email = "") => {
   const localPart = String(email).split("@")[0] || "usuario";
   return localPart
-      .replace(/[^a-zA-Z0-9._-]/g, "")
-      .slice(0, 40) || "usuario";
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .slice(0, 40) || "usuario";
 };
 
-exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerTrainerByAdmin = onCall({ cors: true, invoker: "public" }, async (request) => {
   const db = admin.firestore();
 
   const {
@@ -1250,7 +1712,7 @@ exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (
       authUid: authUser.uid,
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, {merge: true});
+    }, { merge: true });
 
     await admin.auth().setCustomUserClaims(authUser.uid, {
       role: "TRAINER",
@@ -1332,7 +1794,7 @@ const registerNutriologoByAdminHandler = async (request) => {
       authUid: authUser.uid,
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, {merge: true});
+    }, { merge: true });
 
     await admin.auth().setCustomUserClaims(authUser.uid, {
       role: "NUTRIOLOGO",
@@ -1372,17 +1834,17 @@ const registerNutriologoByAdminHandler = async (request) => {
 };
 
 exports.registerNutriologoByAdmin = onCall(
-    {cors: true, invoker: "public"},
-    registerNutriologoByAdminHandler,
+  { cors: true, invoker: "public" },
+  registerNutriologoByAdminHandler,
 );
 
 // Alias para evitar endpoint legacy con permisos atascados.
 exports.registerNutriologoByAdminV2 = onCall(
-    {cors: true, invoker: "public"},
-    registerNutriologoByAdminHandler,
+  { cors: true, invoker: "public" },
+  registerNutriologoByAdminHandler,
 );
 
-exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerClientByAdmin = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1469,10 +1931,10 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
     });
 
     const now = new Date();
-    const mexicoOffset = -6 * 60; 
+    const mexicoOffset = -6 * 60;
     const localDate = new Date(now.getTime() + (now.getTimezoneOffset() + mexicoOffset) * 60000);
     const today = localDate;
-    
+
     const durationDays = Number(membershipType.duration_days || membershipType.durationDays || 30);
     const endDate = new Date(today);
     endDate.setDate(endDate.getDate() + durationDays);
@@ -1606,7 +2068,7 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
       tx.set(counterRef, {
         lastNumericId: nextId,
         updatedAt: timestamp,
-      }, {merge: true});
+      }, { merge: true });
 
       return {
         id: newId,
@@ -1648,7 +2110,7 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
 });
 
 
-exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateClientEmail = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1716,7 +2178,7 @@ exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (reque
   }
 });
 
-exports.updateSelfProfile = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateSelfProfile = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
