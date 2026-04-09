@@ -1,164 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import ErrorModal from './ErrorModal';
 import SuccessModal from './SuccessModal';
-import { registerClientByAdmin, registerTrainerByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio, getUserByEmail, updateUser } from '../firebase';
+import AdminHealthForm from './AdminHealthForm';
+import { registerClientByAdmin, registerTrainerByAdmin, registerNutriologoByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio, getUserByEmail, updateUser } from '../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
-function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-  const [miembroId, setMiembroId] = useState(null);
-  const [miembroUserId, setMiembroUserId] = useState(null);
-  const [miembroNombre, setMiembroNombre] = useState('');
-  const [data, setData] = useState({
-    edad: '',
-    condicion_corazon: false,
-    presion_alta: false,
-    lesiones_recientes: false,
-    medicamentos: false,
-    comentarios: ''
-  });
-
-  useEffect(() => {
-    if (!miembroEmail) return;
-    
-    const fetchMember = async () => {
-      const result = await getMemberByEmail(miembroEmail);
-      if (result.success) {
-        setMiembroId(result.data.id);
-        setMiembroUserId(result.data.userId || null);
-        const fullName = [result.data.nombre, result.data.apellido].filter(Boolean).join(' ') || 
-                        result.data.miembro_nombre || 
-                        result.data.email || 
-                        'Sin nombre';
-        setMiembroNombre(fullName);
-      }
-    };
-    
-    fetchMember();
-  }, [miembroEmail]);
-
-  const handleChange = (e) => {
-    const { name, type, value } = e.target;
-    if (type === 'radio') {
-      setData(prev => ({ ...prev, [name]: value === 'si' }));
-    } else {
-      setData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!miembroId) {
-      setError('No se encontró el miembro para asociar la ficha.');
-      return;
-    }
-    if (!data.edad) {
-      setError('Edad requerida');
-      return;
-    }
-    setLoading(true);
-    
-    const healthData = {
-      memberId: miembroId,
-      userId: miembroUserId,
-      memberName: miembroNombre,
-      userIdDisplay: miembroId,
-      age: parseInt(data.edad, 10),
-      heart_condition: data.condicion_corazon,
-      high_blood_pressure: data.presion_alta,
-      recent_injuries: data.lesiones_recientes,
-      medications: data.medicamentos,
-      additional_info: data.comentarios
-    };
-    
-    const result = await createHealthProfile(healthData);
-    
-    if (result.success) {
-      setSaved(true);
-      if (typeof onSaved === 'function') {
-        onSaved();
-      }
-      
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-    } else {
-      setError(result.error || 'Error guardando ficha');
-    }
-    
-    setLoading(false);
-  };
-
-  if (saved) {
-    return (
-      <div className="mt-6 bg-emerald-900/20 border border-emerald-600 p-4 rounded-lg">
-        <p className="text-emerald-400 font-semibold mb-2">Ficha médica inicial guardada.</p>
-        <button onClick={onClose} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-sm font-bold">Cerrar</button>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4 bg-slate-800/60 p-4 rounded-lg border border-slate-700">
-      <h3 className="text-lg font-bold text-purple-300">Ficha Médica Inicial</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Edad</label>
-          <input type="number" name="edad" value={data.edad} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
-        </div>
-        <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">¿Padece alguna condición del corazón?</p>
-          <div className="flex gap-3 text-xs">
-            <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="si" checked={data.condicion_corazon===true} onChange={handleChange} /> Sí</label>
-            <label className="flex items-center gap-1"><input type="radio" name="condicion_corazon" value="no" checked={data.condicion_corazon===false} onChange={handleChange} /> No</label>
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">Presión arterial alta</p>
-          <div className="flex gap-3 text-xs">
-            <label className="flex items-center gap-1"><input type="radio" name="presion_alta" value="si" checked={data.presion_alta===true} onChange={handleChange} /> Sí</label>
-            <label className="flex items-center gap-1"><input type="radio" name="presion_alta" value="no" checked={data.presion_alta===false} onChange={handleChange} /> No</label>
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">¿Ha tenido lesiones físicas recientes?</p>
-          <div className="flex gap-3 text-xs">
-            <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="si" checked={data.lesiones_recientes===true} onChange={handleChange} /> Sí</label>
-            <label className="flex items-center gap-1"><input type="radio" name="lesiones_recientes" value="no" checked={data.lesiones_recientes===false} onChange={handleChange} /> No</label>
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-700 rounded p-2">
-          <p className="text-xs text-slate-400 mb-1">¿Toma medicamentos regularmente?</p>
-          <div className="flex gap-3 text-xs">
-            <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="si" checked={data.medicamentos===true} onChange={handleChange} /> Sí</label>
-            <label className="flex items-center gap-1"><input type="radio" name="medicamentos" value="no" checked={data.medicamentos===false} onChange={handleChange} /> No</label>
-          </div>
-        </div>
-      </div>
-      <div>
-        <label className="block text-xs text-purple-300 mb-1">Información adicional</label>
-        <textarea name="comentarios" value={data.comentarios} onChange={handleChange} className="w-full bg-slate-900 border border-purple-700/40 rounded p-2 text-white text-sm min-h-20"></textarea>
-      </div>
-      {error && <p className="text-red-400 text-xs">{error}</p>}
-      <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-3 py-2 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Omitir</button>
-        <button type="submit" disabled={loading || !miembroId} className="px-4 py-2 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold disabled:opacity-50">
-          {loading ? 'Guardando...' : 'Guardar Ficha'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
 function RegisterUser({ onUserRegistered }) {
+  // --- ESTADO DEL FORMULARIO ---
   const [formData, setFormData] = useState({
     user_type: 'CLIENTE',
     username: '',
     email: '',
+    phone: '',
     password: '',
     confirm_password: '',
     first_name: '',
@@ -166,24 +20,18 @@ function RegisterUser({ onUserRegistered }) {
     sexo: '',
     contract_type: '',
     membership_id: '',
-    payment_method: 'EFECTIVO'
+    payment_method: 'EFECTIVO',
+    especialidad: 'Nutrición Deportiva'
   });
-  
-  // Estados de UI
   const [memberships, setMemberships] = useState([]);
-  
-  // Estados de Pago (Cambio)
   const [montoRecibido, setMontoRecibido] = useState('');
   const [cambio, setCambio] = useState(0);
 
-  // Estados de Modales
+  // Estados de UI compartidos
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorTitle, setErrorTitle] = useState('');
-  
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showHealthForm, setShowHealthForm] = useState(false);
-  const [recentEmail, setRecentEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [successSubMessage, setSuccessSubMessage] = useState('');
   const [, setRegistrationCompleted] = useState(false);
@@ -191,16 +39,16 @@ function RegisterUser({ onUserRegistered }) {
   // Estado de carga
   const [isLoading, setIsLoading] = useState(false);
 
+  // Estados específicos de post-registro de cliente
+  const [showHealthForm, setShowHealthForm] = useState(false);
+  const [recentEmail, setRecentEmail] = useState('');
+
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        // Obtener tipos de membresía de Firestore
         const q = query(collection(db, 'membershipTypes'));
         const querySnapshot = await getDocs(q);
-        const types = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const types = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setMemberships(types);
       } catch (err) {
         console.error('Error cargando membresías:', err);
@@ -214,7 +62,37 @@ function RegisterUser({ onUserRegistered }) {
   };
 
   const onlyLettersRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+$/;
+  const lettersWithSpacesRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
   const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateNutriologo = () => {
+    const firstName = formData.first_name.trim();
+    const lastName = formData.last_name.trim();
+    const email = formData.email.trim();
+
+    if (!lettersWithSpacesRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y/o espacios.';
+    }
+    if (!lettersWithSpacesRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y/o espacios.';
+    }
+    if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
+      return 'El correo no debe tener espacios en blanco.';
+    }
+    if (!validEmailRegex.test(email)) {
+      return 'Ingresa un correo electrónico válido.';
+    }
+    if (!formData.password) {
+      return 'Ingresa una contraseña.';
+    }
+    if (formData.password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (!formData.especialidad.trim()) {
+      return 'Ingresa la especialidad.';
+    }
+    return null;
+  };
 
   const validateTrainerRegistration = () => {
     const username = formData.username.trim();
@@ -225,11 +103,11 @@ function RegisterUser({ onUserRegistered }) {
     if (!onlyLettersRegex.test(username)) {
       return 'El nombre de usuario debe contener solo letras y sin espacios.';
     }
-    if (!onlyLettersRegex.test(firstName)) {
-      return 'El nombre debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(firstName)) {
+      return 'El nombre debe contener solo letras y/o espacios.';
     }
-    if (!onlyLettersRegex.test(lastName)) {
-      return 'El apellido debe contener solo letras y sin espacios.';
+    if (!lettersWithSpacesRegex.test(lastName)) {
+      return 'El apellido debe contener solo letras y/o espacios.';
     }
     if (/\s/.test(email) || /\.\s|\s\./.test(email)) {
       return 'El correo no debe tener espacios en blanco.';
@@ -254,20 +132,20 @@ function RegisterUser({ onUserRegistered }) {
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
-  // Calcular precio seleccionado
   const selectedPrice = memberships.find(m => m.id.toString() === formData.membership_id)?.price || 0;
   const selectedPriceNumber = toSafeNumber(selectedPrice, 0);
 
-  // Efecto para calcular cambio
   useEffect(() => {
     const recibido = toSafeNumber(montoRecibido, 0);
     const precio = selectedPriceNumber;
     setCambio(recibido - precio);
   }, [montoRecibido, selectedPriceNumber]);
 
-  const handleSubmit = async (e) => {
+  // --- SUBMIT GENERAL ---
+  const handleClientSubmit = async (e) => {
     e.preventDefault();
 
+    // Validaciones por tipo de usuario
     if (formData.user_type === 'ENTRENADOR') {
       const trainerValidationError = validateTrainerRegistration();
       if (trainerValidationError) {
@@ -278,11 +156,31 @@ function RegisterUser({ onUserRegistered }) {
       }
     }
 
+    if (formData.user_type === 'NUTRIOLOGO') {
+      const nutriValidationError = validateNutriologo();
+      if (nutriValidationError) {
+        setErrorTitle('Validación de Registro');
+        setErrorMessage(nutriValidationError);
+        setShowErrorModal(true);
+        return;
+      }
+    }
+
     if (formData.user_type === 'CLIENTE' && !formData.membership_id) {
         setErrorTitle('Faltan Datos');
         setErrorMessage('Por favor selecciona una membresía.');
         setShowErrorModal(true);
         return;
+    }
+
+    if (formData.user_type === 'CLIENTE') {
+      const normalizedPhone = String(formData.phone || '').replace(/\D/g, '').slice(0, 10);
+      if (!/^\d{10}$/.test(normalizedPhone)) {
+        setErrorTitle('Faltan Datos');
+        setErrorMessage('Ingresa un número de teléfono válido de 10 dígitos.');
+        setShowErrorModal(true);
+        return;
+      }
     }
 
     // Validación de Efectivo
@@ -300,11 +198,18 @@ function RegisterUser({ onUserRegistered }) {
     }
 
     setIsLoading(true);
-
     try {
       let registerResult;
 
-      if (formData.user_type === 'ENTRENADOR') {
+      if (formData.user_type === 'NUTRIOLOGO') {
+        registerResult = await registerNutriologoByAdmin({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+          especialidad: formData.especialidad,
+        });
+      } else if (formData.user_type === 'ENTRENADOR') {
         registerResult = await registerTrainerByAdmin({
           username: formData.username,
           email: formData.email,
@@ -320,6 +225,7 @@ function RegisterUser({ onUserRegistered }) {
           password: formData.password,
           firstName: formData.first_name,
           lastName: formData.last_name,
+          phone: String(formData.phone || '').replace(/\D/g, '').slice(0, 10),
           sexo: formData.sexo,
           membershipTypeId: formData.membership_id,
           paymentMethod: formData.payment_method,
@@ -330,11 +236,18 @@ function RegisterUser({ onUserRegistered }) {
 
       if (!registerResult.success) {
         let mensaje = registerResult.error || 'Error al crear usuario';
-        if (mensaje.includes('email-already-in-use')) {
+        const normalizedMessage = String(mensaje).toLowerCase();
+
+        if (
+          normalizedMessage.includes('email-already-in-use') ||
+          normalizedMessage.includes('auth/email-already-in-use') ||
+          normalizedMessage.includes('email address is already in use') ||
+          normalizedMessage.includes('already in use by another account')
+        ) {
           mensaje = 'Este correo ya está registrado';
-        } else if (mensaje.includes('weak-password')) {
+        } else if (normalizedMessage.includes('weak-password')) {
           mensaje = 'La contraseña debe tener al menos 6 caracteres';
-        } else if (mensaje.includes('invalid-email')) {
+        } else if (normalizedMessage.includes('invalid-email')) {
           mensaje = 'El correo electrónico no es válido';
         }
 
@@ -394,7 +307,7 @@ function RegisterUser({ onUserRegistered }) {
           membership_name: selectedMembership?.name || 'Membresía',
           monto_recibido: formData.payment_method === 'EFECTIVO' ? montoRecibidoNumber : selectedPriceNumber,
           tipo_venta: 'ALTA_MEMBRESIA'
-        });
+      });
 
         if (!fallbackSale.success) {
           throw new Error('Cliente creado, pero la venta no se guardó en base de datos. Intenta nuevamente.');
@@ -405,6 +318,9 @@ function RegisterUser({ onUserRegistered }) {
       if (formData.user_type === 'ENTRENADOR') {
         setSuccessMessage('¡Entrenador Registrado Exitosamente!');
         setSuccessSubMessage('Usuario y contraseña creados correctamente.');
+      } else if (formData.user_type === 'NUTRIOLOGO') {
+        setSuccessMessage('¡Nutriólogo Registrado Exitosamente!');
+        setSuccessSubMessage('✅ El especialista ya aparecerá en la lista de los clientes.');
       } else {
         setSuccessMessage('¡Cliente Registrado Exitosamente!');
         const ticketInfo = '📧 Comprobante enviado al correo';
@@ -428,64 +344,43 @@ function RegisterUser({ onUserRegistered }) {
       // Limpieza
       setFormData({ 
           user_type: 'CLIENTE',
-          username: '', email: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
-          membership_id: '', payment_method: 'EFECTIVO' 
+          username: '', email: '', phone: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
+          membership_id: '', payment_method: 'EFECTIVO', especialidad: 'Nutrición Deportiva'
       });
       setMontoRecibido('');
-      
-      // Notificar al componente padre si existe
-      if (onUserRegistered) {
-        console.log('📢 [REGISTRO] Notificando al componente padre...');
-        onUserRegistered();
-      }
-
+      if (onUserRegistered) onUserRegistered();
 
     } catch (err) {
-      console.error('Error en registro:', err);
       setErrorTitle('Error de Registro');
-      setErrorMessage(err.message || 'No se pudo completar el registro.');
+      setErrorMessage(err.message);
       setShowErrorModal(true);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSubmit = async (e) => {
+    return handleClientSubmit(e);
+  };
+
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-xl mb-6 border-t-4 border-purple-500 text-gray-100 relative">
-      
-      <ErrorModal 
-        isOpen={showErrorModal} 
-        onClose={() => setShowErrorModal(false)} 
-        title={errorTitle} 
-        message={errorMessage} 
-      />
+      <ErrorModal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title={errorTitle} message={errorMessage} />
 
       <SuccessModal 
         isOpen={showSuccessModal}
-        onClose={() => { 
-          setShowSuccessModal(false); 
-          setShowHealthForm(false);
-        }}
+        onClose={() => { setShowSuccessModal(false); setShowHealthForm(false); }}
         title="¡Registro Exitoso!"
         message={successMessage}
         subMessage={successSubMessage}
       >
-        {showHealthForm && (
+        {showHealthForm && activeTab === 'cliente' && (
           <div className="mt-2">
             <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
             <AdminHealthForm 
               miembroEmail={recentEmail} 
-              onClose={() => { 
-                setShowHealthForm(false); 
-                setShowSuccessModal(false);
-              }} 
-              onSaved={() => { 
-                console.log('🎯 [LOG] RegisterUser: Ficha guardada, callback existe?', !!onUserRegistered);
-                if (onUserRegistered) {
-                  console.log('🚀 [LOG] RegisterUser: Ejecutando onUserRegistered para refrescar Fichas Médicas');
-                  onUserRegistered();
-                }
-              }}
+              onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }} 
+              onSaved={() => { if (onUserRegistered) onUserRegistered(); }}
             />
           </div>
         )}
@@ -507,14 +402,17 @@ function RegisterUser({ onUserRegistered }) {
           >
             <option value="CLIENTE">Cliente</option>
             <option value="ENTRENADOR">Entrenador</option>
+            <option value="NUTRIOLOGO">Nutriólogo</option>
           </select>
         </div>
         
         {/* DATOS PERSONALES */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Nombre de Usuario</label>
-          <input type="text" name="username" value={formData.username} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
+        {formData.user_type !== 'NUTRIOLOGO' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Nombre de Usuario</label>
+            <input type="text" name="username" value={formData.username} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Correo Electrónico</label>
           <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
@@ -527,14 +425,32 @@ function RegisterUser({ onUserRegistered }) {
           <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
           <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Sexo</label>
-          <select name="sexo" value={formData.sexo} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required>
-            <option value="">-- Selecciona --</option>
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
-          </select>
-        </div>
+        {formData.user_type === 'CLIENTE' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Teléfono (10 dígitos)</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+                placeholder="5512345678"
+                pattern="[0-9]{10}"
+                maxLength={10}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Sexo</label>
+              <select name="sexo" value={formData.sexo} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required>
+                <option value="">-- Selecciona --</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+          </>
+        )}
         {formData.user_type === 'ENTRENADOR' && (
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Contrato</label>
@@ -552,14 +468,30 @@ function RegisterUser({ onUserRegistered }) {
             </select>
           </div>
         )}
+        {formData.user_type === 'NUTRIOLOGO' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Especialidad</label>
+            <input 
+              type="text" 
+              name="especialidad" 
+              value={formData.especialidad} 
+              onChange={handleChange} 
+              className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" 
+              placeholder="Ej: Nutrición Deportiva"
+              required 
+            />
+          </div>
+        )}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña Temporal</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña {formData.user_type === 'CLIENTE' ? 'Temporal' : ''}</label>
           <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
-          <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
+        {formData.user_type !== 'NUTRIOLOGO' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
+            <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
+          </div>
+        )}
 
         {/* SECCIÓN DE PAGO Y MEMBRESÍA */}
         {formData.user_type === 'CLIENTE' && (
@@ -648,7 +580,7 @@ function RegisterUser({ onUserRegistered }) {
                 <span>Procesando...</span>
               </>
             ) : (
-              formData.user_type === 'ENTRENADOR' ? 'Registrar Entrenador' : 'Registrar y Asignar'
+              formData.user_type === 'ENTRENADOR' ? 'Registrar Entrenador' : formData.user_type === 'NUTRIOLOGO' ? 'Registrar Nutriólogo' : 'Registrar y Asignar'
             )}
           </button>
         </div>

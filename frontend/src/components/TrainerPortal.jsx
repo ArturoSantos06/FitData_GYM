@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../firebase';
 import TrainerNavbar from './TrainerNavbar';
 import TrainerManagement from './TrainerManagement';
-import HomeTrainer from './HomeTrainer';
+import HomeTrainer from './entrenador/HomeTrainer';
 import CitasTrainer from './CitasTrainer';
 
 function TrainerPortal() {
-    const [activeTab, setActiveTab] = useState('gestion');
+    const [activeTab, setActiveTab] = useState('inicio');
     const navigate = useNavigate();
 
     const handleLogOut = async () => {
@@ -16,6 +16,8 @@ function TrainerPortal() {
         } catch {
             // ignorar errores de cierre de sesión
         }
+        localStorage.removeItem('trainer_token');
+        localStorage.removeItem('trainer_username');
         navigate('/entrenador/login');
     };
 

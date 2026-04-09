@@ -155,7 +155,7 @@ const AgendaClientesCoach = () => {
             
            {/* Encabezado estilo Dashboard */}
             <div className="mb-10 border-b border-slate-800 pb-6">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-500 italic uppercase tracking-wider">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-pink-400 to-blue-500 italic uppercase tracking-wider">
                     Agenda de Sesiones
                 </h1>
                 <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase mt-2">
@@ -169,7 +169,7 @@ const AgendaClientesCoach = () => {
                     <div 
                         key={c.id} 
                         // Agregamos flex, flex-col y h-full para que todas las tarjetas midan lo mismo
-                        className="relative bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg hover:shadow-cyan-900/20 hover:border-cyan-800/50 transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full min-h-[240px]"
+                        className="relative bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg hover:shadow-cyan-900/20 hover:border-cyan-800/50 transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full min-h-60"
                     >
                         {/* ID en la esquina superior derecha */}
                         <div className="absolute top-4 right-4 text-[10px] font-black text-cyan-400 tracking-widest uppercase flex flex-col items-end">
@@ -179,7 +179,7 @@ const AgendaClientesCoach = () => {
 
                         {/* Contenedor de la información (ocupa el espacio disponible) */}
                         <div className="flex-1">
-                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 shadow-inner">                                
+                         <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 shadow-inner">                                
                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             </div>
                             

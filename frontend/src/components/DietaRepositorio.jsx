@@ -4,8 +4,12 @@ import {
   getAllDietFiles,
   createDietFileRecord,
   deleteDietFileRecord,
+  createUser,
   deleteImage,
   getCurrentUser,
+  getUser,
+  getUserByAuthUid,
+  getUserByEmail,
   onAuthChanged,
   uploadDietDocument,
   downloadDietDocument
@@ -25,6 +29,21 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isPermissionDeniedError = (errorMessage = '') => {
   const msg = String(errorMessage || '').toLowerCase();
   return msg.includes('missing or insufficient permissions') || msg.includes('permission-denied');
+};
+
+const normalizeSearchText = (value = '') => {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
+const normalizeRole = (roleValue) => String(roleValue || '').toLowerCase().trim();
+
+const hasPrivilegedRole = (userData) => {
+  const role = normalizeRole(userData?.role);
+  return ['admin', 'entrenador', 'trainer', 'nutriologo', 'nutri'].includes(role);
 };
 
 const ensureFirebaseTokenReady = async (user) => {
@@ -68,14 +87,67 @@ const waitForFirebaseUser = () => {
   });
 };
 
-const ensureAdminMirrorUser = async () => {
+const ensureStaffMirrorUser = async () => {
   const currentUser = await waitForFirebaseUser();
+  const currentEmail = String(currentUser?.email || '').trim();
+  const normalizedEmail = currentEmail.toLowerCase();
 
   if (!currentUser?.uid || !currentUser?.email) {
-    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar al portal.' };
+    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar.' };
   }
 
-  return { success: true };
+  const directUserResult = await getUser(currentUser.uid);
+  if (directUserResult.success && hasPrivilegedRole(directUserResult.data)) {
+    return { success: true, role: normalizeRole(directUserResult.data?.role) };
+  }
+
+  const authUidUserResult = await getUserByAuthUid(currentUser.uid);
+  let sourceUser = authUidUserResult.success && hasPrivilegedRole(authUidUserResult.data)
+    ? authUidUserResult.data
+    : null;
+
+  if (!sourceUser) {
+    const emailUserResult = await getUserByEmail(currentEmail);
+    const emailUserResultNormalized = !emailUserResult.success && normalizedEmail !== currentEmail
+      ? await getUserByEmail(normalizedEmail)
+      : emailUserResult;
+
+    if (emailUserResultNormalized.success && hasPrivilegedRole(emailUserResultNormalized.data)) {
+      sourceUser = emailUserResultNormalized.data;
+    }
+  }
+
+  if (!sourceUser) {
+    return { success: false, error: 'Tu cuenta no tiene rol de staff autorizado para gestionar dietas.' };
+  }
+
+  const staffRole = normalizeRole(sourceUser.role) || 'nutriologo';
+  let createResult = await createUser(currentUser.uid, {
+    email: currentEmail,
+    displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
+    username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
+    role: staffRole,
+    authUid: currentUser.uid
+  });
+
+  if (!createResult.success && isPermissionDeniedError(createResult.error)) {
+    await ensureFirebaseTokenReady(currentUser);
+    await sleep(350);
+    createResult = await createUser(currentUser.uid, {
+      email: currentEmail,
+      displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
+      username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
+      role: staffRole,
+      authUid: currentUser.uid
+    });
+  }
+
+  if (!createResult.success) {
+    return { success: false, error: createResult.error || 'No se pudo habilitar el acceso de staff para esta sesión.' };
+  }
+
+  await ensureFirebaseTokenReady(currentUser);
+  return { success: true, role: staffRole };
 };
 
 function DietRepositoryAdmin() {
@@ -97,11 +169,17 @@ function DietRepositoryAdmin() {
   const loadData = async () => {
     setLoading(true);
 
-    const accessResult = await ensureAdminMirrorUser();
+    const accessResult = await ensureStaffMirrorUser();
     if (!accessResult.success) {
       setErrorModal({ open: true, message: accessResult.error });
       setLoading(false);
       return;
+    }
+
+    // Asegurar que el token de Firebase está listo
+    const currentUser = await waitForFirebaseUser();
+    if (currentUser?.uid) {
+      await ensureFirebaseTokenReady(currentUser);
     }
 
     let [membersResult, filesResult] = await Promise.all([
@@ -110,9 +188,9 @@ function DietRepositoryAdmin() {
     ]);
 
     if (isPermissionDeniedError(membersResult?.error) || isPermissionDeniedError(filesResult?.error)) {
-      const currentUser = await waitForFirebaseUser();
-      if (currentUser?.uid) {
-        await ensureFirebaseTokenReady(currentUser);
+      const retryUser = await waitForFirebaseUser();
+      if (retryUser?.uid) {
+        await ensureFirebaseTokenReady(retryUser);
       }
       await sleep(350);
       [membersResult, filesResult] = await Promise.all([
@@ -137,11 +215,7 @@ function DietRepositoryAdmin() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadData();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
   const normalizedMembers = useMemo(() => {
@@ -154,69 +228,65 @@ function DietRepositoryAdmin() {
   }, [members]);
 
   const filteredMembers = useMemo(() => {
-    const search = memberFilter.trim().toLowerCase();
+    const search = normalizeSearchText(memberFilter);
     if (!search) return normalizedMembers;
 
     return normalizedMembers.filter((member) =>
-      member.fullName.toLowerCase().includes(search) ||
-      (member.email || '').toLowerCase().includes(search) ||
-      String(member.userId || '').includes(search)
+      normalizeSearchText(member.fullName).includes(search) ||
+      normalizeSearchText(member.email || '').includes(search) ||
+      normalizeSearchText(String(member.userId || '')).includes(search)
     );
   }, [normalizedMembers, memberFilter]);
 
+  const membersById = useMemo(() => {
+    const map = new Map();
+    normalizedMembers.forEach((member) => {
+      map.set(String(member.id), member);
+    });
+    return map;
+  }, [normalizedMembers]);
+
+  const hydratedFiles = useMemo(() => {
+    return files.map((file) => {
+      const linkedMember = membersById.get(String(file.memberId));
+      return {
+        ...file,
+        resolvedMemberName: file.memberName || linkedMember?.fullName || 'Sin nombre',
+        resolvedMemberEmail: file.memberEmail || linkedMember?.email || ''
+      };
+    });
+  }, [files, membersById]);
+
   const filteredFiles = useMemo(() => {
-    if (showAllRecent) {
-      const search = fileFilter.trim().toLowerCase();
-      const allFiles = [...files].sort((a, b) => {
+    const search = normalizeSearchText(fileFilter);
+    const shouldSearchAcrossAll = showAllRecent || Boolean(search);
+
+    if (!selectedMemberId && !shouldSearchAcrossAll) return [];
+
+    const baseFiles = (shouldSearchAcrossAll
+      ? [...hydratedFiles]
+      : hydratedFiles.filter((file) => String(file.memberId) === String(selectedMemberId)))
+      .sort((a, b) => {
         const aTime = a.createdAt?.seconds || a.updatedAt?.seconds || 0;
         const bTime = b.createdAt?.seconds || b.updatedAt?.seconds || 0;
         return bTime - aTime;
       });
 
-      if (!search) return allFiles;
-
-      return allFiles.filter((file) =>
-        (file.memberName || '').toLowerCase().includes(search) ||
-        (file.title || '').toLowerCase().includes(search) ||
-        (file.originalFileName || '').toLowerCase().includes(search)
-      );
-    }
-
-    if (!selectedMemberId) return [];
-
-    const search = fileFilter.trim().toLowerCase();
-    const baseFiles = files.filter((file) => String(file.memberId) === String(selectedMemberId));
-
     if (!search) return baseFiles;
 
     return baseFiles.filter((file) =>
-      (file.memberName || '').toLowerCase().includes(search) ||
-      (file.title || '').toLowerCase().includes(search) ||
-      (file.originalFileName || '').toLowerCase().includes(search)
+      normalizeSearchText(file.resolvedMemberName || '').includes(search) ||
+      normalizeSearchText(file.resolvedMemberEmail || '').includes(search) ||
+      normalizeSearchText(file.title || '').includes(search) ||
+      normalizeSearchText(file.notes || '').includes(search) ||
+      normalizeSearchText(file.originalFileName || '').includes(search)
     );
-  }, [files, fileFilter, selectedMemberId, showAllRecent]);
+  }, [hydratedFiles, fileFilter, selectedMemberId, showAllRecent]);
 
   const resetForm = () => {
     setTitle('');
     setNotes('');
     setSelectedFile(null);
-  };
-
-  const resolveFileAccess = (fileItem) => {
-    const storagePath =
-      fileItem?.storagePath ||
-      fileItem?.path ||
-      fileItem?.storage_path ||
-      '';
-
-    const directUrl =
-      fileItem?.downloadURL ||
-      fileItem?.downloadUrl ||
-      fileItem?.url ||
-      fileItem?.fileUrl ||
-      '';
-
-    return { storagePath, directUrl };
   };
 
   const handleFileChange = (event) => {
@@ -261,6 +331,13 @@ function DietRepositoryAdmin() {
 
     setSaving(true);
 
+    const accessResult = await ensureStaffMirrorUser();
+    if (!accessResult.success) {
+      setSaving(false);
+      setErrorModal({ open: true, message: accessResult.error });
+      return;
+    }
+
     const uploadResult = await uploadDietDocument(selectedFile, selectedMemberId);
     if (!uploadResult.success) {
       setSaving(false);
@@ -268,7 +345,7 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    const currentAdmin = JSON.parse(localStorage.getItem('firebaseUser') || '{}');
+    const currentStaff = JSON.parse(localStorage.getItem('firebaseUser') || '{}');
     const recordResult = await createDietFileRecord({
       memberId: String(selectedMemberId),
       memberName: selectedMember.fullName,
@@ -281,7 +358,7 @@ function DietRepositoryAdmin() {
       size: uploadResult.size,
       storagePath: uploadResult.path,
       downloadURL: uploadResult.url,
-      uploadedBy: currentAdmin.email || 'admin'
+      uploadedBy: currentStaff.email || accessResult.role || 'staff'
     });
 
     if (!recordResult.success) {
@@ -298,14 +375,13 @@ function DietRepositoryAdmin() {
   };
 
   const handleDownload = async (fileItem) => {
-    const { storagePath, directUrl } = resolveFileAccess(fileItem);
     const result = await downloadDietDocument(
-      storagePath,
+      fileItem.storagePath,
       fileItem.originalFileName || fileItem.title || 'archivo',
-      directUrl
+      fileItem.downloadURL || ''
     );
     if (!result.success) {
-      setErrorModal({ open: true, message: 'No se pudo descargar el archivo. Intenta abrirlo directamente.' });
+      setErrorModal({ open: true, message: result.error || 'No se pudo descargar automáticamente. Verifica la conexión y vuelve a intentar.' });
     }
   };
 
@@ -319,9 +395,8 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    const { storagePath } = resolveFileAccess(fileItem);
-    if (storagePath) {
-      await deleteImage(storagePath);
+    if (fileItem.storagePath) {
+      await deleteImage(fileItem.storagePath);
     }
 
     await loadData();
@@ -333,6 +408,33 @@ function DietRepositoryAdmin() {
   const requestDelete = (fileItem) => {
     setPendingDeleteFile(fileItem);
   };
+
+  const handleSelectMember = (memberId) => {
+    const nextId = String(memberId || '');
+    setSelectedMemberId((currentId) => (String(currentId) === nextId ? '' : nextId));
+  };
+
+  const handleClearSelectedMember = () => {
+    setSelectedMemberId('');
+    setShowAllRecent(false);
+    setFileFilter('');
+    requestAnimationFrame(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    });
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        handleClearSelectedMember();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -359,7 +461,9 @@ function DietRepositoryAdmin() {
           <div className="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-white">Seleccionar Paciente</h2>
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">{filteredMembers.length} resultados</span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">{filteredMembers.length} resultados</span>
+              </div>
             </div>
             <input
               type="text"
@@ -379,12 +483,15 @@ function DietRepositoryAdmin() {
                   <button
                     key={member.id}
                     type="button"
-                    onClick={() => setSelectedMemberId(String(member.id))}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleSelectMember(member.id);
+                    }}
                     className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                       isSelected
                         ? 'border-cyan-400 bg-cyan-500/10 shadow-lg shadow-cyan-950/30'
                         : 'border-slate-700 bg-slate-800/70 hover:border-slate-500 hover:bg-slate-800'
-                    }`}
+                    } focus:outline-none focus:ring-0`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -403,6 +510,7 @@ function DietRepositoryAdmin() {
                   No hay pacientes que coincidan con la búsqueda.
                 </p>
               )}
+
             </div>
           </div>
 
@@ -484,7 +592,7 @@ function DietRepositoryAdmin() {
 
           {loading ? (
             <p className="py-4 text-center text-slate-400">Cargando repositorio...</p>
-          ) : !showAllRecent && !selectedMemberId ? (
+          ) : !showAllRecent && !selectedMemberId && !fileFilter.trim() ? (
             <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-4 text-center text-sm text-slate-400">
               Selecciona un paciente para ver sus archivos.
             </p>
@@ -496,7 +604,6 @@ function DietRepositoryAdmin() {
             <div className="space-y-3">
               {filteredFiles.map((fileItem) => {
                 const date = fileItem.createdAt?.toDate?.() || fileItem.updatedAt?.toDate?.() || null;
-                const { directUrl } = resolveFileAccess(fileItem);
 
                 return (
                   <div key={fileItem.id} className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4">
@@ -508,7 +615,7 @@ function DietRepositoryAdmin() {
                             {fileItem.contentType === 'application/pdf' ? 'PDF' : 'Imagen'}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-slate-300">Paciente: {fileItem.memberName || 'Sin nombre'}</p>
+                        <p className="mt-1 text-sm text-slate-300">Paciente: {fileItem.resolvedMemberName || 'Sin nombre'}</p>
                         <p className="mt-1 break-all text-xs text-slate-500">{fileItem.originalFileName}</p>
                         {fileItem.notes && <p className="mt-3 wrap-break-word text-sm text-slate-400">{fileItem.notes}</p>}
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
@@ -519,24 +626,14 @@ function DietRepositoryAdmin() {
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        {directUrl ? (
-                          <a
-                            href={directUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
-                          >
-                            Abrir
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleDownload(fileItem)}
-                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
-                          >
-                            Ver
-                          </button>
-                        )}
+                        <a
+                          href={fileItem.downloadURL}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                        >
+                          Abrir
+                        </a>
                         <button
                           type="button"
                           onClick={() => handleDownload(fileItem)}
@@ -594,5 +691,3 @@ function DietRepositoryAdmin() {
 }
 
 export default DietRepositoryAdmin;
-
-//http://localhost:5173/admin/repositorio-dietas

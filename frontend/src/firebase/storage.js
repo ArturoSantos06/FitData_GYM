@@ -5,7 +5,7 @@ import {
   getDownloadURL,
   deleteObject
 } from "firebase/storage";
-import app, { storage } from "./config";
+import app, { auth, storage } from "./config";
 
 const sanitizeFileName = (value) => {
   return String(value || 'archivo')
@@ -25,7 +25,7 @@ export const uploadImage = async (file, path) => {
       throw new Error("Solo se permiten archivos de imagen");
     }
     
-    if (file.size > 5 * 1024 * 1024) { // 5MB límite
+    if (file.size > 5 * 1024 * 1024) { 
       throw new Error("La imagen es muy grande. Máximo 5MB");
     }
     
@@ -50,7 +50,6 @@ export const uploadImage = async (file, path) => {
   } catch (error) {
     console.error('❌ Error subiendo imagen:', error);
     
-    // Mensajes descriptivos según el tipo de error
     let errorMessage = error.message;
     
     if (error.code === 'storage/unauthorized') {
@@ -104,47 +103,121 @@ export const uploadDietDocument = async (file, memberId) => {
   }
 };
 
-const triggerDirectDownload = (rawUrl, fileName) => {
+const triggerBlobDownload = (blob, fileName) => {
   const safeName = String(fileName || 'archivo').replace(/[\r\n]/g, ' ').trim() || 'archivo';
-  const disposition = encodeURIComponent(`attachment; filename="${safeName}"`);
-  const hasQuery = rawUrl.includes('?');
-  const hasDisposition = /response-content-disposition=/i.test(rawUrl);
-  const finalUrl = hasDisposition
-    ? rawUrl
-    : `${rawUrl}${hasQuery ? '&' : '?'}response-content-disposition=${disposition}`;
-
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = finalUrl;
+  a.href = objectUrl;
   a.download = safeName;
   a.rel = 'noopener noreferrer';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
 };
 
-// Descargar documento de dieta (forzado, sin fetch para evitar CORS)
+const getDietDownloadFunctionUrl = () => {
+  const customUrl = String(import.meta.env.VITE_DOWNLOAD_DIET_FILE_URL || '').trim();
+  if (customUrl) return customUrl;
+  const envProjectId = String(import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim();
+  const appProjectId = String(app?.options?.projectId || '').trim();
+  const projectId = envProjectId || appProjectId || 'fitdatagym-f347a';
+  if (!projectId) return '';
+  return `https://us-east1-${projectId}.cloudfunctions.net/downloadDietFile`;
+};
+
+const extractStoragePathFromUrl = (url) => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    const marker = '/o/';
+    const idx = parsed.pathname.indexOf(marker);
+    if (idx === -1) return '';
+    const encodedPath = parsed.pathname.slice(idx + marker.length);
+    return decodeURIComponent(encodedPath || '').replace(/^\/+/, '');
+  } catch {
+    return '';
+  }
+};
+
+const extractTokenFromUrl = (url) => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.get('token') || '';
+  } catch {
+    return '';
+  }
+};
+
+// Descargar documento de dieta 
 export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = '') => {
   try {
-    let url = '';
+    const safeName = String(fileName || 'archivo').trim() || 'archivo';
+    const explicitStoragePath = typeof storagePath === 'string' && !storagePath.trim().startsWith('http')
+      ? storagePath.trim()
+      : '';
+    const inferredStoragePath = extractStoragePathFromUrl(fallbackUrl);
+    const resolvedStoragePath = explicitStoragePath || inferredStoragePath;
+    const urlToken = extractTokenFromUrl(fallbackUrl);
 
-    if (typeof storagePath === 'string' && storagePath.trim().startsWith('http')) {
-      url = storagePath.trim();
-    } else if (fallbackUrl) {
-      url = fallbackUrl;
-    } else if (storagePath) {
-      const storageRef = ref(storage, storagePath);
-      url = await getDownloadURL(storageRef);
+    if (!resolvedStoragePath) {
+      return {
+        success: false,
+        error: 'No se encontró la ruta del archivo para descargar.'
+      };
     }
 
-    if (!url) {
-      throw new Error('No se encontró una ruta o URL válida para descargar el archivo.');
+    // Descarga por Cloud Function autenticada (evita CORS en navegador).
+    const fnUrl = getDietDownloadFunctionUrl();
+    if (!fnUrl) {
+      return {
+        success: false,
+        error: 'No hay endpoint de descarga configurado para este proyecto.'
+      };
     }
 
-    triggerDirectDownload(url, fileName);
+    try {
+      const idToken = await auth.currentUser?.getIdToken?.();
+      if (!idToken) {
+        throw new Error('Tu sesión expiró. Inicia sesión nuevamente para descargar.');
+      }
+      const requestUrl = `${fnUrl}?path=${encodeURIComponent(resolvedStoragePath)}&name=${encodeURIComponent(safeName)}${urlToken ? `&token=${encodeURIComponent(urlToken)}` : ''}`;
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${idToken}`
+        }
+      });
+      if (!response.ok) {
+        let serverMessage = '';
+        try {
+          const payload = await response.json();
+          serverMessage = payload?.error || '';
+        } catch {
+          serverMessage = '';
+        }
+        throw new Error(serverMessage || 'No se pudo descargar el archivo desde el servidor.');
+      }
 
-    return { success: true };
+      const blob = await response.blob();
+      triggerBlobDownload(blob, safeName);
+      return { success: true };
+    } catch (fnError) {
+      return {
+        success: false,
+        error: fnError?.message || 'No se pudo completar la descarga automática del archivo.'
+      };
+    };
   } catch (error) {
-    return { success: false, error: error.message };
+    const rawError = String(error?.message || error || 'Error desconocido');
+    if (/failed to fetch/i.test(rawError)) {
+      return {
+        success: false,
+        error: 'No se pudo conectar para descargar el archivo. Revisa tu conexión o vuelve a intentar en unos segundos.'
+      };
+    }
+    return { success: false, error: rawError };
   }
 };
 

@@ -1,8 +1,59 @@
 import React, { useState, useEffect } from 'react';
+import SuccessModal from './SuccessModal';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
-import { getUser, getMemberByUserId, createHealthProfile, getHealthProfileByMemberId, updateUser, getCurrentUser } from '../firebase';
+import {
+    getUser,
+    getUserByAuthUid,
+    getUserByEmail,
+    getMemberByUserId,
+    updateMemberByUserId,
+    createHealthProfile,
+    getHealthProfileByMemberId,
+    updateUser,
+    updateSelfProfile,
+    getCurrentUser,
+} from '../firebase';
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const resolveUserFromAuth = async (firebaseUser) => {
+    if (!firebaseUser) {
+        return { success: false, error: 'No hay sesión activa' };
+    }
+
+    const userByAuthUid = await getUserByAuthUid(firebaseUser.uid);
+    if (userByAuthUid?.success && userByAuthUid.data) {
+        return { success: true, data: userByAuthUid.data };
+    }
+
+    const userByDocId = await getUser(firebaseUser.uid);
+    if (userByDocId?.success && userByDocId.data) {
+        return { success: true, data: userByDocId.data };
+    }
+
+    const email = normalizeEmail(firebaseUser.email);
+    if (email) {
+        const userByEmail = await getUserByEmail(email);
+        if (userByEmail?.success && userByEmail.data) {
+            return { success: true, data: userByEmail.data };
+        }
+    }
+
+    return { success: false, error: 'No se pudieron cargar los datos del usuario' };
+};
+
+const resolveMemberByCandidates = async (candidateIds = []) => {
+    for (const id of candidateIds) {
+        if (!id) continue;
+        const memberResult = await getMemberByUserId(id);
+        if (memberResult?.success && memberResult.data) {
+            return memberResult;
+        }
+    }
+    return { success: false, data: null };
+};
 
 function HealthForm() {
     const [formData, setFormData] = useState({
@@ -23,8 +74,8 @@ function HealthForm() {
             try {
                 const currentUser = getCurrentUser();
                 if (!currentUser) return;
-                
-                const userResult = await getUser(currentUser.uid);
+
+                const userResult = await resolveUserFromAuth(currentUser);
                 if (userResult.success && userResult.data) {
                     const userData = userResult.data;
                     setFormData(prev => ({ 
@@ -33,7 +84,7 @@ function HealthForm() {
                             ? `${userData.firstName} ${userData.lastName}` 
                             : userData.username || userData.email 
                     }));
-                    const memberResult = await getMemberByUserId(currentUser.uid);
+                    const memberResult = await resolveMemberByCandidates([currentUser.uid, userData.id]);
                     if (memberResult.success && memberResult.data && memberResult.data.telefono) {
                         setFormData(prev => ({ ...prev, telefono: memberResult.data.telefono }));
                     }
@@ -72,23 +123,21 @@ function HealthForm() {
                 throw new Error('No hay sesión activa');
             }
 
-            const userResult = await getUser(currentUser.uid);
+            const userResult = await resolveUserFromAuth(currentUser);
             let memberName = formData.nombre;
             let memberId = null;
             let userIdDisplay = currentUser.uid;
 
             if (userResult.success && userResult.data) {
-                // Construir nombre completo desde userData
                 const userData = userResult.data;
                 if (userData.firstName || userData.lastName) {
                     memberName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
                 }
-                
-            const memberResult = await getMemberByUserId(currentUser.uid);
+
+            const memberResult = await resolveMemberByCandidates([currentUser.uid, userData.id]);
             if (memberResult.success && memberResult.data) {
               memberId = memberResult.data.id;
               userIdDisplay = memberResult.data.id;
-              // Construir nombre completo desde nombre + apellido
               if (memberResult.data.nombre || memberResult.data.apellido) {
                 memberName = [memberResult.data.nombre, memberResult.data.apellido].filter(Boolean).join(' ');
               } else if (memberResult.data.miembro_nombre) {
@@ -123,10 +172,10 @@ function HealthForm() {
                 try {
                     const currentUser = getCurrentUser();
                     if (!currentUser) return;
-                    
-                    const userResult = await getUser(currentUser.uid);
+
+                    const userResult = await resolveUserFromAuth(currentUser);
                     if (userResult.success && userResult.data) {
-                        const memberResult = await getMemberByUserId(currentUser.uid);
+                        const memberResult = await resolveMemberByCandidates([currentUser.uid, userResult.data.id]);
                         if (memberResult.success && memberResult.data && memberResult.data.id) {
                             const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
                             if (hpResult.success && hpResult.data) {
@@ -451,9 +500,7 @@ const PersonalData = ({ user, onSave, onBack }) => {
         setErrorMsg(''); setSuccessMsg('');
         setSaving(true);
         try {
-            const result = await updateUser({ email: editForm.email, telefono: editForm.telefono });
-            if (!result.success) throw new Error(result.error);
-            onSave(editForm);
+            await onSave(editForm);
             setSuccessMsg('Datos actualizados');
         } catch (err) {
             setErrorMsg(err.message);
@@ -563,11 +610,12 @@ function UserProfile() {
     const [, setMiembro] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // Primero obtener el usuario autenticado de Firebase
                 const currentUser = getCurrentUser();
                 if (!currentUser) {
                     setError('No hay sesión activa');
@@ -575,8 +623,7 @@ function UserProfile() {
                     return;
                 }
 
-                // Ahora obtener los datos del usuario de Firestore
-                const userResult = await getUser(currentUser.uid);
+                const userResult = await resolveUserFromAuth(currentUser);
                 if (!userResult.success) {
                     setError('No se pudieron cargar los datos del usuario');
                     setLoading(false);
@@ -595,7 +642,7 @@ function UserProfile() {
                 });
 
                 try {
-                    const memberResult = await getMemberByUserId(currentUser.uid);
+                    const memberResult = await resolveMemberByCandidates([currentUser.uid, userData.id]);
                     if (memberResult.success && memberResult.data) {
                         setMiembro(memberResult.data);
                         setUser(prev => ({
@@ -620,15 +667,74 @@ function UserProfile() {
 
     const handleUpdateUser = async (updatedData) => {
         try {
-            const result = await updateUser({ email: updatedData.email, telefono: updatedData.telefono });
-            if (!result.success) throw new Error(result.error);
+            const currentUser = getCurrentUser();
+            const userDocId = String(updatedData.id || user?.id || currentUser?.uid || '').trim();
+            if (!userDocId) {
+                throw new Error('No se pudo identificar el usuario a actualizar');
+            }
 
-            setUser(updatedData);
-            alert("¡Datos actualizados correctamente!");
+            const normalizedPhone = String(updatedData.telefono || '').replace(/\D/g, '').slice(0, 10);
+            const normalizedEmail = String(updatedData.email || '').trim().toLowerCase();
+            const normalizedUsername = String(updatedData.username || '').trim();
+
+            if (!normalizedUsername) {
+                throw new Error('El nombre de usuario no puede estar vacío');
+            }
+
+            const result = await updateUser(userDocId, {
+                email: normalizedEmail,
+                username: normalizedUsername,
+                phone: normalizedPhone,
+                telefono: normalizedPhone,
+            });
+            if (!result.success) {
+                const fallback = await updateSelfProfile({
+                    userId: userDocId,
+                    email: normalizedEmail,
+                    username: normalizedUsername,
+                    telefono: normalizedPhone,
+                });
+
+                if (!fallback.success) {
+                    throw new Error(fallback.error || result.error || 'No se pudo actualizar el perfil');
+                }
+            }
+
+            const memberPayload = {
+                email: normalizedEmail,
+                telefono: normalizedPhone,
+            };
+
+            const memberSyncTargets = Array.from(new Set([
+                userDocId,
+                currentUser?.uid ? String(currentUser.uid).trim() : '',
+            ].filter(Boolean)));
+
+            const memberSyncResults = await Promise.allSettled(
+                memberSyncTargets.map((targetId) => updateMemberByUserId(targetId, memberPayload))
+            );
+
+            const hasMemberSyncSuccess = memberSyncResults.some(
+                (result) => result.status === 'fulfilled' && result.value?.success
+            );
+
+            if (!hasMemberSyncSuccess) {
+                console.warn('No se pudo sincronizar miembro desde perfil (permisos o ID no vinculado).');
+            }
+
+            setUser(prev => ({
+                ...prev,
+                ...updatedData,
+                email: normalizedEmail,
+                username: normalizedUsername,
+                telefono: normalizedPhone,
+            }));
+            setSuccessMessage('¡Datos actualizados correctamente!');
+            setShowSuccessModal(true);
             setCurrentView('menu');
         } catch (err) {
             console.error('Error actualizando datos:', err);
-            alert('Error al actualizar los datos. Intenta de nuevo.');
+            throw err;
         }
     };
 
@@ -662,6 +768,12 @@ function UserProfile() {
 
     return (
         <div className="w-full flex justify-center">
+            <SuccessModal
+                isOpen={showSuccessModal}
+                onClose={() => setShowSuccessModal(false)}
+                title="Éxito"
+                message={successMessage}
+            />
             
             {currentView === 'menu' && (
                 <ProfileHeader 
