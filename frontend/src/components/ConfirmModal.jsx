@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmLabel = 'Sí, Eliminar' }) => {
   if (!isOpen) return null;
 
   return (
@@ -31,7 +31,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
             onClick={onConfirm} 
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors w-full shadow-lg"
           >
-            Sí, Eliminar
+            {confirmLabel}
           </button>
         </div>
       </div>

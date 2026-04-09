@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db } from '../../firebase/config';
 
 function UserMembershipList({ refreshTrigger }) {
   const [assignments, setAssignments] = useState([]);

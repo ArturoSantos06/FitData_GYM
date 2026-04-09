@@ -8,6 +8,8 @@ export {
   createUserWithoutSessionChange,
   registerClientByAdmin,
   registerTrainerByAdmin,
+  deactivateTrainerByAdmin,
+  reactivateTrainerByAdmin,
   registerNutriologoByAdmin,
   ensureUserClaim,
   updateSelfProfile,
@@ -68,6 +70,8 @@ export {
   // Sales
   createSale,
   createMembershipSale,
+  createTrainerPayment,
+  getTrainerPayments,
   getSaleByFolio,
   getSales,
   

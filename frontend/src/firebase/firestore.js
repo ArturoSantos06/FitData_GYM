@@ -275,12 +275,38 @@ export const getUser = async (uid) => {
   }
 };
 
-export const getUserByEmail = async (email) => {
+export const getUserByEmail = async (email, preferredAuthUid = null) => {
   try {
-    const q = query(collection(db, "users"), where("email", "==", email));
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      return { success: false, error: "Usuario no encontrado" };
+    }
+
+    const q = query(collection(db, "users"), where("email", "==", normalizedEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const docSnap = querySnapshot.docs[0];
+      const preferredUid = String(preferredAuthUid || auth.currentUser?.uid || '').trim();
+
+      const sortedDocs = [...querySnapshot.docs].sort((a, b) => {
+        const aData = a.data() || {};
+        const bData = b.data() || {};
+
+        const aAuthMatch = preferredUid && String(aData.authUid || '') === preferredUid ? 1 : 0;
+        const bAuthMatch = preferredUid && String(bData.authUid || '') === preferredUid ? 1 : 0;
+        if (aAuthMatch !== bAuthMatch) return bAuthMatch - aAuthMatch;
+
+        const aRoleTrainer = String(aData.role || '').toLowerCase() === 'trainer' ? 1 : 0;
+        const bRoleTrainer = String(bData.role || '').toLowerCase() === 'trainer' ? 1 : 0;
+        if (aRoleTrainer !== bRoleTrainer) return bRoleTrainer - aRoleTrainer;
+
+        const aHasContract = aData.contractType || aData.tipoContrato || aData.contract_type ? 1 : 0;
+        const bHasContract = bData.contractType || bData.tipoContrato || bData.contract_type ? 1 : 0;
+        if (aHasContract !== bHasContract) return bHasContract - aHasContract;
+
+        return 0;
+      });
+
+      const docSnap = sortedDocs[0];
       const userData = docSnap.data();
       return {
         success: true,
@@ -291,6 +317,25 @@ export const getUserByEmail = async (email) => {
         },
       };
     }
+
+    const originalEmail = String(email || '').trim();
+    if (originalEmail && originalEmail !== normalizedEmail) {
+      const qOriginal = query(collection(db, "users"), where("email", "==", originalEmail));
+      const querySnapshotOriginal = await getDocs(qOriginal);
+      if (!querySnapshotOriginal.empty) {
+        const docSnap = querySnapshotOriginal.docs[0];
+        const userData = docSnap.data();
+        return {
+          success: true,
+          data: {
+            ...userData,
+            legacyId: userData.id ?? null,
+            id: docSnap.id,
+          },
+        };
+      }
+    }
+
     return { success: false, error: "Usuario no encontrado" };
   } catch (error) {
     return { success: false, error: error.message };
@@ -331,10 +376,12 @@ export const updateUser = async (uid, userData) => {
       String(auth.currentUser?.uid || '').trim(),
     ].filter(Boolean)));
 
+    const updatedDocIds = new Set();
+
     for (const docId of candidateDocIds) {
       try {
         await updateDoc(doc(db, "users", docId), payload);
-        return { success: true };
+        updatedDocIds.add(docId);
       } catch (err) {
         if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
           throw err;
@@ -347,24 +394,29 @@ export const updateUser = async (uid, userData) => {
 
     const fallbackQueries = [];
     if (currentAuthUid) {
-      fallbackQueries.push(query(collection(db, "users"), where("authUid", "==", currentAuthUid), limit(1)));
+      fallbackQueries.push(query(collection(db, "users"), where("authUid", "==", currentAuthUid)));
     }
     if (currentEmail) {
-      fallbackQueries.push(query(collection(db, "users"), where("email", "==", currentEmail), limit(1)));
+      fallbackQueries.push(query(collection(db, "users"), where("email", "==", currentEmail)));
     }
 
     for (const q of fallbackQueries) {
       try {
         const snap = await getDocs(q);
         if (snap.empty) continue;
-        const docId = snap.docs[0].id;
-        await updateDoc(doc(db, "users", docId), payload);
-        return { success: true };
+        for (const docSnap of snap.docs) {
+          await updateDoc(doc(db, "users", docSnap.id), payload);
+          updatedDocIds.add(docSnap.id);
+        }
       } catch (err) {
         if (!isPermissionDeniedError(err) && !isNotFoundError(err)) {
           throw err;
         }
       }
+    }
+
+    if (updatedDocIds.size > 0) {
+      return { success: true, updatedIds: Array.from(updatedDocIds) };
     }
 
     return { success: false, error: 'Missing or insufficient permissions.' };
@@ -537,8 +589,9 @@ export const getUserMemberships = async (userId) => {
     const normalizeMembership = (docSnap) => {
       const data = docSnap.data();
       return {
-        id: docSnap.id,
         ...data,
+        legacyId: data.id ?? null,
+        id: docSnap.id,
         userId: data.userId || data.user || userId,
         membershipName: data.membershipName || data.membershipTypeName || data.tipo_nombre || "",
         durationDays: data.durationDays ?? data.duration_days ?? null,
@@ -595,8 +648,9 @@ export const getUserMembershipsByAuthUid = async (authUid, userEmail = null) => 
     const normalizeMembership = (docSnap) => {
       const data = docSnap.data();
       return {
-        id: docSnap.id,
         ...data,
+        legacyId: data.id ?? null,
+        id: docSnap.id,
         userId: data.userId || data.user || "",
         membershipName: data.membershipName || data.membershipTypeName || data.tipo_nombre || "",
         durationDays: data.durationDays ?? data.duration_days ?? null,
@@ -630,29 +684,30 @@ export const getUserMembershipsByAuthUid = async (authUid, userEmail = null) => 
   }
 };
 
+const getNextNumericDocId = async (collectionName) => {
+  const querySnapshot = await getDocs(collection(db, collectionName));
+  let maxId = 0;
+
+  querySnapshot.docs.forEach((docSnap) => {
+    const numericId = parseInt(docSnap.id, 10);
+    if (!Number.isNaN(numericId) && numericId > maxId) {
+      maxId = numericId;
+    }
+  });
+
+  return (maxId + 1).toString();
+};
+
 export const createMembership = async (membershipData) => {
   try {
-    // Obtener todos los documentos de memberships para encontrar el número máximo
-    const querySnapshot = await getDocs(collection(db, "memberships"));
-    let maxId = 0;
-    
-    querySnapshot.docs.forEach(doc => {
-      const id = parseInt(doc.id, 10);
-      if (!isNaN(id) && id > maxId) {
-        maxId = id;
-      }
-    });
-    
-    // Generar el siguiente ID
-    const newId = (maxId + 1).toString();
-    
-    // Crear el documento con ID numérico
+    const newId = await getNextNumericDocId("memberships");
+
     await setDoc(doc(db, "memberships", newId), {
       ...membershipData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
-    
+
     return { success: true, id: newId };
   } catch (error) {
     return { success: false, error: error.message };
@@ -821,11 +876,12 @@ export const assignMembership = async (assignmentData) => {
       membershipId = membershipDoc.id;
       isRenewal = true;
     } else {
-      const docRef = await addDoc(collection(db, "memberships"), {
+      const newId = await getNextNumericDocId("memberships");
+      await setDoc(doc(db, "memberships", newId), {
         ...membershipData,
         createdAt: serverTimestamp()
       });
-      membershipId = docRef.id;
+      membershipId = newId;
     }
 
     const membershipPrice = Number(membershipType.price || 0);
@@ -1496,6 +1552,88 @@ export const createMembershipSale = async (saleData) => {
   } catch (error) {
     if (isPermissionDeniedError(error)) {
       return { success: false, error: 'No hay permisos para registrar este cobro en ventas.' };
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+export const createTrainerPayment = async (paymentData) => {
+  try {
+    const {
+      trainerId,
+      trainerName,
+      trainerEmail,
+      amount,
+      paymentMethod = "DEPOSITO A CUENTA",
+      contractType = null,
+    } = paymentData;
+
+    const totalAmount = Number(amount || 0);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return { success: false, error: "Monto inválido para pago de entrenador." };
+    }
+
+    const folio = `PT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    await withAuthRetry(() => addDoc(collection(db, "ventas"), {
+      folio,
+      tipo_venta: "PAGO_ENTRENADOR",
+      categoria: "EGRESO",
+      trainer_id: String(trainerId || ""),
+      trainer_email: String(trainerEmail || ""),
+      trainer_nombre: String(trainerName || "Entrenador"),
+      contract_type: contractType || null,
+      metodo_pago: paymentMethod,
+      total: totalAmount,
+      monto_recibido: totalAmount,
+      detalle_productos: JSON.stringify([
+        {
+          nombre: `Pago entrenador: ${trainerName || "Entrenador"}`,
+          precio: totalAmount,
+          cantidad: 1,
+        }
+      ]),
+      createdAt: getLocalMXDate(),
+      fecha: getLocalMXDateISO(),
+    }));
+
+    return { success: true, folio };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: "No hay permisos para registrar pago de entrenador." };
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTrainerPayments = async (trainerId = null) => {
+  try {
+    const paymentQuery = query(
+      collection(db, "ventas"),
+      where("tipo_venta", "==", "PAGO_ENTRENADOR")
+    );
+
+    const snapshot = await withAuthRetry(() => getDocs(paymentQuery));
+    let payments = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    if (trainerId) {
+      const normalizedTrainerId = String(trainerId).trim();
+      payments = payments.filter((p) => String(p.trainer_id || "").trim() === normalizedTrainerId);
+    }
+
+    payments.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.fecha || 0);
+      const bDate = b.createdAt?.toDate?.() || new Date(b.fecha || 0);
+      return bDate - aDate;
+    });
+
+    return { success: true, data: payments };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: "No hay permisos para consultar pagos de entrenadores." };
     }
     return { success: false, error: error.message };
   }
