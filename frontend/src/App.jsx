@@ -5,16 +5,16 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import Home from './components/Home'; // El Dashboard del Admin
-import RegisterUser from './components/RegisterUser';
+import RegisterUser from './components/admistrador/RegisterUser';
 import AssignMembership from './components/AssignMembership';
-import UserMembershipList from './components/UserMembershipList';
+import UserMembershipList from './components/admistrador/UserMembershipList';
 import MembershipAdmin from './components/MembershipAdmin';
-import PuntoDeVenta from './components/PuntoDeVenta';
-import Inventario from './components/Inventario';
+import PuntoDeVenta from './components/admistrador/PuntoDeVenta';
+import Inventario from './components/admistrador/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/BitacoraEntrenador';
-import GestionEntrenadores from './components/entrenador/GestionEntrenadores';
+import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
 
@@ -189,6 +189,7 @@ function RequireNutritionistAuth({ children }) {
 
   return children;
 }
+
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {

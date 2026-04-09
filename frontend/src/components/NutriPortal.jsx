@@ -11,8 +11,7 @@ import DietaRepositorio from './DietaRepositorio';
 
 
 function NutriPortal() {
-    const [activeTab, setActiveTab] = useState('inicio');    const navigate = useNavigate();
-
+const [activeTab, setActiveTab] = useState('inicio');
     const handleLogOut = async () => {
         try {
             await logoutUser();

@@ -1220,6 +1220,7 @@ exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"
     firstName,
     lastName,
     contractType,
+    specialty,
   } = request.data || {};
 
   if (!email || !password || !firstName || !lastName) {
@@ -1240,6 +1241,7 @@ exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"
 
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     const resolvedUsername = String(username || "").trim() || buildUsernameFromEmail(email);
+    const resolvedSpecialty = String(specialty || "").trim() || "General";
 
     await db.collection("users").doc(authUser.uid).set({
       email,
@@ -1248,6 +1250,8 @@ exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"
       lastName,
       displayName: `${firstName} ${lastName}`.trim(),
       role: "trainer",
+      specialty: resolvedSpecialty,
+      especialidad: resolvedSpecialty,
       contractType: contractType || "Asignación por cliente",
       tipoContrato: contractType || "Asignación por cliente",
       isStaff: true,
@@ -1292,6 +1296,198 @@ exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"
     }
 
     throw new HttpsError("internal", error.message || "No se pudo registrar al entrenador");
+  }
+});
+
+exports.deactivateTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+  const db = admin.firestore();
+
+  const { trainerUid, reason = "" } = request.data || {};
+  const normalizedTrainerUid = String(trainerUid || "").trim();
+
+  if (!normalizedTrainerUid) {
+    throw new HttpsError("invalid-argument", "Falta el identificador del entrenador");
+  }
+
+  try {
+    await assertAdminRequest(request, db);
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    let userRef = db.collection("users").doc(normalizedTrainerUid);
+    let userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      const byAuthUidSnap = await db.collection("users")
+        .where("authUid", "==", normalizedTrainerUid)
+        .limit(1)
+        .get();
+
+      if (!byAuthUidSnap.empty) {
+        userRef = byAuthUidSnap.docs[0].ref;
+        userSnap = byAuthUidSnap.docs[0];
+      }
+    }
+
+    if (!userSnap.exists && normalizedTrainerUid.includes("@")) {
+      const emailCandidate = normalizedTrainerUid.toLowerCase();
+      const byEmailSnap = await db.collection("users")
+        .where("email", "==", emailCandidate)
+        .limit(1)
+        .get();
+
+      if (!byEmailSnap.empty) {
+        userRef = byEmailSnap.docs[0].ref;
+        userSnap = byEmailSnap.docs[0];
+      }
+    }
+
+    if (!userSnap.exists) {
+      throw new HttpsError("not-found", "Entrenador no encontrado");
+    }
+
+    const userData = userSnap.data() || {};
+    const authUid = String(userData.authUid || userRef.id || normalizedTrainerUid).trim();
+
+    await userRef.set({
+      role: "inactive_trainer",
+      isTrainer: false,
+      is_trainer: false,
+      isActive: false,
+      trainerActive: false,
+      trainerStatus: "inactive",
+      contractStatus: "inactive",
+      deactivatedAt: timestamp,
+      deactivatedReason: reason || null,
+      updatedAt: timestamp,
+    }, { merge: true });
+
+    if (authUid) {
+      await admin.auth().revokeRefreshTokens(authUid);
+      await admin.auth().setCustomUserClaims(authUid, {
+        role: "INACTIVE_TRAINER",
+        trainer: false,
+        active: false,
+      });
+    }
+
+    logger.info("Entrenador desactivado", {
+      trainerUid: normalizedTrainerUid,
+      authUid,
+      reason: String(reason || ""),
+    });
+
+    return {
+      success: true,
+      trainerUid: normalizedTrainerUid,
+      authUid,
+    };
+  } catch (error) {
+    logger.error("Error en deactivateTrainerByAdmin", {
+      trainerUid: normalizedTrainerUid,
+      error: String(error.message || error),
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "No se pudo desactivar al entrenador");
+  }
+});
+
+exports.reactivateTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+  const db = admin.firestore();
+
+  const { trainerUid, reason = "" } = request.data || {};
+  const normalizedTrainerUid = String(trainerUid || "").trim();
+
+  if (!normalizedTrainerUid) {
+    throw new HttpsError("invalid-argument", "Falta el identificador del entrenador");
+  }
+
+  try {
+    await assertAdminRequest(request, db);
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    let userRef = db.collection("users").doc(normalizedTrainerUid);
+    let userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      const byAuthUidSnap = await db.collection("users")
+        .where("authUid", "==", normalizedTrainerUid)
+        .limit(1)
+        .get();
+
+      if (!byAuthUidSnap.empty) {
+        userRef = byAuthUidSnap.docs[0].ref;
+        userSnap = byAuthUidSnap.docs[0];
+      }
+    }
+
+    if (!userSnap.exists && normalizedTrainerUid.includes("@")) {
+      const emailCandidate = normalizedTrainerUid.toLowerCase();
+      const byEmailSnap = await db.collection("users")
+        .where("email", "==", emailCandidate)
+        .limit(1)
+        .get();
+
+      if (!byEmailSnap.empty) {
+        userRef = byEmailSnap.docs[0].ref;
+        userSnap = byEmailSnap.docs[0];
+      }
+    }
+
+    if (!userSnap.exists) {
+      throw new HttpsError("not-found", "Entrenador no encontrado");
+    }
+
+    const userData = userSnap.data() || {};
+    const authUid = String(userData.authUid || userRef.id || normalizedTrainerUid).trim();
+
+    await userRef.set({
+      role: "trainer",
+      isTrainer: true,
+      is_trainer: true,
+      isActive: true,
+      trainerActive: true,
+      trainerStatus: "active",
+      contractStatus: "active",
+      reactivatedAt: timestamp,
+      reactivatedReason: reason || null,
+      updatedAt: timestamp,
+    }, { merge: true });
+
+    if (authUid) {
+      await admin.auth().revokeRefreshTokens(authUid);
+      await admin.auth().setCustomUserClaims(authUid, {
+        role: "TRAINER",
+        trainer: true,
+        active: true,
+      });
+    }
+
+    logger.info("Entrenador reactivado", {
+      trainerUid: normalizedTrainerUid,
+      authUid,
+      reason: String(reason || ""),
+    });
+
+    return {
+      success: true,
+      trainerUid: normalizedTrainerUid,
+      authUid,
+    };
+  } catch (error) {
+    logger.error("Error en reactivateTrainerByAdmin", {
+      trainerUid: normalizedTrainerUid,
+      error: String(error.message || error),
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "No se pudo reactivar al entrenador");
   }
 });
 

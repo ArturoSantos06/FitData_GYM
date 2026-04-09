@@ -174,9 +174,7 @@ function ClientPlanView() {
     );
   }
 
-  // =========================================================
-  // SUBMENÚ NUTRIÓLOGO
-  // =========================================================
+  // SUBMENÚ NUTRIÓLOGO ///
   if (currentView === 'nutriologo_menu') {
     return (
       <div className="w-full animate-fade-in">
@@ -301,6 +299,7 @@ function ClientPlanView() {
   // =========================================================
   // NIVEL 1: MENÚ PRINCIPAL RAÍZ
   // =========================================================
+  // NIVEL 1: MENÚ PRINCIPAL RAÍZ //
   return (
     <div className="w-full flex justify-center animate-fade-in">
       <div className="relative w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl overflow-hidden p-8 border border-slate-700">

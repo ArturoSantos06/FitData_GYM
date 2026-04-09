@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import ErrorModal from './ErrorModal';
-import SuccessModal from './SuccessModal';
-import AdminHealthForm from './AdminHealthForm';
-import { registerClientByAdmin, registerTrainerByAdmin, registerNutriologoByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio, getUserByEmail, updateUser } from '../firebase';
+import ErrorModal from '../ErrorModal';
+import SuccessModal from '../SuccessModal';
+import AdminHealthForm from '../AdminHealthForm';
+import { registerClientByAdmin, registerTrainerByAdmin, registerNutriologoByAdmin, getMemberByEmail, createHealthProfile, createMembershipSale, getSaleByFolio, getUserByEmail, updateUser } from '../../firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config'; 
+import { db } from '../../firebase/config'; 
 
 function RegisterUser({ onUserRegistered }) {
+  const trainerSpecialtyOptions = [
+    'Entrenamiento Funcional',
+    'Fuerza e Hipertrofia',
+    'Pérdida de Grasa',
+    'Rehabilitación y Movilidad',
+    'Alto Rendimiento',
+    'Preparación Física General',
+    'Otro',
+  ];
+
   // --- ESTADO DEL FORMULARIO ---
   const [formData, setFormData] = useState({
     user_type: 'CLIENTE',
@@ -19,6 +29,8 @@ function RegisterUser({ onUserRegistered }) {
     last_name: '',
     sexo: '',
     contract_type: '',
+    trainer_specialty: '',
+    trainer_specialty_other: '',
     membership_id: '',
     payment_method: 'EFECTIVO',
     especialidad: 'Nutrición Deportiva'
@@ -124,6 +136,15 @@ function RegisterUser({ onUserRegistered }) {
     if (!formData.contract_type) {
       return 'Selecciona el tipo de contrato del entrenador.';
     }
+
+    if (!formData.trainer_specialty) {
+      return 'Selecciona una especialidad del entrenador.';
+    }
+
+    if (formData.trainer_specialty === 'Otro' && !formData.trainer_specialty_other.trim()) {
+      return 'Especifica la especialidad del entrenador.';
+    }
+
     return null;
   };
 
@@ -210,6 +231,10 @@ function RegisterUser({ onUserRegistered }) {
           especialidad: formData.especialidad,
         });
       } else if (formData.user_type === 'ENTRENADOR') {
+        const resolvedTrainerSpecialty = formData.trainer_specialty === 'Otro'
+          ? formData.trainer_specialty_other.trim()
+          : formData.trainer_specialty;
+
         registerResult = await registerTrainerByAdmin({
           username: formData.username,
           email: formData.email,
@@ -217,6 +242,7 @@ function RegisterUser({ onUserRegistered }) {
           firstName: formData.first_name,
           lastName: formData.last_name,
           contractType: formData.contract_type,
+          specialty: resolvedTrainerSpecialty,
         });
       } else {
         registerResult = await registerClientByAdmin({
@@ -263,12 +289,17 @@ function RegisterUser({ onUserRegistered }) {
       const shouldValidateSale = formData.user_type === 'CLIENTE' && selectedPriceNumber > 0;
 
       if (formData.user_type === 'ENTRENADOR' && formData.contract_type) {
+        const resolvedTrainerSpecialty = formData.trainer_specialty === 'Otro'
+          ? formData.trainer_specialty_other.trim()
+          : formData.trainer_specialty;
         const trainerId = registeredUserId || registerResult?.data?.userId || null;
 
         if (trainerId) {
           await updateUser(String(trainerId), {
             contractType: formData.contract_type,
             tipoContrato: formData.contract_type,
+            specialty: resolvedTrainerSpecialty,
+            especialidad: resolvedTrainerSpecialty,
           });
         } else {
           const trainerUser = await getUserByEmail(formData.email);
@@ -276,6 +307,8 @@ function RegisterUser({ onUserRegistered }) {
             await updateUser(String(trainerUser.data.id), {
               contractType: formData.contract_type,
               tipoContrato: formData.contract_type,
+              specialty: resolvedTrainerSpecialty,
+              especialidad: resolvedTrainerSpecialty,
             });
           }
         }
@@ -344,7 +377,7 @@ function RegisterUser({ onUserRegistered }) {
       // Limpieza
       setFormData({ 
           user_type: 'CLIENTE',
-          username: '', email: '', phone: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', 
+          username: '', email: '', phone: '', password: '', confirm_password: '', first_name: '', last_name: '', sexo: '', contract_type: '', trainer_specialty: '', trainer_specialty_other: '',
           membership_id: '', payment_method: 'EFECTIVO', especialidad: 'Nutrición Deportiva'
       });
       setMontoRecibido('');
@@ -452,20 +485,65 @@ function RegisterUser({ onUserRegistered }) {
           </>
         )}
         {formData.user_type === 'ENTRENADOR' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Contrato</label>
+              <select
+                name="contract_type"
+                value={formData.contract_type}
+                onChange={handleChange}
+                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+                required
+              >
+                <option value="">-- Selecciona --</option>
+                <option value="Asimilados a Salarios">Asimilados a Salarios</option>
+                <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
+                <option value="Comisiones">Comisiones</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Especialidad</label>
+              <select
+                name="trainer_specialty"
+                value={formData.trainer_specialty}
+                onChange={handleChange}
+                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+                required
+              >
+                <option value="">-- Selecciona --</option>
+                {trainerSpecialtyOptions.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            {formData.trainer_specialty === 'Otro' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Especifica la Especialidad</label>
+                <input
+                  type="text"
+                  name="trainer_specialty_other"
+                  value={formData.trainer_specialty_other}
+                  onChange={handleChange}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
+                  placeholder="Ej: Entrenamiento prenatal"
+                  required
+                />
+              </div>
+            )}
+          </>
+        )}
+        {formData.user_type === 'NUTRIOLOGO' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Contrato</label>
-            <select
-              name="contract_type"
-              value={formData.contract_type}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-              required
-            >
-              <option value="">-- Selecciona --</option>
-              <option value="Asimilados a Salarios">Asimilados a Salarios</option>
-              <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
-              <option value="Comisiones">Comisiones</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Especialidad</label>
+            <input 
+              type="text" 
+              name="especialidad" 
+              value={formData.especialidad} 
+              onChange={handleChange} 
+              className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" 
+              placeholder="Ej: Nutrición Deportiva"
+              required 
+            />
           </div>
         )}
         {formData.user_type === 'NUTRIOLOGO' && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSales } from '../firebase';
+import { getSales } from '../../firebase';
 
 const HistorialVentas = ({ reloadTrigger }) => {
     const [ventas, setVentas] = useState([]);
