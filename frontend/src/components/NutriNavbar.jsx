@@ -1,12 +1,13 @@
 import React from 'react';
-import { Home, Calendar, Users, User, LogOut } from 'lucide-react';
+import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut } from 'lucide-react';
 
 const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
-        { id: 'inicio', label: 'Inicio', icon: Home },
-        { id: 'agenda', label: 'Agenda', icon: Calendar },
-        { id: 'gestion', label: 'Gestión', icon: Users },
-        { id: 'perfil', label: 'Perfil', icon: User },
+        { id: 'HomeNutri', label: 'Inicio', icon: Home },      
+        { id: 'citas', label: 'Citas', icon: Stethoscope },
+        { id: 'calculadora', label: 'Calculadora', icon: Calculator },
+        { id: 'dietas', label: 'Dietas', icon: BookOpen },
+        { id: 'financiero', label: 'Finanzas', icon: Activity },
     ];
 
     return (
@@ -15,7 +16,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
             <div className="flex items-center gap-5">
                 <span className="text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-500 to-cyan-400 mr-4 cursor-pointer">
                     FitData <span className="text-white">GYM</span>
-                </span>    
+                </span>   
 
                 <nav className="flex items-center gap-5">
                   {tabs.map((tab) => {
@@ -40,7 +41,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
             <div className="pl-8 border-l border-slate-800/50">
              <button
              onClick={onLogOut}
-             className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-md shadow-lg shasdow-red-600/20 transition-transform active:scale-95 text-sm"
+             className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-md shadow-lg shadow-red-600/20 transition-transform active:scale-95 text-sm"
              >
                 Salir
              </button>
@@ -57,11 +58,11 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex flex-col items-center justify-center gap-1 ${
-                    isActive ? 'text-blue-400' : 'text-slate-500'
+                    isActive ? 'text-cyan-400' : 'text-slate-500'
                 }`}
             >
                 <div className={`w-6 h-6 transition-all ${
-                    isActive ? 'scale-110 drop-shadow-{o_0_8px_rbga(59,130,246,0.5)]' : ''
+                    isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : ''
                 }`}>
                   <Icon size={24} />
                 </div>

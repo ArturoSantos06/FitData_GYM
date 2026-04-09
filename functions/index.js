@@ -1,20 +1,26 @@
-const {setGlobalOptions} = require("firebase-functions/v2");
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
-const {defineSecret} = require("firebase-functions/params");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const PDFDocument = require("pdfkit");
-const {Readable} = require("stream");
-const {randomUUID} = require("crypto");
+const { Readable } = require("stream");
+const { randomUUID } = require("crypto");
+const {
+  buildAiRoutinePrompt,
+  extractGeminiText,
+  saveAiRoutineHistory,
+} = require("./aiRutinas/geminiRoutineService");
 
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 admin.initializeApp();
 
-setGlobalOptions({maxInstances: 10, region: "us-east1", invoker: "public"});
+setGlobalOptions({ maxInstances: 10, region: "us-east1", invoker: "public" });
 
 const formatDate = (value) => {
   if (!value) return "N/A";
@@ -24,11 +30,11 @@ const formatDate = (value) => {
 };
 
 const normalizeComparableText = (value = "") => String(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLowerCase();
 
 const generateSaleFolio = () => {
   const timestamp = Date.now();
@@ -38,7 +44,7 @@ const generateSaleFolio = () => {
 
 const nodemailer = require("nodemailer");
 
-const sendGmailSmtp = async ({toEmail, subject, message, defaultFrom}) => {
+const sendGmailSmtp = async ({ toEmail, subject, message, defaultFrom }) => {
   const gmailUser = GMAIL_USER.value();
   const appPassword = GMAIL_APP_PASSWORD.value();
   const fromEmail = defaultFrom || "FitData GYM <fitdatagym@gmail.com>";
@@ -63,7 +69,7 @@ const sendGmailSmtp = async ({toEmail, subject, message, defaultFrom}) => {
     html: `<pre>${message}</pre>`,
   });
 
-  return {id: info.messageId};
+  return { id: info.messageId };
 };
 
 const isPrivilegedRole = (roleValue = "") => {
@@ -85,9 +91,9 @@ const getMemberIdFromPath = (path = "") => {
 };
 
 const sanitizeDownloadName = (value = "archivo") => String(value || "archivo")
-    .replace(/[\r\n]/g, " ")
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(0, 180) || "archivo";
+  .replace(/[\r\n]/g, " ")
+  .replace(/[^a-zA-Z0-9._-]/g, "_")
+  .slice(0, 180) || "archivo";
 
 const toJsDate = (value) => {
   if (!value) return null;
@@ -124,8 +130,8 @@ const buildFacturaDescripcion = (saleData = {}) => {
       const parsed = JSON.parse(rawDetail);
       if (Array.isArray(parsed) && parsed.length > 0) {
         const names = parsed
-            .map((item) => String(item?.nombre || item?.name || item?.producto || "").trim())
-            .filter(Boolean);
+          .map((item) => String(item?.nombre || item?.name || item?.producto || "").trim())
+          .filter(Boolean);
         if (names.length > 0) {
           return names.length === 1 ? names[0] : names.join(", ");
         }
@@ -135,13 +141,13 @@ const buildFacturaDescripcion = (saleData = {}) => {
   }
 
   return String(
-      saleData.membership_name ||
-      saleData.membershipName ||
-      saleData.producto ||
-      saleData.producto_nombre ||
-      saleData.productoNombre ||
-      saleData.tipo_venta ||
-      "Producto"
+    saleData.membership_name ||
+    saleData.membershipName ||
+    saleData.producto ||
+    saleData.producto_nombre ||
+    saleData.productoNombre ||
+    saleData.tipo_venta ||
+    "Producto"
   );
 };
 
@@ -176,7 +182,7 @@ const mergeSaleSnapshots = (snapshots) => {
   return Array.from(mergedById.values());
 };
 
-exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.obtenerReporteFacturas = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para consultar el reporte.");
   }
@@ -205,15 +211,15 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
 
   const [timestampSnapshot, fechaSnapshot] = await Promise.allSettled([
     ventasRef
-        .where("createdAt", ">=", startTimestamp)
-        .where("createdAt", "<", endTimestamp)
-        .orderBy("createdAt", "desc")
-        .get(),
+      .where("createdAt", ">=", startTimestamp)
+      .where("createdAt", "<", endTimestamp)
+      .orderBy("createdAt", "desc")
+      .get(),
     ventasRef
-        .where("fecha", ">=", startIso)
-        .where("fecha", "<", endIso)
-        .orderBy("fecha", "desc")
-        .get()
+      .where("fecha", ">=", startIso)
+      .where("fecha", "<", endIso)
+      .orderBy("fecha", "desc")
+      .get()
   ]);
 
   let docs = [];
@@ -231,14 +237,14 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
   }
 
   const facturas = docs
-      .map(normalizeFacturaItem)
-      .filter((item) => {
-        const saleDate = item.fecha;
-        return saleDate &&
-          saleDate.getFullYear() === anio &&
-          saleDate.getMonth() + 1 === mes;
-      })
-      .sort((a, b) => b.fecha - a.fecha);
+    .map(normalizeFacturaItem)
+    .filter((item) => {
+      const saleDate = item.fecha;
+      return saleDate &&
+        saleDate.getFullYear() === anio &&
+        saleDate.getMonth() + 1 === mes;
+    })
+    .sort((a, b) => b.fecha - a.fecha);
 
   const totals = facturas.reduce((accumulator, factura) => {
     accumulator.totalFacturas += 1;
@@ -260,7 +266,7 @@ exports.obtenerReporteFacturas = onCall({cors: true, invoker: "public"}, async (
   };
 });
 
-exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.generarFactura = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar facturas.");
   }
@@ -339,9 +345,9 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
 
   const existingFacturaNumero = String(
-      ventaData.factura_numero ||
-      ventaData.numeroFactura ||
-      ""
+    ventaData.factura_numero ||
+    ventaData.numeroFactura ||
+    ""
   ).trim();
   const existingFacturaUrl = String(ventaData.factura_url || "").trim();
   if (existingFacturaNumero && existingFacturaUrl) {
@@ -382,18 +388,18 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
 
   const clienteNombre = String(
-      ventaData.clienteNombre ||
-      ventaData.cliente_nombre ||
-      ventaData.userName ||
-      ventaData.customerName ||
-      "Cliente"
+    ventaData.clienteNombre ||
+    ventaData.cliente_nombre ||
+    ventaData.userName ||
+    ventaData.customerName ||
+    "Cliente"
   );
 
-  const pdfDoc = new PDFDocument({size: "A4", margin: 50});
+  const pdfDoc = new PDFDocument({ size: "A4", margin: 50 });
   const chunks = [];
   pdfDoc.on("data", (chunk) => chunks.push(chunk));
 
-  pdfDoc.fontSize(20).text("FitData GYM - Factura", {align: "left"});
+  pdfDoc.fontSize(20).text("FitData GYM - Factura", { align: "left" });
   pdfDoc.moveDown(0.5);
   pdfDoc.fontSize(10).fillColor("#666").text(`No. Factura: ${facturaNumeroCodigo}`);
   pdfDoc.text(`Fecha: ${fechaStr}`);
@@ -406,7 +412,7 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   }
   pdfDoc.moveDown();
 
-  pdfDoc.fillColor("#000").fontSize(12).text("Conceptos", {underline: true});
+  pdfDoc.fillColor("#000").fontSize(12).text("Conceptos", { underline: true });
   pdfDoc.moveDown(0.4);
 
   detalleItems.forEach((item) => {
@@ -418,13 +424,13 @@ exports.generarFactura = onCall({cors: true, invoker: "public"}, async (request)
   });
 
   pdfDoc.moveDown();
-  pdfDoc.fontSize(11).fillColor("#000").text(`Subtotal: $${subtotal.toFixed(2)}`, {align: "right"});
-  pdfDoc.text(`IVA: $${iva.toFixed(2)}`, {align: "right"});
-  pdfDoc.font("Helvetica-Bold").text(`Total: $${total.toFixed(2)}`, {align: "right"});
+  pdfDoc.fontSize(11).fillColor("#000").text(`Subtotal: $${subtotal.toFixed(2)}`, { align: "right" });
+  pdfDoc.text(`IVA: $${iva.toFixed(2)}`, { align: "right" });
+  pdfDoc.font("Helvetica-Bold").text(`Total: $${total.toFixed(2)}`, { align: "right" });
   pdfDoc.font("Helvetica");
 
   pdfDoc.moveDown(1.5);
-  pdfDoc.fontSize(9).fillColor("#666").text("Documento generado automáticamente por FitData GYM.", {align: "center"});
+  pdfDoc.fontSize(9).fillColor("#666").text("Documento generado automáticamente por FitData GYM.", { align: "center" });
   pdfDoc.end();
 
   const pdfBuffer = await new Promise((resolve, reject) => {
@@ -477,7 +483,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
   }
 
   if (req.method !== "GET") {
-    res.status(405).json({error: "Method not allowed"});
+    res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
@@ -487,13 +493,13 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const requestedName = sanitizeDownloadName(req.query.name || "dieta_vigente");
 
     if (!cleanPath) {
-      res.status(400).json({error: "El parámetro path es requerido."});
+      res.status(400).json({ error: "El parámetro path es requerido." });
       return;
     }
 
     const authHeader = String(req.headers.authorization || "");
     if (!authHeader.startsWith("Bearer ")) {
-      res.status(401).json({error: "Falta token de autenticación."});
+      res.status(401).json({ error: "Falta token de autenticación." });
       return;
     }
 
@@ -501,7 +507,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = String(decodedToken.uid || "");
     if (!uid) {
-      res.status(401).json({error: "Token inválido."});
+      res.status(401).json({ error: "Token inválido." });
       return;
     }
 
@@ -519,13 +525,13 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     if (!hasPrivilegedAccess) {
       const memberId = getMemberIdFromPath(cleanPath);
       if (!memberId) {
-        res.status(403).json({error: "Ruta de archivo no autorizada."});
+        res.status(403).json({ error: "Ruta de archivo no autorizada." });
         return;
       }
 
       const memberSnap = await admin.firestore().doc(`miembros/${memberId}`).get();
       if (!memberSnap.exists) {
-        res.status(404).json({error: "Miembro no encontrado para este archivo."});
+        res.status(404).json({ error: "Miembro no encontrado para este archivo." });
         return;
       }
 
@@ -533,7 +539,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
       const ownerByUserId = String(memberData.userId || "") === uid;
       const ownerByAuthUid = String(memberData.authUid || "") === uid;
       if (!ownerByUserId && !ownerByAuthUid) {
-        res.status(403).json({error: "No tienes permisos para descargar este archivo."});
+        res.status(403).json({ error: "No tienes permisos para descargar este archivo." });
         return;
       }
     }
@@ -542,7 +548,7 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     const file = bucket.file(cleanPath);
     const [exists] = await file.exists();
     if (!exists) {
-      res.status(404).json({error: "Archivo no encontrado en Storage."});
+      res.status(404).json({ error: "Archivo no encontrado en Storage." });
       return;
     }
 
@@ -554,16 +560,16 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     res.set("Cache-Control", "private, max-age=60");
 
     file.createReadStream()
-        .on("error", (error) => {
-          logger.error("Error al transmitir archivo de dieta", {error: String(error?.message || error)});
-          if (!res.headersSent) {
-            res.status(500).json({error: "No se pudo descargar el archivo."});
-          }
-        })
-        .pipe(res);
+      .on("error", (error) => {
+        logger.error("Error al transmitir archivo de dieta", { error: String(error?.message || error) });
+        if (!res.headersSent) {
+          res.status(500).json({ error: "No se pudo descargar el archivo." });
+        }
+      })
+      .pipe(res);
   } catch (error) {
-    logger.error("downloadDietFile error", {error: String(error?.message || error)});
-    res.status(500).json({error: "No se pudo completar la descarga."});
+    logger.error("downloadDietFile error", { error: String(error?.message || error) });
+    res.status(500).json({ error: "No se pudo completar la descarga." });
   }
 });
 
@@ -617,7 +623,7 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
 
   const recipient = membership.userEmail;
   if (!recipient) {
-    logger.warn("Membresía sin userEmail, no se envía correo", {membershipId: event.params.membershipId});
+    logger.warn("Membresía sin userEmail, no se envía correo", { membershipId: event.params.membershipId });
     return;
   }
 
@@ -749,7 +755,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
 
   const recipient = venta.clienteEmail;
   if (!recipient) {
-    logger.warn("Venta sin clienteEmail, no se envía correo", {ventaId: event.params.ventaId});
+    logger.warn("Venta sin clienteEmail, no se envía correo", { ventaId: event.params.ventaId });
     return;
   }
 
@@ -773,7 +779,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
       productos = venta.detalle_productos;
     }
   } catch (e) {
-    logger.warn("Error parseando detalle_productos", {error: e});
+    logger.warn("Error parseando detalle_productos", { error: e });
   }
 
   const detalleProductos = productos
@@ -946,11 +952,11 @@ exports.onFacturaRequestCreated = onDocumentCreated({
   }
 
   const clienteNombre = String(
-      ventaData.clienteNombre ||
-      ventaData.cliente_nombre ||
-      ventaData.userName ||
-      ventaData.customerName ||
-      "Cliente"
+    ventaData.clienteNombre ||
+    ventaData.cliente_nombre ||
+    ventaData.userName ||
+    ventaData.customerName ||
+    "Cliente"
   );
 
   const lines = detalleItems.map((item) => {
@@ -1028,7 +1034,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
 
   const recipient = miembro.email;
   if (!recipient) {
-    logger.warn("Miembro sin email, no se envía correo", {memberId: event.params.memberId});
+    logger.warn("Miembro sin email, no se envía correo", { memberId: event.params.memberId });
     return;
   }
 
@@ -1128,12 +1134,12 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-exports.createUserAccount = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.createUserAccount = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new Error("No autenticado");
   }
 
-  const {email, password, displayName} = request.data;
+  const { email, password, displayName } = request.data;
 
   if (!email || !password) {
     throw new Error("Email y contraseña son requeridos");
@@ -1173,7 +1179,7 @@ const assertAdminRequest = async (request, db) => {
   }
 
   if (request.auth.token?.admin === true ||
-      String(request.auth.token?.role || "").toLowerCase() === "admin") {
+    String(request.auth.token?.role || "").toLowerCase() === "admin") {
     return;
   }
 
@@ -1183,9 +1189,9 @@ const assertAdminRequest = async (request, db) => {
   }
 
   const byAuthUid = await db.collection("users")
-      .where("authUid", "==", request.auth.uid)
-      .limit(1)
-      .get();
+    .where("authUid", "==", request.auth.uid)
+    .limit(1)
+    .get();
 
   if (!byAuthUid.empty) {
     const role = String(byAuthUid.docs[0].data()?.role || "").toLowerCase();
@@ -1200,11 +1206,11 @@ const assertAdminRequest = async (request, db) => {
 const buildUsernameFromEmail = (email = "") => {
   const localPart = String(email).split("@")[0] || "usuario";
   return localPart
-      .replace(/[^a-zA-Z0-9._-]/g, "")
-      .slice(0, 40) || "usuario";
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .slice(0, 40) || "usuario";
 };
 
-exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   const db = admin.firestore();
 
   const {
@@ -1250,7 +1256,7 @@ exports.registerTrainerByAdmin = onCall({cors: true, invoker: "public"}, async (
       authUid: authUser.uid,
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, {merge: true});
+    }, { merge: true });
 
     await admin.auth().setCustomUserClaims(authUser.uid, {
       role: "TRAINER",
@@ -1300,7 +1306,9 @@ const registerNutriologoByAdminHandler = async (request) => {
     especialidad,
   } = request.data || {};
 
-  if (!email || !password || !firstName || !lastName) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (!normalizedEmail || !password || !firstName || !lastName) {
     throw new HttpsError("invalid-argument", "Faltan campos requeridos para el registro del nutriólogo");
   }
 
@@ -1310,7 +1318,7 @@ const registerNutriologoByAdminHandler = async (request) => {
     await assertAdminRequest(request, db);
 
     const authUser = await admin.auth().createUser({
-      email,
+      email: normalizedEmail,
       password,
       displayName: `${firstName} ${lastName}`.trim(),
     });
@@ -1319,8 +1327,8 @@ const registerNutriologoByAdminHandler = async (request) => {
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
     await db.collection("users").doc(authUser.uid).set({
-      email,
-      username: buildUsernameFromEmail(email),
+      email: normalizedEmail,
+      username: buildUsernameFromEmail(normalizedEmail),
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`.trim(),
@@ -1332,7 +1340,7 @@ const registerNutriologoByAdminHandler = async (request) => {
       authUid: authUser.uid,
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, {merge: true});
+    }, { merge: true });
 
     await admin.auth().setCustomUserClaims(authUser.uid, {
       role: "NUTRIOLOGO",
@@ -1372,17 +1380,17 @@ const registerNutriologoByAdminHandler = async (request) => {
 };
 
 exports.registerNutriologoByAdmin = onCall(
-    {cors: true, invoker: "public"},
+    {cors: {origin: true}, invoker: "public"},
     registerNutriologoByAdminHandler,
 );
 
 // Alias para evitar endpoint legacy con permisos atascados.
 exports.registerNutriologoByAdminV2 = onCall(
-    {cors: true, invoker: "public"},
+    {cors: {origin: true}, invoker: "public"},
     registerNutriologoByAdminHandler,
 );
 
-exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.registerClientByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1469,10 +1477,10 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
     });
 
     const now = new Date();
-    const mexicoOffset = -6 * 60; 
+    const mexicoOffset = -6 * 60;
     const localDate = new Date(now.getTime() + (now.getTimezoneOffset() + mexicoOffset) * 60000);
     const today = localDate;
-    
+
     const durationDays = Number(membershipType.duration_days || membershipType.durationDays || 30);
     const endDate = new Date(today);
     endDate.setDate(endDate.getDate() + durationDays);
@@ -1606,7 +1614,7 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
       tx.set(counterRef, {
         lastNumericId: nextId,
         updatedAt: timestamp,
-      }, {merge: true});
+      }, { merge: true });
 
       return {
         id: newId,
@@ -1648,7 +1656,7 @@ exports.registerClientByAdmin = onCall({cors: true, invoker: "public"}, async (r
 });
 
 
-exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateClientEmail = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1716,7 +1724,7 @@ exports.updateClientEmail = onCall({cors: true, invoker: "public"}, async (reque
   }
 });
 
-exports.updateSelfProfile = onCall({cors: true, invoker: "public"}, async (request) => {
+exports.updateSelfProfile = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }

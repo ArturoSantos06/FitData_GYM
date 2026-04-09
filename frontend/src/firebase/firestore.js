@@ -2076,3 +2076,49 @@ export const deleteDietFileRecord = async (fileId) => {
   }
 };
 
+// NUTRICIONIST ASSIGNMENTS
+export const assignNutritionistToClient = async (clientId, nutritionistId) => {
+  try {
+    // Verificar si ya tiene asignado
+    const existing = await getClientNutritionistAssignment(clientId);
+    if (existing.success && existing.data) {
+      return { success: false, error: 'Ya tienes un nutriólogo asignado' };
+    }
+
+    await withAuthRetry(() =>
+      setDoc(doc(db, 'client_nutritionist_assignments', clientId), {
+        clientId,
+        nutritionistId,
+        assignedAt: serverTimestamp(),
+        status: 'active',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getClientNutritionistAssignment = async (clientId) => {
+  try {
+    const docSnap = await withAuthRetry(() => getDoc(doc(db, 'client_nutritionist_assignments', clientId)));
+    if (docSnap.exists()) {
+      return { success: true, data: docSnap.data() };
+    }
+    return { success: false, error: 'No encontrado' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const removeNutritionistFromClient = async (clientId) => {
+  try {
+    await withAuthRetry(() => deleteDoc(doc(db, 'client_nutritionist_assignments', clientId)));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+

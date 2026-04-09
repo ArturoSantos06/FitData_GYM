@@ -12,10 +12,12 @@ import { doc, setDoc } from 'firebase/firestore';
 // Login con email y contraseña
 export const loginUser = async (email, password) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
     return { success: true, user: userCredential.user };
   } catch (error) {
-    return { success: false, error: error.message };
+    console.error('Firebase loginUser error:', error);
+    return { success: false, error: error.message, code: error.code || null };
   }
 };
 
@@ -158,29 +160,32 @@ export const getCurrentUser = () => {
 
 export const registerNutriologoByAdmin = async (payload) => {
   try {
+    const normalizedPayload = {
+      ...payload,
+      email: String(payload.email || '').trim().toLowerCase(),
+      password: String(payload.password || ''),
+      firstName: String(payload.firstName || '').trim(),
+      lastName: String(payload.lastName || '').trim(),
+      especialidad: String(payload.especialidad || '').trim(),
+    };
+
     const registerV2Fn = httpsCallable(functions, 'registerNutriologoByAdminV2');
-    const resultV2 = await registerV2Fn(payload);
+    const resultV2 = await registerV2Fn(normalizedPayload);
     return { success: true, data: resultV2.data };
   } catch (error) {
-    try {
-      const registerFn = httpsCallable(functions, 'registerNutriologoByAdmin');
-      const result = await registerFn(payload);
-      return { success: true, data: result.data };
-    } catch (fallbackError) {
-      console.error('Error en registerNutriologoByAdmin:', fallbackError);
-      const friendlyError =
-        fallbackError?.details?.message ||
-        fallbackError?.details ||
-        fallbackError?.message ||
-        fallbackError?.customData?.message ||
-        'No se pudo completar el registro del nutriólogo';
+    console.error('Error en registerNutriologoByAdminV2:', error);
+    const friendlyError =
+      error?.details?.message ||
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo completar el registro del nutriólogo';
 
-      return {
-        success: false,
-        error: friendlyError,
-        code: fallbackError?.code || null,
-        raw: fallbackError,
-      };
-    }
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null,
+      raw: error,
+    };
   }
 };

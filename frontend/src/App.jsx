@@ -17,6 +17,7 @@ import BitacoraEntrenador from './components/BitacoraEntrenador';
 import GestionEntrenadores from './components/entrenador/GestionEntrenadores';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
+
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -25,11 +26,14 @@ import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
-import NutriologoPortal from './components/nutriologo/NutriologoPortal';
+import NutriPortal from './components/NutriPortal';
 import ReportesFacturacion from './components/ReportesFacturacion';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 import { AssistantProvider } from './components/asistente/ContextoAsistente';
 import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
+
+//Componete para el entrenador//
+import TrainerPortal from './components/TrainerPortal';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
@@ -50,7 +54,6 @@ function RequireTrainerAuth({ children }) {
 
       try {
         let role = '';
-
         const byAuthUid = await getUserByAuthUid(user.uid);
         if (byAuthUid.success) {
           role = String(byAuthUid.data?.role || '').toLowerCase();
@@ -124,7 +127,6 @@ function RequireNutritionistAuth({ children }) {
 
       try {
         let role = '';
-
         const byAuthUid = await getUserByAuthUid(user.uid);
         if (byAuthUid.success) {
           role = String(byAuthUid.data?.role || '').toLowerCase();
@@ -186,43 +188,6 @@ function RequireNutritionistAuth({ children }) {
   }
 
   return children;
-}
-
-//Componete para el entrenador//
-import TrainerPortal from './components/TrainerPortal';
-
-// --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
-function NutriologoArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (firebaseUser) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
-
-  const handleLogin = () => setIsAuthenticated(true);
-
-  const handleLogout = () => {
-    localStorage.removeItem('firebaseUser');
-    setIsAuthenticated(false);
-    window.location.href = "/";
-  };
-
-  if (isLoading) {
-    return (
-      <div className="text-white bg-gray-900 h-screen flex items-center justify-center">
-        Cargando...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <NutriologoLogin onLogin={handleLogin} />;
-  }
-
-  return <NutriologoPortal onLogout={handleLogout} />;
 }
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
@@ -294,7 +259,6 @@ function AdminArea() {
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
-
           
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
@@ -321,56 +285,61 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
 
-        <Route path="/equipo" element={<AboutTeam />} />
+          <Route path="/equipo" element={<AboutTeam />} />
 
-        <Route path="/cliente/login" element={<ClientLogin />} />
-        <Route path="/cliente" element={<ClientPortal />} />
-        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
-        <Route path="/nutriologo" element={<NutriologoArea />} />
-        <Route path="/entrenador/login" element={<EntrenadorLogin />} />
-        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
-        <Route
-          path="/entrenador"
-          element={
-            <RequireTrainerAuth>
-              <TrainerPortal />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/nutriologo"
-          element={<NutriologoPortal />}
-        />
-        <Route
-          path="/entrenador/rutina/:memberId"
-          element={
-            <RequireTrainerAuth>
-              <RutinaEntrenador />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/entrenador/citas"
-          element={
-            <RequireTrainerAuth>
-              <CitasTrainer />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/entrenador/bitacora"
-          element={
-            <RequireTrainerAuth>
-              <BitacoraEntrenador />
-            </RequireTrainerAuth>
-          }
-        />
+          <Route path="/cliente/login" element={<ClientLogin />} />
+          <Route path="/cliente" element={<ClientPortal />} />
+          <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+          
+          {/* Ruta protegida del Nutriólogo usando tu componente */}
+          <Route 
+            path="/nutriologo/*" 
+            element={
+              <RequireNutritionistAuth>
+                <NutriPortal />
+              </RequireNutritionistAuth>
+            } 
+          />
 
-        <Route path="/admin/*" element={<AdminArea />} />
+          <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+          <Route
+            path="/entrenador"
+            element={
+              <RequireTrainerAuth>
+                <TrainerPortal />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/rutina/:memberId"
+            element={
+              <RequireTrainerAuth>
+                <RutinaEntrenador />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/citas"
+            element={
+              <RequireTrainerAuth>
+                <CitasTrainer />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/bitacora"
+            element={
+              <RequireTrainerAuth>
+                <BitacoraEntrenador />
+              </RequireTrainerAuth>
+            }
+          />
 
-        <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+          <Route path="/admin/*" element={<AdminArea />} />
 
-        {/* Comodín: Cualquier otra cosa redirige al inicio */}
+          <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+
+          {/* Comodín: Cualquier otra cosa redirige al inicio */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AssistantProvider>
