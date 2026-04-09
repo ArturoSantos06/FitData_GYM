@@ -39,8 +39,11 @@ const normalizeSearchText = (value = '') => {
     .trim();
 };
 
-const hasAdminRole = (userData) => {
-  return String(userData?.role || '').toLowerCase() === 'admin';
+const normalizeRole = (roleValue) => String(roleValue || '').toLowerCase().trim();
+
+const hasPrivilegedRole = (userData) => {
+  const role = normalizeRole(userData?.role);
+  return ['admin', 'entrenador', 'trainer', 'nutriologo', 'nutri'].includes(role);
 };
 
 const ensureFirebaseTokenReady = async (user) => {
@@ -84,91 +87,46 @@ const waitForFirebaseUser = () => {
   });
 };
 
-const ensureAdminMirrorUser = async () => {
+const ensureStaffMirrorUser = async () => {
   const currentUser = await waitForFirebaseUser();
   const currentEmail = String(currentUser?.email || '').trim();
   const normalizedEmail = currentEmail.toLowerCase();
 
   if (!currentUser?.uid || !currentUser?.email) {
-    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar al panel admin.' };
+    return { success: false, error: 'Tu sesión de Firebase no está lista. Cierra sesión y vuelve a entrar.' };
   }
 
   const directUserResult = await getUser(currentUser.uid);
-  if (directUserResult.success && hasAdminRole(directUserResult.data)) {
-    return { success: true };
+  if (directUserResult.success && hasPrivilegedRole(directUserResult.data)) {
+    return { success: true, role: normalizeRole(directUserResult.data?.role) };
   }
 
   const authUidUserResult = await getUserByAuthUid(currentUser.uid);
-  if (authUidUserResult.success && hasAdminRole(authUidUserResult.data)) {
-    let createResult = await createUser(currentUser.uid, {
-      email: currentEmail,
-      displayName:
-        authUidUserResult.data?.displayName ||
-        authUidUserResult.data?.username ||
-        currentUser.displayName ||
-        currentEmail.split('@')[0],
-      username:
-        authUidUserResult.data?.username ||
-        authUidUserResult.data?.displayName ||
-        currentEmail.split('@')[0],
-      role: 'admin',
-      authUid: currentUser.uid
-    });
+  let sourceUser = authUidUserResult.success && hasPrivilegedRole(authUidUserResult.data)
+    ? authUidUserResult.data
+    : null;
 
-    if (!createResult.success && isPermissionDeniedError(createResult.error)) {
-      await ensureFirebaseTokenReady(currentUser);
-      await sleep(350);
-      createResult = await createUser(currentUser.uid, {
-        email: currentEmail,
-        displayName:
-          authUidUserResult.data?.displayName ||
-          authUidUserResult.data?.username ||
-          currentUser.displayName ||
-          currentEmail.split('@')[0],
-        username:
-          authUidUserResult.data?.username ||
-          authUidUserResult.data?.displayName ||
-          currentEmail.split('@')[0],
-        role: 'admin',
-        authUid: currentUser.uid
-      });
+  if (!sourceUser) {
+    const emailUserResult = await getUserByEmail(currentEmail);
+    const emailUserResultNormalized = !emailUserResult.success && normalizedEmail !== currentEmail
+      ? await getUserByEmail(normalizedEmail)
+      : emailUserResult;
+
+    if (emailUserResultNormalized.success && hasPrivilegedRole(emailUserResultNormalized.data)) {
+      sourceUser = emailUserResultNormalized.data;
     }
-
-    if (!createResult.success) {
-      return { success: false, error: createResult.error || 'No se pudo habilitar el acceso de administrador para esta sesión.' };
-    }
-
-    return { success: true };
   }
 
-  const emailUserResult = await getUserByEmail(currentEmail);
-  const emailUserResultNormalized = !emailUserResult.success && normalizedEmail !== currentEmail
-    ? await getUserByEmail(normalizedEmail)
-    : emailUserResult;
-
-  if (!emailUserResultNormalized.success || !hasAdminRole(emailUserResultNormalized.data)) {
-    if (normalizedEmail === 'admin@fitdata.gym') {
-      const bootstrapResult = await createUser(currentUser.uid, {
-        email: currentEmail,
-        displayName: currentUser.displayName || currentEmail.split('@')[0],
-        username: currentEmail.split('@')[0],
-        role: 'admin',
-        authUid: currentUser.uid
-      });
-
-      if (bootstrapResult.success) {
-        return { success: true };
-      }
-    }
-    return { success: false, error: 'La cuenta autenticada no tiene permisos de administrador.' };
+  if (!sourceUser) {
+    return { success: false, error: 'Tu cuenta no tiene rol de staff autorizado para gestionar dietas.' };
   }
 
-  const sourceUser = emailUserResultNormalized.data;
+  const staffRole = normalizeRole(sourceUser.role) || 'nutriologo';
   let createResult = await createUser(currentUser.uid, {
     email: currentEmail,
     displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
     username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
-    role: 'admin',
+    role: staffRole,
     authUid: currentUser.uid
   });
 
@@ -179,16 +137,17 @@ const ensureAdminMirrorUser = async () => {
       email: currentEmail,
       displayName: sourceUser.displayName || sourceUser.username || currentUser.displayName || currentEmail.split('@')[0],
       username: sourceUser.username || sourceUser.displayName || currentEmail.split('@')[0],
-      role: 'admin',
+      role: staffRole,
       authUid: currentUser.uid
     });
   }
 
   if (!createResult.success) {
-    return { success: false, error: createResult.error || 'No se pudo habilitar el acceso de administrador para esta sesión.' };
+    return { success: false, error: createResult.error || 'No se pudo habilitar el acceso de staff para esta sesión.' };
   }
 
-  return { success: true };
+  await ensureFirebaseTokenReady(currentUser);
+  return { success: true, role: staffRole };
 };
 
 function DietRepositoryAdmin() {
@@ -210,14 +169,17 @@ function DietRepositoryAdmin() {
   const loadData = async () => {
     setLoading(true);
 
-    const accessResult = await ensureAdminMirrorUser();
+    const accessResult = await ensureStaffMirrorUser();
     if (!accessResult.success) {
-      const isOnlyAdminRoleGate = String(accessResult.error || '').toLowerCase().includes('no tiene permisos de administrador');
-      if (!isOnlyAdminRoleGate) {
-        setErrorModal({ open: true, message: accessResult.error });
-        setLoading(false);
-        return;
-      }
+      setErrorModal({ open: true, message: accessResult.error });
+      setLoading(false);
+      return;
+    }
+
+    // Asegurar que el token de Firebase está listo
+    const currentUser = await waitForFirebaseUser();
+    if (currentUser?.uid) {
+      await ensureFirebaseTokenReady(currentUser);
     }
 
     let [membersResult, filesResult] = await Promise.all([
@@ -226,9 +188,9 @@ function DietRepositoryAdmin() {
     ]);
 
     if (isPermissionDeniedError(membersResult?.error) || isPermissionDeniedError(filesResult?.error)) {
-      const currentUser = await waitForFirebaseUser();
-      if (currentUser?.uid) {
-        await ensureFirebaseTokenReady(currentUser);
+      const retryUser = await waitForFirebaseUser();
+      if (retryUser?.uid) {
+        await ensureFirebaseTokenReady(retryUser);
       }
       await sleep(350);
       [membersResult, filesResult] = await Promise.all([
@@ -369,6 +331,13 @@ function DietRepositoryAdmin() {
 
     setSaving(true);
 
+    const accessResult = await ensureStaffMirrorUser();
+    if (!accessResult.success) {
+      setSaving(false);
+      setErrorModal({ open: true, message: accessResult.error });
+      return;
+    }
+
     const uploadResult = await uploadDietDocument(selectedFile, selectedMemberId);
     if (!uploadResult.success) {
       setSaving(false);
@@ -376,7 +345,7 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    const currentAdmin = JSON.parse(localStorage.getItem('firebaseUser') || '{}');
+    const currentStaff = JSON.parse(localStorage.getItem('firebaseUser') || '{}');
     const recordResult = await createDietFileRecord({
       memberId: String(selectedMemberId),
       memberName: selectedMember.fullName,
@@ -389,7 +358,7 @@ function DietRepositoryAdmin() {
       size: uploadResult.size,
       storagePath: uploadResult.path,
       downloadURL: uploadResult.url,
-      uploadedBy: currentAdmin.email || 'admin'
+      uploadedBy: currentStaff.email || accessResult.role || 'staff'
     });
 
     if (!recordResult.success) {
