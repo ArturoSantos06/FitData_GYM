@@ -16,7 +16,13 @@ const {
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL_CANDIDATES = [
+  GEMINI_MODEL,
+  "gemini-2.5-flash",
+  "gemini-1.5-flash",
+].filter((model, index, all) => model && all.indexOf(model) === index);
 
 admin.initializeApp();
 
@@ -182,7 +188,882 @@ const mergeSaleSnapshots = (snapshots) => {
   return Array.from(mergedById.values());
 };
 
-exports.obtenerReporteFacturas = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+const buildFallbackRoutineText = (payload = {}) => {
+  const goal = String(payload.goalLabel || payload.goal || "Objetivo general");
+  const level = String(payload.levelLabel || payload.level || "principiante");
+  const daysPerWeek = Math.max(2, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+  const sessionLength = Math.max(30, Math.min(120, Number(payload.sessionLength || 60) || 60));
+  const limitations = String(payload.limitations || "sin limitaciones especificadas");
+  const customRequest = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || "").trim();
+
+  const normalizedRequest = normalizeRoutineInputText(customRequest);
+  const hasRequestKeyword = (...keywords) => keywords.some((keyword) => normalizedRequest.includes(keyword));
+  const requestTheme = (() => {
+    if (hasRequestKeyword("cardio", "resistencia", "aerobico", "aerobica")) return "cardio";
+    if (hasRequestKeyword("movilidad", "estir", "prevencion", "flexibilidad")) return "mobility";
+    if (hasRequestKeyword("pierna", "piern", "glute", "lower", "cuadricep", "femoral")) return "lower";
+    if (hasRequestKeyword("pecho", "pech", "triceps", "empuje", "push", "hombro")) return "push";
+    if (hasRequestKeyword("espalda", "espal", "biceps", "traccion", "pull")) return "pull";
+    if (hasRequestKeyword("fuerza", "power")) return "strength";
+    if (hasRequestKeyword("musculo", "hipertrofia", "volumen", "masa")) return "hypertrophy";
+    return "balanced";
+  })();
+
+  const templates = {
+    2: [
+      {
+        day: "Lunes",
+        focus: "Pierna y core",
+        exercises: [
+          ["Sentadilla goblet", "4 series x 8-10 repeticiones"],
+          ["Prensa de piernas", "4 series x 10-12 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Peso muerto rumano", "3 series x 10 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Torso completo",
+        exercises: [
+          ["Press de banca", "4 series x 8-10 repeticiones"],
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Press militar", "3 series x 8-10 repeticiones"],
+          ["Face pull", "3 series x 12-15 repeticiones"],
+        ],
+      },
+    ],
+    3: [
+      {
+        day: "Lunes",
+        focus: "Pierna y core",
+        exercises: [
+          ["Sentadilla libre o goblet", "4 series x 8-10 repeticiones"],
+          ["Prensa de piernas", "4 series x 10-12 repeticiones"],
+          ["Peso muerto rumano", "3 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Pecho y espalda",
+        exercises: [
+          ["Press de banca", "4 series x 8-10 repeticiones"],
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "3 series x 10-12 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Gluteo, hombro y core",
+        exercises: [
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Press militar", "4 series x 8-10 repeticiones"],
+          ["Elevaciones laterales", "3 series x 12-15 repeticiones"],
+          ["Face pull", "3 series x 12-15 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+        ],
+      },
+    ],
+    4: [
+      {
+        day: "Lunes",
+        focus: "Pierna y gluteo",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y triceps",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Fondos asistidos", "3 series x 10 repeticiones"],
+          ["Extension de triceps en polea", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Face pull", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Hombro y core",
+        exercises: [
+          ["Press militar", "4 series x 8 repeticiones"],
+          ["Elevaciones laterales", "4 series x 12 repeticiones"],
+          ["Pajaro en banco inclinado", "3 series x 12 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch en polea o suelo", "3 series x 15 repeticiones"],
+        ],
+      },
+    ],
+    5: [
+      {
+        day: "Lunes",
+        focus: "Pierna anterior",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Extensiones de cuádriceps", "3 series x 12 repeticiones"],
+          ["Zancadas", "3 series x 10 repeticiones por pierna"],
+          ["Plancha frontal", "3 series x 30 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y hombro",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Press militar", "3 series x 8 repeticiones"],
+          ["Elevaciones laterales", "3 series x 12 repeticiones"],
+          ["Aperturas", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+          ["Face pull", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Pierna posterior y gluteo",
+        exercises: [
+          ["Peso muerto rumano", "4 series x 8-10 repeticiones"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Puente de gluteo", "3 series x 12 repeticiones"],
+          ["Pantorrillas de pie", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Core y cardio",
+        exercises: [
+          ["Plancha frontal", "3 series x 40 segundos"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch abdominal", "3 series x 15 repeticiones"],
+          ["Bicicleta abdominal", "3 series x 20 repeticiones"],
+          ["Cardio suave en caminadora", "20 minutos"],
+        ],
+      },
+    ],
+    6: [
+      {
+        day: "Lunes",
+        focus: "Pierna anterior",
+        exercises: [
+          ["Sentadilla libre", "4 series x 8 repeticiones"],
+          ["Prensa de piernas", "4 series x 10 repeticiones"],
+          ["Extensiones de cuádriceps", "3 series x 12 repeticiones"],
+          ["Zancadas caminando", "3 series x 10 repeticiones por pierna"],
+          ["Plancha frontal", "3 series x 30 segundos"],
+        ],
+      },
+      {
+        day: "Martes",
+        focus: "Pecho y triceps",
+        exercises: [
+          ["Press de banca", "4 series x 8 repeticiones"],
+          ["Press inclinado con mancuernas", "3 series x 10 repeticiones"],
+          ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+          ["Fondos asistidos", "3 series x 10 repeticiones"],
+          ["Extension de triceps en polea", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Miercoles",
+        focus: "Espalda y biceps",
+        exercises: [
+          ["Jalón al pecho", "4 series x 10 repeticiones"],
+          ["Remo sentado", "4 series x 10 repeticiones"],
+          ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+          ["Face pull", "3 series x 12 repeticiones"],
+          ["Curl de biceps", "3 series x 12 repeticiones"],
+        ],
+      },
+      {
+        day: "Jueves",
+        focus: "Pierna posterior y gluteo",
+        exercises: [
+          ["Peso muerto rumano", "4 series x 8-10 repeticiones"],
+          ["Hip thrust", "4 series x 10 repeticiones"],
+          ["Curl femoral", "3 series x 12 repeticiones"],
+          ["Puente de gluteo", "3 series x 12 repeticiones"],
+          ["Pantorrillas de pie", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Viernes",
+        focus: "Hombro y core",
+        exercises: [
+          ["Press militar", "4 series x 8 repeticiones"],
+          ["Elevaciones laterales", "4 series x 12 repeticiones"],
+          ["Pajaro en banco inclinado", "3 series x 12 repeticiones"],
+          ["Plancha lateral", "3 series x 30 segundos por lado"],
+          ["Crunch abdominal", "3 series x 15 repeticiones"],
+        ],
+      },
+      {
+        day: "Sabado",
+        focus: "Cardio y movilidad",
+        exercises: [
+          ["Caminadora inclinada", "20-25 minutos"],
+          ["Bicicleta estatica", "15-20 minutos"],
+          ["Movilidad de cadera", "3 series x 10 repeticiones"],
+          ["Movilidad de hombro", "3 series x 10 repeticiones"],
+          ["Estiramientos globales", "10 minutos"],
+        ],
+      },
+    ],
+  };
+
+  const routineDays = templates[daysPerWeek] || templates[4];
+  const themeNotes = {
+    cardio: "Enfoque principal: condicionamiento y gasto calórico.",
+    mobility: "Enfoque principal: movilidad, control y prevención de molestias.",
+    lower: "Enfoque principal: tren inferior y gluteo.",
+    push: "Enfoque principal: empuje, pecho, hombro y triceps.",
+    pull: "Enfoque principal: traccion, espalda y biceps.",
+    strength: "Enfoque principal: fuerza con rangos de repeticiones mas bajos.",
+    hypertrophy: "Enfoque principal: hipertrofia con volumen moderado.",
+    balanced: "Enfoque principal: equilibrio general de fuerza y acondicionamiento.",
+  };
+  const extraDaysText = requestTheme === "cardio"
+    ? "Cardio progresivo, intervalos suaves y movilidad"
+    : requestTheme === "mobility"
+      ? "Movilidad articular, core y respiracion"
+      : daysPerWeek >= 5
+        ? "Cardio moderado y movilidad"
+        : "Cardio suave opcional";
+
+  const themedExercisePools = {
+    lower: [
+      ["Sentadilla libre", "4 series x 8-10 repeticiones"],
+      ["Prensa de piernas", "4 series x 10 repeticiones"],
+      ["Peso muerto rumano", "4 series x 8-10 repeticiones"],
+      ["Hip thrust", "4 series x 10-12 repeticiones"],
+      ["Zancadas caminando", "3 series x 12 repeticiones por pierna"],
+      ["Curl femoral", "3 series x 12 repeticiones"],
+      ["Extensiones de cuadriceps", "3 series x 12-15 repeticiones"],
+      ["Pantorrilla de pie", "4 series x 15 repeticiones"],
+    ],
+    push: [
+      ["Press de banca", "4 series x 6-8 repeticiones"],
+      ["Press inclinado con mancuernas", "4 series x 8-10 repeticiones"],
+      ["Press militar", "4 series x 8 repeticiones"],
+      ["Fondos asistidos", "3 series x 10 repeticiones"],
+      ["Aperturas con mancuernas", "3 series x 12 repeticiones"],
+      ["Elevaciones laterales", "4 series x 12-15 repeticiones"],
+      ["Extension de triceps en polea", "3 series x 12 repeticiones"],
+      ["Press frances", "3 series x 10 repeticiones"],
+    ],
+    pull: [
+      ["Jalon al pecho", "4 series x 8-10 repeticiones"],
+      ["Remo sentado", "4 series x 10 repeticiones"],
+      ["Remo con mancuerna", "3 series x 10 repeticiones por lado"],
+      ["Peso muerto convencional", "4 series x 5 repeticiones"],
+      ["Face pull", "3 series x 12-15 repeticiones"],
+      ["Curl de biceps con barra", "3 series x 10 repeticiones"],
+      ["Curl martillo", "3 series x 12 repeticiones"],
+      ["Pullover en polea", "3 series x 12 repeticiones"],
+    ],
+    cardio: [
+      ["Caminadora por intervalos", "25 minutos"],
+      ["Bicicleta estatica", "20 minutos"],
+      ["Saltos de cuerda", "5 bloques x 1 minuto"],
+      ["Remo ergometro", "15 minutos"],
+      ["Plancha frontal", "3 series x 40 segundos"],
+      ["Mountain climbers", "4 series x 30 segundos"],
+      ["Step ups", "3 series x 12 repeticiones por pierna"],
+      ["Burpees controlados", "3 series x 10 repeticiones"],
+    ],
+    mobility: [
+      ["Movilidad de cadera", "4 series x 10 repeticiones"],
+      ["Movilidad toracica", "4 series x 10 repeticiones"],
+      ["Sentadilla profunda asistida", "3 series x 40 segundos"],
+      ["Estiramiento dinamico de isquios", "3 series x 12 repeticiones"],
+      ["Bird dog", "3 series x 12 repeticiones por lado"],
+      ["Dead bug", "3 series x 12 repeticiones"],
+      ["Plancha lateral", "3 series x 30 segundos por lado"],
+      ["Respiracion diafragmatica", "5 minutos"],
+    ],
+  };
+
+  const themedFocusVariants = {
+    lower: ["Pierna y gluteo", "Posterior de pierna", "Cuadriceps y gluteo", "Pierna unilateral y core"],
+    push: ["Pecho y triceps", "Pecho superior y hombro", "Hombro y triceps", "Empuje completo"],
+    pull: ["Espalda y biceps", "Traccion vertical", "Traccion horizontal", "Espalda completa"],
+    cardio: ["Cardio base", "Cardio intervalico", "Acondicionamiento metabolico", "Cardio y core"],
+    mobility: ["Movilidad de cadera", "Movilidad toracica", "Estabilidad de core", "Movilidad global"],
+  };
+
+  const buildThemedDays = (theme) => routineDays.map((item, index) => {
+    const pool = themedExercisePools[theme];
+    const focusList = themedFocusVariants[theme];
+    const start = (index * 2) % pool.length;
+    const exercises = Array.from({ length: 5 }, (_, offset) => pool[(start + offset) % pool.length]);
+
+    return {
+      ...item,
+      focus: focusList[index % focusList.length],
+      exercises,
+    };
+  });
+
+  const adjustedRoutineDays = routineDays.map((item, index) => {
+    if (["lower", "push", "pull", "cardio", "mobility"].includes(requestTheme)) {
+      return buildThemedDays(requestTheme)[index];
+    }
+
+    if (requestTheme === "cardio") {
+      if (index === 0) return { ...item, focus: "Cardio base y core" };
+      if (index === 1) return { ...item, focus: "Movilidad y estabilidad" };
+    }
+
+    if (requestTheme === "mobility") {
+      if (index === 0) return { ...item, focus: "Movilidad articular y activacion" };
+      if (index === 1) return { ...item, focus: "Core y control postural" };
+    }
+
+    if (requestTheme === "lower") {
+      if (index === 0) return { ...item, focus: "Pierna y gluteo" };
+      if (index === 1) return { ...item, focus: "Posterior de pierna y core" };
+    }
+
+    if (requestTheme === "push") {
+      if (index === 0) return { ...item, focus: "Empuje: pecho y triceps" };
+      if (index === 1) return { ...item, focus: "Hombro y triceps" };
+    }
+
+    if (requestTheme === "pull") {
+      if (index === 0) return { ...item, focus: "Traccion: espalda y biceps" };
+      if (index === 1) return { ...item, focus: "Espalda media y posterior" };
+    }
+
+    if (requestTheme === "strength") {
+      return {
+        ...item,
+        exercises: item.exercises.map(([name, prescription]) => {
+          const updatedPrescription = prescription
+            .replace(/8-12/g, "4-6")
+            .replace(/10-12/g, "4-6")
+            .replace(/12-15/g, "6-8");
+          return [name, updatedPrescription];
+        }),
+      };
+    }
+
+    return item;
+  });
+
+  return [
+    "Rutina temporal (modo respaldo)",
+    `Objetivo: ${goal}.`,
+    `Nivel: ${level}.`,
+    `Frecuencia: ${daysPerWeek} dias por semana.`,
+    `Duracion por sesion: ${sessionLength} minutos.`,
+    `Solicitud libre del usuario: ${customRequest || "sin solicitud adicional"}.`,
+    themeNotes[requestTheme] || themeNotes.balanced,
+    "",
+    "Calentamiento (8-10 min):",
+    "- Caminata inclinada o bicicleta suave 5 min",
+    "- Movilidad dinamica de cadera, hombro y tobillo 3-5 min",
+    "",
+    ...adjustedRoutineDays.flatMap((item) => ([
+      `${item.day}: ${item.focus}`,
+      ...item.exercises.map(([exerciseName, prescription], index) => `${index + 1}. ${exerciseName} - ${prescription}`),
+      "",
+    ])),
+    `Dia extra: ${extraDaysText}`,
+    "- 20-30 min de cardio moderado",
+    "- Movilidad de cadera, hombro y tobillo",
+    "",
+    "Parametros base:",
+    "- 4-6 ejercicios por sesion",
+    "- 3-4 series por ejercicio",
+    "- 8-12 repeticiones (fuerza/hipertrofia general)",
+    "- Descanso 60-90 segundos",
+    "",
+    "Recomendaciones de seguridad:",
+    `- Considerar limitaciones: ${limitations}`,
+    "- Priorizar tecnica antes de subir carga",
+    "- Detener si aparece dolor agudo",
+    "",
+    "Nota: esta rutina se genero en modo respaldo porque GEMINI_API_KEY no esta configurada en Cloud Functions.",
+  ].join("\n");
+};
+
+const normalizeRoutineInputText = (value = "") => String(value || "")
+  .toLowerCase()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9\s]/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+
+const isStructuredRoutineText = (value = "") => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+
+  const normalized = normalizeRoutineInputText(text);
+  const hasDayHeader = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(normalized);
+  const hasNumberedExercises = /(^|\n)\s*\d+\./.test(text);
+  const hasWorkoutKeywords = /(series|repeticiones|calentamiento|descanso)/.test(normalized);
+
+  return hasDayHeader && hasNumberedExercises && hasWorkoutKeywords;
+};
+
+const countRoutineDaySections = (value = "") => {
+  const text = String(value || "");
+  const matches = text.match(/(^|\n)\s*(\*\*)?(Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:/g);
+  return Array.isArray(matches) ? matches.length : 0;
+};
+
+const isCompleteRoutineText = (value = "", daysPerWeek = 4) => {
+  const structured = isStructuredRoutineText(value);
+  if (!structured) return false;
+
+  const safeDays = Math.max(2, Math.min(6, Number(daysPerWeek || 4) || 4));
+  const daySections = countRoutineDaySections(value);
+  return daySections >= safeDays;
+};
+
+const buildStrictRoutinePrompt = (basePrompt = "") => [
+  basePrompt,
+  "",
+  "INSTRUCCION OBLIGATORIA:",
+  "Devuelve SOLO la rutina final completa.",
+  "No incluyas saludos, motivacion ni explicaciones introductorias.",
+  "Incluye al menos 3 dias (si la frecuencia es 2, incluye 2 dias) con encabezados por dia y ejercicios numerados.",
+  "Cada ejercicio debe traer series y repeticiones.",
+  "Usa formato compacto para evitar cortes: sin texto largo, solo datos de la rutina.",
+  "Si no puedes cumplir el formato, reescribe la respuesta hasta cumplirlo antes de finalizar.",
+].join("\n");
+
+const isGreetingOnlyRoutineRequest = (payload = {}) => {
+  const combinedText = [payload.preferences, payload.extraNotes]
+    .map((value) => normalizeRoutineInputText(value))
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  if (!combinedText) {
+    return false;
+  }
+
+  const greetingPhrases = ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hey", "saludos"];
+  const requestWords = ["rutina", "entrenamiento", "ejercicio", "ejercicios", "pierna", "pecho", "espalda", "gluteo", "abdomen", "cardio", "fuerza", "musculo", "grasa", "objetivo", "quiero", "necesito"];
+
+  const hasGreeting = greetingPhrases.some((phrase) => (
+    combinedText === phrase
+    || combinedText.startsWith(`${phrase} `)
+    || combinedText.includes(` ${phrase} `)
+    || combinedText.endsWith(` ${phrase}`)
+  ));
+
+  const hasRoutineIntent = requestWords.some((word) => combinedText.includes(word));
+
+  return hasGreeting && !hasRoutineIntent && combinedText.split(" ").length <= 4;
+};
+
+const isRoutineRelatedRequest = (payload = {}) => {
+  const combinedText = [payload.customRequest, payload.requestText, payload.preferences, payload.extraNotes]
+    .map((value) => normalizeRoutineInputText(value))
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  if (!combinedText) {
+    return false;
+  }
+
+  const routineKeywords = [
+    "rutina",
+    "entrenamiento",
+    "ejercicio",
+    "ejercicios",
+    "gym",
+    "gimnasio",
+    "musculo",
+    "musculos",
+    "fuerza",
+    "cardio",
+    "hipertrofia",
+    "volumen",
+    "definicion",
+    "recomposicion",
+    "bajar grasa",
+    "perder grasa",
+    "ganar masa",
+    "ganar musculo",
+    "objetivo",
+    "pierna",
+    "piernas",
+    "pecho",
+    "espalda",
+    "gluteo",
+    "gluteos",
+    "abdomen",
+    "hombro",
+    "biceps",
+    "triceps",
+    "core",
+    "espalda baja",
+    "espalda alta",
+    "push",
+    "pull",
+    "legs",
+  ];
+
+  return routineKeywords.some((keyword) => combinedText.includes(keyword));
+};
+
+const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => {
+  const safeUid = String(uid || "").trim();
+  if (!safeUid) {
+    throw new HttpsError("unauthenticated", "No se pudo identificar al usuario.");
+  }
+
+  const safePayload = payload || {};
+  if (safePayload.messageIntent === "greeting" || isGreetingOnlyRoutineRequest(safePayload)) {
+    logger.info("AI routine response", {
+      provider: "local",
+      model: "greeting-guard",
+      uid: safeUid,
+    });
+    return {
+      success: true,
+      provider: "local",
+      model: "greeting-guard",
+      prompt: "",
+      routineText: "Hola. Para generarte una rutina necesito tu objetivo, nivel y cuántos días entrenas. Por ejemplo: \"quiero perder grasa, soy principiante y entreno 4 días\".",
+      historyEntry: null,
+    };
+  }
+
+  if (!isRoutineRelatedRequest(safePayload)) {
+    logger.info("AI routine response", {
+      provider: "local",
+      model: "intent-guard",
+      uid: safeUid,
+    });
+    return {
+      success: true,
+      provider: "local",
+      model: "intent-guard",
+      prompt: "",
+      routineText: "No tengo una función para eso. Solo puedo generar rutinas de entrenamiento. Escribe tu objetivo, nivel o grupo muscular, por ejemplo: \"quiero perder grasa, soy principiante y entreno 4 días\".",
+      historyEntry: null,
+    };
+  }
+
+  const prompt = buildAiRoutinePrompt(safePayload);
+  const apiKey = String(GEMINI_API_KEY.value() || process.env.GEMINI_API_KEY || "").trim();
+
+  if (!apiKey) {
+    const routineText = buildFallbackRoutineText(safePayload);
+    const historyEntry = await saveAiRoutineHistory({
+      admin,
+      uid: safeUid,
+      payload: {
+        ...safePayload,
+        ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+        ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+      },
+      prompt,
+      routineText,
+      model: "fallback-template",
+      provider: "local",
+    });
+
+    logger.info("AI routine response", {
+      provider: "local",
+      model: "fallback-template",
+      uid: safeUid,
+      historyId: historyEntry?.id || null,
+    });
+
+    return {
+      success: true,
+      provider: "local",
+      model: "fallback-template",
+      prompt,
+      routineText,
+      historyEntry,
+    };
+  }
+
+  let responseData = {};
+  let routineText = "";
+  let selectedModel = GEMINI_MODEL;
+  let lastGeminiErrorMessage = "No se pudo generar la rutina con Gemini.";
+
+  for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: "Eres un entrenador personal experto en rutinas de gimnasio." }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.5,
+            topP: 0.9,
+            maxOutputTokens: 2800,
+          },
+        }),
+      }
+    );
+
+    responseData = await response.json().catch(() => ({}));
+    if (response.ok) {
+      selectedModel = modelName;
+      routineText = extractGeminiText(responseData);
+
+      if (!isCompleteRoutineText(routineText, safePayload.daysPerWeek)) {
+        const strictResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: "Eres un entrenador personal experto en rutinas de gimnasio." }],
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: buildStrictRoutinePrompt(prompt) }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.4,
+                topP: 0.9,
+                maxOutputTokens: 3200,
+              },
+            }),
+          }
+        );
+
+        const strictData = await strictResponse.json().catch(() => ({}));
+        if (strictResponse.ok) {
+          const strictText = extractGeminiText(strictData);
+          if (isCompleteRoutineText(strictText, safePayload.daysPerWeek)) {
+            routineText = strictText;
+          }
+        }
+      }
+
+      if (isCompleteRoutineText(routineText, safePayload.daysPerWeek)) {
+        break;
+      }
+
+      logger.warn("Gemini returned non-structured routine text", {
+        model: modelName,
+      });
+      routineText = "";
+      continue;
+    }
+
+    lastGeminiErrorMessage = responseData?.error?.message || responseData?.message || "No se pudo generar la rutina con Gemini.";
+    logger.warn("Gemini model attempt failed", {
+      model: modelName,
+      status: response.status,
+      errorMessage: lastGeminiErrorMessage,
+    });
+
+    // 404/400 suele indicar modelo no disponible; probamos el siguiente.
+    if (response.status !== 404 && response.status !== 400) {
+      logger.error("Gemini API error", {
+        model: modelName,
+        status: response.status,
+        errorMessage: lastGeminiErrorMessage,
+      });
+      throw new HttpsError("internal", lastGeminiErrorMessage);
+    }
+  }
+
+  if (!routineText) {
+    const fallbackRoutineText = buildFallbackRoutineText(safePayload);
+    const fallbackHistoryEntry = await saveAiRoutineHistory({
+      admin,
+      uid: safeUid,
+      payload: {
+        ...safePayload,
+        ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+        ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+      },
+      prompt,
+      routineText: fallbackRoutineText,
+      model: "fallback-template",
+      provider: "local",
+    });
+
+    logger.warn("Gemini failed to provide structured routine, using fallback", {
+      uid: safeUid,
+      errorMessage: lastGeminiErrorMessage,
+      historyId: fallbackHistoryEntry?.id || null,
+    });
+
+    return {
+      success: true,
+      provider: "local",
+      model: "fallback-template",
+      prompt,
+      routineText: fallbackRoutineText,
+      historyEntry: fallbackHistoryEntry,
+    };
+  }
+
+  const historyEntry = await saveAiRoutineHistory({
+    admin,
+    uid: safeUid,
+    payload: {
+      ...safePayload,
+      ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+      ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+    },
+    prompt,
+    routineText,
+    model: selectedModel,
+    provider: "gemini",
+  });
+
+  logger.info("AI routine response", {
+    provider: "gemini",
+    model: selectedModel,
+    uid: safeUid,
+    historyId: historyEntry?.id || null,
+  });
+
+  return {
+    success: true,
+    provider: "gemini",
+    model: selectedModel,
+    prompt,
+    routineText,
+    historyEntry,
+  };
+};
+
+const mapHttpsErrorToStatus = (code = "internal") => {
+  const mapping = {
+    "invalid-argument": 400,
+    unauthenticated: 401,
+    "permission-denied": 403,
+    "not-found": 404,
+    "already-exists": 409,
+    aborted: 409,
+    "failed-precondition": 412,
+    "resource-exhausted": 429,
+    internal: 500,
+    unavailable: 503,
+    "deadline-exceeded": 504,
+  };
+  return mapping[code] || 500;
+};
+
+const applyRoutineCorsHeaders = (req, res) => {
+  const origin = String(req.headers.origin || "*");
+  res.set("Access-Control-Allow-Origin", origin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Max-Age", "3600");
+};
+
+exports.generateClientAiRoutine = onCall(
+  { cors: true, invoker: "public", secrets: [GEMINI_API_KEY] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar una rutina.");
+    }
+
+    return generateClientAiRoutineCore({
+      uid: request.auth.uid,
+      payload: request.data || {},
+      authToken: request.auth.token || {},
+    });
+  }
+);
+
+exports.generateClientAiRoutineHttp = onRequest(
+  { cors: true, invoker: "public", secrets: [GEMINI_API_KEY] },
+  async (req, res) => {
+    applyRoutineCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send("");
+    }
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "method-not-allowed", message: "Método no permitido" });
+    }
+
+    try {
+      const authHeader = String(req.headers.authorization || "");
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+      if (!idToken) {
+        return res.status(401).json({ error: "unauthenticated", message: "Debes iniciar sesión para generar una rutina." });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const result = await generateClientAiRoutineCore({
+        uid: decodedToken.uid,
+        payload: req.body || {},
+        authToken: decodedToken,
+      });
+
+      return res.status(200).json(result);
+    } catch (error) {
+      const code = error?.code || "internal";
+      const message = error?.message || "No se pudo generar la rutina con IA.";
+      logger.error("generateClientAiRoutineHttp error", { code, message });
+
+      return res.status(mapHttpsErrorToStatus(code)).json({ error: code, message });
+    }
+  }
+);
+
+exports.obtenerReporteFacturas = onCall({ cors: true, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para consultar el reporte.");
   }
@@ -266,7 +1147,7 @@ exports.obtenerReporteFacturas = onCall({cors: {origin: true}, invoker: "public"
   };
 });
 
-exports.generarFactura = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.generarFactura = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes iniciar sesión para generar facturas.");
   }
@@ -1134,7 +2015,7 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   }
 });
 
-exports.createUserAccount = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.createUserAccount = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new Error("No autenticado");
   }
@@ -1210,7 +2091,7 @@ const buildUsernameFromEmail = (email = "") => {
     .slice(0, 40) || "usuario";
 };
 
-exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.registerTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   const db = admin.firestore();
 
   const {
@@ -1299,7 +2180,7 @@ exports.registerTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"
   }
 });
 
-exports.deactivateTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.deactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   const db = admin.firestore();
 
   const { trainerUid, reason = "" } = request.data || {};
@@ -1395,7 +2276,7 @@ exports.deactivateTrainerByAdmin = onCall({cors: {origin: true}, invoker: "publi
   }
 });
 
-exports.reactivateTrainerByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.reactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   const db = admin.firestore();
 
   const { trainerUid, reason = "" } = request.data || {};
@@ -1576,17 +2457,17 @@ const registerNutriologoByAdminHandler = async (request) => {
 };
 
 exports.registerNutriologoByAdmin = onCall(
-    {cors: {origin: true}, invoker: "public"},
-    registerNutriologoByAdminHandler,
+  { cors: { origin: true }, invoker: "public" },
+  registerNutriologoByAdminHandler,
 );
 
 // Alias para evitar endpoint legacy con permisos atascados.
 exports.registerNutriologoByAdminV2 = onCall(
-    {cors: {origin: true}, invoker: "public"},
-    registerNutriologoByAdminHandler,
+  { cors: { origin: true }, invoker: "public" },
+  registerNutriologoByAdminHandler,
 );
 
-exports.registerClientByAdmin = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.registerClientByAdmin = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1852,7 +2733,7 @@ exports.registerClientByAdmin = onCall({cors: {origin: true}, invoker: "public"}
 });
 
 
-exports.updateClientEmail = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.updateClientEmail = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }
@@ -1920,7 +2801,7 @@ exports.updateClientEmail = onCall({cors: {origin: true}, invoker: "public"}, as
   }
 });
 
-exports.updateSelfProfile = onCall({cors: {origin: true}, invoker: "public"}, async (request) => {
+exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "No autenticado");
   }

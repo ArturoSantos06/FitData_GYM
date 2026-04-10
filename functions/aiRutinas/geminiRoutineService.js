@@ -13,6 +13,8 @@ const buildAiRoutinePrompt = (payload = {}) => {
     const limitations = String(payload.limitations || "ninguna especificada").trim();
     const preferences = String(payload.preferences || "no especificadas").trim();
     const extraNotes = String(payload.extraNotes || "sin notas adicionales").trim();
+    const customRequest = String(payload.customRequest || payload.requestText || extraNotes || preferences || "sin solicitud adicional").trim();
+    const conversationContext = String(payload.conversationContext || "").trim();
 
     return [
         "Eres un entrenador personal experto en rutinas de gimnasio.",
@@ -23,9 +25,12 @@ const buildAiRoutinePrompt = (payload = {}) => {
         "Para cada día, lista entre 4 y 6 ejercicios exactos con nombres claros; no uses placeholders como 'ejercicio principal' o 'trabajo de piernas'.",
         "Para cada ejercicio indica series y repeticiones. Ejemplo: '1. Sentadilla libre - 4 series x 8 repeticiones'.",
         "Incluye si es posible un orden recomendado de ejercicios, y especifica si alguno es opcional o sustituto.",
+        "Si cambia la solicitud libre del usuario, cambia el enfoque, los ejercicios y la estructura de la rutina; no repitas la misma plantilla.",
         "Si faltan datos, asume opciones conservadoras y explica tus supuestos.",
         "No recomiendes ejercicios inseguros para las limitaciones indicadas.",
         "",
+        `Contexto reciente de conversación: ${conversationContext || 'sin contexto previo'}.`,
+        `Solicitud libre del usuario: ${customRequest}.`,
         `Objetivo del cliente: ${goalLabel}.`,
         `Nivel: ${levelLabel}.`,
         `Días por semana: ${daysPerWeek}.`,
