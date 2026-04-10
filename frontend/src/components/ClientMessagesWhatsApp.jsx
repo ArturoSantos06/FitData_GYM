@@ -47,6 +47,111 @@ function sanitizeNumericInput(value) {
     return String(value || '').replace(/[^0-9]/g, '');
 }
 
+function normalizeChatText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function isGreetingOnlyMessage(value) {
+    const normalized = normalizeChatText(value);
+    if (!normalized) {
+        return true;
+    }
+
+    const greetingPhrases = [
+        'hola',
+        'buenas',
+        'buenos dias',
+        'buenas tardes',
+        'buenas noches',
+        'hey',
+        'saludos',
+    ];
+
+    const routineRequestWords = [
+        'rutina',
+        'entrenamiento',
+        'ejercicio',
+        'ejercicios',
+        'pierna',
+        'pecho',
+        'espalda',
+        'gluteo',
+        'abdomen',
+        'cardio',
+        'fuerza',
+        'musculo',
+        'grasa',
+        'objetivo',
+        'quiero',
+        'necesito',
+    ];
+
+    const hasGreeting = greetingPhrases.some((phrase) => (
+        normalized === phrase
+        || normalized.startsWith(`${phrase} `)
+        || normalized.includes(` ${phrase} `)
+        || normalized.endsWith(` ${phrase}`)
+    ));
+
+    const hasRoutineIntent = routineRequestWords.some((word) => normalized.includes(word));
+
+    return hasGreeting && !hasRoutineIntent && normalized.split(' ').length <= 4;
+}
+
+function isRoutineRelatedMessage(value) {
+    const normalized = normalizeChatText(value);
+    if (!normalized) {
+        return false;
+    }
+
+    const routineKeywords = [
+        'rutina',
+        'entrenamiento',
+        'ejercicio',
+        'ejercicios',
+        'gym',
+        'gimnasio',
+        'musculo',
+        'musculos',
+        'fuerza',
+        'cardio',
+        'hipertrofia',
+        'volumen',
+        'definicion',
+        'recomposicion',
+        'bajar grasa',
+        'perder grasa',
+        'ganar masa',
+        'ganar musculo',
+        'objetivo',
+        'pierna',
+        'pecho',
+        'espalda',
+        'gluteo',
+        'abdomen',
+        'hombro',
+        'biceps',
+        'triceps',
+        'core',
+        'piernas',
+        'gluteos',
+        'espalda baja',
+        'espalda alta',
+        'pecho y espalda',
+        'push',
+        'pull',
+        'legs',
+    ];
+
+    return routineKeywords.some((keyword) => normalized.includes(keyword));
+}
+
 function normalizeDurationToMinutes(value) {
     const raw = String(value || '').trim().toLowerCase().replace(',', '.');
     if (!raw) {
@@ -247,6 +352,50 @@ function ClientMessagesWhatsApp() {
 
         setChatInput('');
 
+        if (activeChat === 'ia' && isGreetingOnlyMessage(text)) {
+            const createdAt = Date.now();
+            setAiSendError('');
+            setPendingAiPrompt('');
+            setLocalAiMessages((prev) => [
+                ...prev,
+                {
+                    id: `local_u_${createdAt}_${Math.random()}`,
+                    role: 'user',
+                    text,
+                    createdAt,
+                },
+                {
+                    id: `local_a_${createdAt}_${Math.random()}`,
+                    role: 'assistant',
+                    text: 'Hola. Para generarte una rutina necesito tu objetivo, nivel y cuántos días entrenas. Por ejemplo: "quiero perder grasa, soy principiante y entreno 4 días".',
+                    createdAt,
+                },
+            ]);
+            return;
+        }
+
+        if (activeChat === 'ia' && !isRoutineRelatedMessage(text)) {
+            const createdAt = Date.now();
+            setAiSendError('');
+            setPendingAiPrompt('');
+            setLocalAiMessages((prev) => [
+                ...prev,
+                {
+                    id: `local_u_${createdAt}_${Math.random()}`,
+                    role: 'user',
+                    text,
+                    createdAt,
+                },
+                {
+                    id: `local_a_${createdAt}_${Math.random()}`,
+                    role: 'assistant',
+                    text: 'No tengo una función para eso. Solo puedo generar rutinas de entrenamiento. Escribe tu objetivo, nivel o grupo muscular, por ejemplo: "quiero perder grasa, soy principiante y entreno 4 días".',
+                    createdAt,
+                },
+            ]);
+            return;
+        }
+
         if (activeChat === 'soporte') {
             handleSupportQuickQuestion(text);
             return;
@@ -261,6 +410,11 @@ function ClientMessagesWhatsApp() {
             const levelLabel = LEVEL_OPTIONS.find((item) => item.value === aiSettings.level)?.label || aiSettings.level;
             const safeDaysPerWeek = sanitizeNumericInput(aiSettings.daysPerWeek) || '4';
             const safeSessionLength = normalizeDurationToMinutes(aiSettings.sessionLength);
+            const conversationContext = aiMessages
+                .slice(-4)
+                .map((message) => `${message.role === 'user' ? 'Usuario' : 'Asistente'}: ${String(message.text || '').trim()}`)
+                .join('\n')
+                .trim();
 
             const response = await generateAiRoutine({
                 ...aiSettings,
@@ -269,8 +423,11 @@ function ClientMessagesWhatsApp() {
                 limitations: '',
                 preferences: text,
                 extraNotes: text,
+                customRequest: text,
+                conversationContext,
                 goalLabel,
                 levelLabel,
+                messageIntent: 'routine_request',
             });
 
             const createdAt = Date.now();

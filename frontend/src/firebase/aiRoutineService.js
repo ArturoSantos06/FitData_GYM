@@ -1,7 +1,6 @@
-import { httpsCallable } from 'firebase/functions';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 
-import { auth, db, functions } from './config';
+import { auth, db } from './config';
 
 function mapCallableError(error) {
     const code = String(error?.code || '').toLowerCase();
@@ -31,14 +30,18 @@ function mapCallableError(error) {
 }
 
 export function buildRoutinePrompt(payload) {
+    const customRequest = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || '').trim();
+
     return [
         'Eres un entrenador personal experto en rutinas de gimnasio.',
         'Genera una rutina segura, clara y personalizada en español.',
         'Responde con un formato estructurado que incluya objetivo, frecuencia semanal, calentamiento, rutina por día, ejercicios concretos, series, repeticiones, descanso, recomendaciones de técnica y advertencias de seguridad.',
         'Para cada día, lista entre 4 y 6 ejercicios exactos con nombres claros; no uses placeholders como "ejercicio principal" o "trabajo de piernas".',
         'Incluye el orden recomendado de los ejercicios y marca sustitutos cuando aplique.',
+        'Si el usuario cambia la solicitud libre, cambia también el enfoque, los ejercicios y la distribución de la rutina; no repitas la misma estructura sin adaptar el mensaje.',
         'Si faltan datos, asume opciones conservadoras y explícitalo.',
         '',
+        `Solicitud libre del usuario: ${customRequest || 'sin solicitud adicional'}.`,
         `Objetivo del cliente: ${payload.goalLabel || payload.goal || 'no especificado'}.`,
         `Nivel: ${payload.levelLabel || payload.level || 'no especificado'}.`,
         `Días por semana: ${payload.daysPerWeek || 'no especificado'}.`,
@@ -79,36 +82,14 @@ export async function generateAiRoutine(payload) {
 
             throw new Error(data?.message || data?.error || 'No se pudo generar la rutina con IA.');
         } catch (httpError) {
-            // Si el HTTP falla por red o despliegue, intentamos la callable como respaldo.
-        }
-    }
-
-    const callableInstances = [
-        httpsCallable(functions, 'generateClientAiRoutine'),
-    ];
-
-    let lastError = null;
-
-    for (const callable of callableInstances) {
-        try {
-            const response = await callable(payload);
-            return response.data;
-        } catch (firstError) {
-            lastError = firstError;
-
-            if (user) {
-                try {
-                    await user.getIdToken(true);
-                    const retryResponse = await callable(payload);
-                    return retryResponse.data;
-                } catch (retryError) {
-                    lastError = retryError;
-                }
+            if (httpError instanceof Error && httpError.message) {
+                throw httpError;
             }
+            throw new Error('No se pudo conectar con el servidor de rutinas.');
         }
     }
 
-    throw mapCallableError(lastError);
+    throw new Error('No hay sesión activa para generar la rutina.');
 }
 
 export function subscribeAiRoutineHistory(uid, onNext, onError) {
