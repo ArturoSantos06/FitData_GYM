@@ -152,13 +152,13 @@ function RutinaEntrenador() {
   const [exercisesByDay, setExercisesByDay] = useState({ Lunes: [], Miércoles: [], Viernes: [] });
   const [activeDay, setActiveDay] = useState('Lunes');
 
-  // Búsqueda rápida
+  //busqueda
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef(null);
 
-  // Catálogo por grupo muscular
+  //catalogo
   const [catalogBodyPart, setCatalogBodyPart] = useState('');
   const [catalogExercises, setCatalogExercises] = useState([]);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
@@ -176,7 +176,7 @@ function RutinaEntrenador() {
   });
   const [formSuccessMessage, setFormSuccessMessage] = useState('');
   const [formWarningMessage, setFormWarningMessage] = useState('');
-  // Caché por grupo muscular (evita repetir requests)
+  // Caché por grupo muscular evita repetir requests
   const catalogCacheRef = useRef({});
 
   useEffect(() => {
@@ -186,7 +186,7 @@ function RutinaEntrenador() {
       setIsLoadingRoutine(true);
 
       // Refrescar el claim de rol en el token para que las reglas de Firestore lo reconozcan
-      // (necesario cuando el entrenador tiene una sesión persistida sin el claim activo)
+      // necesario cuando el entrenador tiene una sesión persistida sin el claim activo
       await ensureUserClaim();
 
       const result = await getTrainerRoutineByMember(String(memberId || ''));
@@ -252,7 +252,7 @@ function RutinaEntrenador() {
   }, [memberId]);
 
 
-  // ── Días ──────────────────────────────────────────────────────────────────
+  //dias
   const toggleDay = (day) => {
     if (activeDays.includes(day)) {
       if (activeDays.length === 1) return;
@@ -274,7 +274,7 @@ function RutinaEntrenador() {
     setFormErrors((prev) => ({ ...prev, days: '', exercises: '' }));
   };
 
-  // ── Búsqueda rápida ───────────────────────────────────────────────────────
+  //busqueda
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -293,7 +293,7 @@ function RutinaEntrenador() {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
   };
 
-  // ── Catálogo ──────────────────────────────────────────────────────────────
+  //catalogo
   const fetchCatalog = async (bodyPart) => {
     setCatalogBodyPart(bodyPart);
 
@@ -320,7 +320,7 @@ function RutinaEntrenador() {
     setIsCatalogLoading(false);
   };
 
-  // ── Ejercicios ────────────────────────────────────────────────────────────
+  //ejercicios
   const addExercise = (ex) => {
     setExercisesByDay((prev) => ({
       ...prev,
@@ -355,7 +355,7 @@ function RutinaEntrenador() {
     }));
   };
 
-  // ── Archivos ──────────────────────────────────────────────────────────────
+  //archivos
   const handleFileChange = (event) => {
     const selected = Array.from(event.target.files || []);
     const allowed = selected.filter(
@@ -453,7 +453,7 @@ function RutinaEntrenador() {
     return { area: null, message: '' };
   };
 
-  // ── Guardar ───────────────────────────────────────────────────────────────
+  //guardar
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -618,7 +618,7 @@ function RutinaEntrenador() {
   const inputSm =
     'bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs placeholder-slate-600 outline-none focus:ring-1 focus:ring-blue-500 transition-all';
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  //render
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">

@@ -4,8 +4,8 @@ import UserProfile from './UserProfile';
 import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
 import ClientNavbar from './ClientNavbar';
-import ClientPlanView from './ClientPlanView'; 
-import AssistantSupportCenter from './asistente/CentroSoporteAsistente';
+import ClientPlanView from './ClientPlanView';
+import ClientMessagesWhatsApp from './ClientMessagesWhatsApp';
 import AssistantWidget from './asistente/WidgetAsistente';
 
 function ClientPortal() {
@@ -27,38 +27,38 @@ function ClientPortal() {
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8 pb-24 md:pb-8">
       <ClientNavbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
-      
+
       {/* Separador para el Navbar de escritorio y el Header de móvil */}
       <div className="h-16 md:h-24" />
 
       {/* Contenido Principal */}
       <div className="max-w-7xl mx-auto pt-2 md:pt-4">
-        
+
         {activeTab === 'inicio' && (
           <div className="animate-fade-in">
             <ClientMembership />
           </div>
         )}
-        
+
         {/* MI PLAN: El nuevo menú dividido por áreas */}
         {activeTab === 'plan' && (
           <div className="animate-fade-in">
             <ClientPlanView />
           </div>
         )}
-        
+
         {/* TIENDA: Agrupa catálogo y futuros servicios de pago */}
         {activeTab === 'tienda' && (
           <div className="animate-fade-in">
             <ClientStore />
           </div>
         )}
-        
-        {/* MENSAJES: Sección en construcción */}
+
+        {/* MENSAJES: Centro de conversaciones y IA de rutinas */}
         {activeTab === 'mensajes' && (
-          <AssistantSupportCenter />
+          <ClientMessagesWhatsApp />
         )}
-        
+
         {activeTab === 'perfil' && (
           <div className="animate-fade-in">
             <UserProfile />

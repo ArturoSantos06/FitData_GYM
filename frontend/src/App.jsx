@@ -324,7 +324,6 @@ function App() {
         <Route path="/nutriologo/login" element={<NutriologoLogin />} />
         <Route path="/nutriologo" element={<NutriologoArea />} />
         <Route path="/entrenador/login" element={<EntrenadorLogin />} />
-        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
         <Route
           path="/entrenador"
           element={
@@ -332,10 +331,6 @@ function App() {
               <TrainerPortal />
             </RequireTrainerAuth>
           }
-        />
-        <Route
-          path="/nutriologo"
-          element={<NutriologoPortal />}
         />
         <Route
           path="/entrenador/rutina/:memberId"

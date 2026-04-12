@@ -193,6 +193,11 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (isAdmin() || isRoutineTrainer(resource.data));
     }
 
+    match /users/{userId}/aiRoutineHistory/{historyId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create, update, delete: if false;
+    }
+
     match /memberRoutines/{memberId} {
       allow read: if canReadRoutine(resource.data);
       allow create: if isSignedIn() && (isAdmin() || isRoutineTrainer(request.resource.data));
@@ -253,6 +258,17 @@ service cloud.firestore {
         (isSignedIn() &&
           (("ownerUid" in resource.data && resource.data.ownerUid == request.auth.uid) ||
            !("ownerUid" in resource.data)));
+    }
+
+    // Asignaciones de nutriólogos a clientes
+    match /client_nutritionist_assignments/{clientId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == clientId || // Cliente puede leer su propia asignación
+        isAdmin() // Admin puede leer todas
+      );
+      allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
+      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
     }
 
     // Default deny all other collections

@@ -6,7 +6,7 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
     { id: 'plan', label: 'Mi Plan', icon: Dumbbell }, // <-- Agrupa Rutina, Entrenador y Nutriólogo
-    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare }, 
+    { id: 'mensajes', label: 'Mensajes', icon: MessageSquare },
     { id: 'tienda', label: 'Tienda', icon: ShoppingBag }, // <-- Agrupa Catálogo y Servicios
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
@@ -26,11 +26,10 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-                    isActive
+                  className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${isActive
                       ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] -translate-y-px'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -58,13 +57,11 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-1 ${
-                  isActive ? 'text-blue-400' : 'text-slate-500'
-                }`}
+                className={`flex flex-col items-center justify-center gap-1 ${isActive ? 'text-blue-400' : 'text-slate-500'
+                  }`}
               >
-                <div className={`w-6 h-6 transition-all ${
-                  isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''
-                }`}>
+                <div className={`w-6 h-6 transition-all ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''
+                  }`}>
                   <Icon size={24} />
                 </div>
                 <span className="text-[9px] font-medium truncate w-full px-1 text-center">{tab.label}</span>
