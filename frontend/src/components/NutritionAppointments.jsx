@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
-// Importamos tu Custom Hook (Ajusta los '../' dependiendo de en qué carpeta guardes este archivo)
 import { useAppointments } from '../useAppointments'; 
 
 const NutritionAppointments = () => {
-    // 1. Estados solo para la Interfaz (UI)
     const [clienteId, setClienteId] = useState(null);
     const [cancelModal, setCancelModal] = useState({ isOpen: false, idToCancel: null });
 
-    // 2. Obtener sesión del usuario
     useEffect(() => {
         const usuarioGuardado = localStorage.getItem('firebaseUser');
         if (usuarioGuardado) {
@@ -18,13 +15,9 @@ const NutritionAppointments = () => {
         }
     }, []);
 
-    // 3. ¡LA MAGIA DEL CUSTOM HOOK! 
-    // Obtenemos las citas, el estado de carga y la función de cancelar con una sola línea.
     const { appointments, loading, cancelarCita } = useAppointments(clienteId);
 
-    // 4. Funciones de Botones
     const handleCancelConfirm = async () => {
-        // Usamos la función que viene del Hook
         const exito = await cancelarCita(cancelModal.idToCancel);
         
         if (exito) {
@@ -38,7 +31,6 @@ const NutritionAppointments = () => {
         alert("Próximamente: Se abrirá el calendario para elegir nueva fecha y hora.");
     };
 
-    // 5. Renderizado Visual (UI)
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center p-10 text-emerald-400">

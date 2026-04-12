@@ -3,7 +3,7 @@ import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut } from 'lucid
 
 const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
-        { id: 'HomeNutri', label: 'Inicio', icon: Home },      
+        { id: 'inicio', label: 'Inicio', icon: Home },      
         { id: 'citas', label: 'Citas', icon: Stethoscope },
         { id: 'calculadora', label: 'Calculadora', icon: Calculator },
         { id: 'dietas', label: 'Dietas', icon: BookOpen },
