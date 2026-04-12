@@ -156,6 +156,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Pagos a entrenadores 
+    match /pagos_entrenadores/{paymentId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.trainer_id ||
+        request.auth.token.email == resource.data.trainer_email
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Solicitudes de factura (cliente crea, admin gestiona)
     match /facturaRequests/{requestId} {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.requesterUid == request.auth.uid);
