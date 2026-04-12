@@ -27,6 +27,7 @@ import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
 import NutriologoPortal from './components/nutriologo/NutriologoPortal';
 import ReportesFacturacion from './components/ReportesFacturacion';
+import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 import { AssistantProvider } from './components/asistente/ContextoAsistente';
 import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
@@ -228,28 +229,28 @@ function NutriologoArea() {
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
-  
+
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
-  
+
   const handleUserRegistered = () => {
     setRefreshHealthProfiles(prev => prev + 1);
     setRefreshList(prev => prev + 1);
   };
-  
+
   useEffect(() => {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
   const handleLogin = () => setIsAuthenticated(true);
-  
+
   const handleLogout = async () => {
     await logoutUser();
     localStorage.removeItem('firebaseUser');
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
-    window.location.href = "/"; 
+    window.location.href = "/";
   };
 
   // Si NO está autenticado, mostramos el Login del Admin
@@ -266,42 +267,45 @@ function AdminArea() {
       <Navbar onLogout={handleLogout} />
       <main className="grow container mx-auto p-6 md:p-8">
         <Routes>
-          
+
           {/* 1. Dashboard Principal */}
           <Route path="/" element={<Home />} />
-          
+
           {/* 2. Registrar Clientes Nuevos */}
           <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
-          
+
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
             <div className="space-y-8">
-               <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
-               
-               <UserMembershipList refreshTrigger={refreshList} />
+              <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
+
+              <UserMembershipList refreshTrigger={refreshList} />
             </div>
           } />
-          
+
           {/* 4. Configuración de Tipos de Membresía */}
           <Route path="configuracion" element={<MembershipAdmin />} />
-          
+
           {/* 5. Punto de Venta */}
-          <Route path="ventas" element={<PuntoDeVenta />} /> 
+          <Route path="ventas" element={<PuntoDeVenta />} />
           <Route path="inventario" element={<Inventario />} />
-          
+
           {/* 6. Check In/Out con QR */}
           <Route path="check-in-out" element={<CheckInOut />} />
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
 
-          
+
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
           <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
           {/* 9. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
+
+          {/* 10. Mantenimiento de maquinas */}
+          <Route path="mantenimiento" element={<PortalMantenimiento modoSoloAdmin vistaInicial="admin" />} />
 
           {/* 12. Configuración Chatbot NLP */}
           <Route path="chatbot" element={<AssistantAdminConfig />} />
@@ -321,51 +325,53 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
 
-        <Route path="/equipo" element={<AboutTeam />} />
+          <Route path="/equipo" element={<AboutTeam />} />
 
-        <Route path="/cliente/login" element={<ClientLogin />} />
-        <Route path="/cliente" element={<ClientPortal />} />
-        <Route path="/nutriologo/login" element={<NutriologoLogin />} />
-        <Route path="/nutriologo" element={<NutriologoArea />} />
-        <Route path="/entrenador/login" element={<EntrenadorLogin />} />
-        <Route
-          path="/entrenador"
-          element={
-            <RequireTrainerAuth>
-              <TrainerPortal />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/entrenador/rutina/:memberId"
-          element={
-            <RequireTrainerAuth>
-              <RutinaEntrenador />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/entrenador/citas"
-          element={
-            <RequireTrainerAuth>
-              <CitasTrainer />
-            </RequireTrainerAuth>
-          }
-        />
-        <Route
-          path="/entrenador/bitacora"
-          element={
-            <RequireTrainerAuth>
-              <BitacoraEntrenador />
-            </RequireTrainerAuth>
-          }
-        />
+          <Route path="/cliente/login" element={<ClientLogin />} />
+          <Route path="/cliente" element={<ClientPortal />} />
+          <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+          <Route path="/nutriologo" element={<NutriologoArea />} />
+          <Route path="/entrenador/login" element={<EntrenadorLogin />} />
+          <Route
+            path="/entrenador"
+            element={
+              <RequireTrainerAuth>
+                <TrainerPortal />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/rutina/:memberId"
+            element={
+              <RequireTrainerAuth>
+                <RutinaEntrenador />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/citas"
+            element={
+              <RequireTrainerAuth>
+                <CitasTrainer />
+              </RequireTrainerAuth>
+            }
+          />
+          <Route
+            path="/entrenador/bitacora"
+            element={
+              <RequireTrainerAuth>
+                <BitacoraEntrenador />
+              </RequireTrainerAuth>
+            }
+          />
 
-        <Route path="/admin/*" element={<AdminArea />} />
+          <Route path="/mantenimiento" element={<PortalMantenimiento vistaInicial="usuario" />} />
 
-        <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+          <Route path="/admin/*" element={<AdminArea />} />
 
-        {/* Comodín: Cualquier otra cosa redirige al inicio */}
+          <Route path="/portal" element={<Navigate to="/entrenador" replace />} />
+
+          {/* Comodín: Cualquier otra cosa redirige al inicio */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AssistantProvider>

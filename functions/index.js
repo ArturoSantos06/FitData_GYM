@@ -191,8 +191,8 @@ const mergeSaleSnapshots = (snapshots) => {
 const buildFallbackRoutineText = (payload = {}) => {
   const goal = String(payload.goalLabel || payload.goal || "Objetivo general");
   const level = String(payload.levelLabel || payload.level || "principiante");
-  const daysPerWeek = Math.max(2, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
-  const sessionLength = Math.max(30, Math.min(120, Number(payload.sessionLength || 60) || 60));
+  const daysPerWeek = Math.max(1, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+  const sessionLength = Math.max(30, Math.min(180, Number(payload.sessionLength || 60) || 60));
   const limitations = String(payload.limitations || "sin limitaciones especificadas");
   const customRequest = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || "").trim();
 
@@ -210,6 +210,19 @@ const buildFallbackRoutineText = (payload = {}) => {
   })();
 
   const templates = {
+    1: [
+      {
+        day: "Lunes",
+        focus: "Cuerpo completo",
+        exercises: [
+          ["Sentadilla goblet", "4 series x 10 repeticiones"],
+          ["Press de banca con mancuernas", "4 series x 10 repeticiones"],
+          ["Jalon al pecho", "4 series x 10 repeticiones"],
+          ["Peso muerto rumano", "3 series x 10 repeticiones"],
+          ["Plancha frontal", "3 series x 30-45 segundos"],
+        ],
+      },
+    ],
     2: [
       {
         day: "Lunes",
@@ -626,6 +639,20 @@ const normalizeRoutineInputText = (value = "") => String(value || "")
   .replace(/\s+/g, " ")
   .trim();
 
+const normalizeRequestedSessionLength = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "";
+  }
+
+  return String(Math.max(30, Math.min(180, Math.round(numeric))));
+};
+
 const isStructuredRoutineText = (value = "") => {
   const text = String(value || "").trim();
   if (!text) return false;
@@ -644,26 +671,79 @@ const countRoutineDaySections = (value = "") => {
   return Array.isArray(matches) ? matches.length : 0;
 };
 
+const countUniqueRoutineDaySections = (value = "") => {
+  const text = String(value || "");
+  const regex = /(^|\n)\s*(\*\*)?(Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:/g;
+  const uniqueDays = new Set();
+
+  let match = regex.exec(text);
+  while (match) {
+    uniqueDays.add(String(match[3] || "").toLowerCase());
+    match = regex.exec(text);
+  }
+
+  return uniqueDays.size;
+};
+
 const isCompleteRoutineText = (value = "", daysPerWeek = 4) => {
   const structured = isStructuredRoutineText(value);
   if (!structured) return false;
 
-  const safeDays = Math.max(2, Math.min(6, Number(daysPerWeek || 4) || 4));
+  const safeDays = Math.max(1, Math.min(6, Number(daysPerWeek || 4) || 4));
   const daySections = countRoutineDaySections(value);
-  return daySections >= safeDays;
+  const uniqueDaySections = countUniqueRoutineDaySections(value);
+  return daySections === safeDays && uniqueDaySections === safeDays;
 };
 
-const buildStrictRoutinePrompt = (basePrompt = "") => [
-  basePrompt,
-  "",
-  "INSTRUCCION OBLIGATORIA:",
-  "Devuelve SOLO la rutina final completa.",
-  "No incluyas saludos, motivacion ni explicaciones introductorias.",
-  "Incluye al menos 3 dias (si la frecuencia es 2, incluye 2 dias) con encabezados por dia y ejercicios numerados.",
-  "Cada ejercicio debe traer series y repeticiones.",
-  "Usa formato compacto para evitar cortes: sin texto largo, solo datos de la rutina.",
-  "Si no puedes cumplir el formato, reescribe la respuesta hasta cumplirlo antes de finalizar.",
-].join("\n");
+const applyRequestedRoutineMetadata = (value = "", payload = {}) => {
+  const goal = String(payload.goalLabel || payload.goal || "Objetivo general").trim();
+  const level = String(payload.levelLabel || payload.level || "principiante").trim();
+  const daysPerWeek = Math.max(1, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+  const sessionLength = normalizeRequestedSessionLength(payload.sessionLength);
+  const durationLine = sessionLength
+    ? `Duracion por sesion: ${sessionLength} minutos.`
+    : "Duracion por sesion: no especificada (ajustable segun disponibilidad).";
+
+  const textWithoutMetadata = String(value || "")
+    .split("\n")
+    .filter((line) => !/^\s*(Objetivo|Nivel|Frecuencia|Duraci[oó]n por sesi[oó]n)\s*:/i.test(String(line || "")))
+    .join("\n")
+    .trim();
+
+  return [
+    `Objetivo: ${goal}.`,
+    `Nivel: ${level}.`,
+    `Frecuencia: ${daysPerWeek} dias por semana.`,
+    durationLine,
+    "",
+    textWithoutMetadata,
+  ].join("\n").trim();
+};
+
+const buildStrictRoutinePrompt = (basePrompt = "", payload = {}) => {
+  const safeDays = Math.max(1, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+  const safeSessionLength = normalizeRequestedSessionLength(payload.sessionLength);
+  const safeGoal = String(payload.goalLabel || payload.goal || "Objetivo general").trim();
+  const safeLevel = String(payload.levelLabel || payload.level || "principiante").trim();
+  const durationConstraint = safeSessionLength
+    ? `Respeta EXACTAMENTE la duracion por sesion=${safeSessionLength} minutos.`
+    : "Si no se especifica duracion, NO inventes una fija; propone una ventana flexible (por ejemplo 45-75 min).";
+
+  return [
+    basePrompt,
+    "",
+    "INSTRUCCION OBLIGATORIA:",
+    "Devuelve SOLO la rutina final completa.",
+    "No incluyas saludos, motivacion ni explicaciones introductorias.",
+    `Incluye EXACTAMENTE ${safeDays} dias de entrenamiento con encabezados por dia y ejercicios numerados.`,
+    "No agregues dias extra ni omitas dias.",
+    `Respeta EXACTAMENTE estos parametros: Objetivo='${safeGoal}' y Nivel='${safeLevel}'.`,
+    durationConstraint,
+    "Cada ejercicio debe traer series y repeticiones.",
+    "Usa formato compacto para evitar cortes: sin texto largo, solo datos de la rutina.",
+    "Si no puedes cumplir el formato, reescribe la respuesta hasta cumplirlo antes de finalizar.",
+  ].join("\n");
+};
 
 const isGreetingOnlyRoutineRequest = (payload = {}) => {
   const combinedText = [payload.preferences, payload.extraNotes]
@@ -738,9 +818,24 @@ const isRoutineRelatedRequest = (payload = {}) => {
     "push",
     "pull",
     "legs",
+    "plan",
+    "entreno",
+    "entrenar",
+    "hazme",
+    "armame",
+    "generame",
+    "creame",
+    "enfocado",
+    "enfocada",
   ];
 
-  return routineKeywords.some((keyword) => combinedText.includes(keyword));
+  if (routineKeywords.some((keyword) => combinedText.includes(keyword))) {
+    return true;
+  }
+
+  const hasActionIntent = /(hazme|armame|genera|generame|crea|creame)/.test(combinedText);
+  const hasTrainingContext = /(rutina|plan|entreno|entrenamiento|ejercicio|ejercicios|musculo|grasa|fuerza|cardio)/.test(combinedText);
+  return hasActionIntent && hasTrainingContext;
 };
 
 const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => {
@@ -750,7 +845,14 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
   }
 
   const safePayload = payload || {};
-  if (safePayload.messageIntent === "greeting" || isGreetingOnlyRoutineRequest(safePayload)) {
+  const requestedDaysPerWeek = Math.max(1, Math.min(6, Number(safePayload.daysPerWeek || 4) || 4));
+  const requestedSessionLength = normalizeRequestedSessionLength(safePayload.sessionLength);
+  const normalizedPayload = {
+    ...safePayload,
+    daysPerWeek: requestedDaysPerWeek,
+    sessionLength: requestedSessionLength,
+  };
+  if (normalizedPayload.messageIntent === "greeting" || isGreetingOnlyRoutineRequest(normalizedPayload)) {
     logger.info("AI routine response", {
       provider: "local",
       model: "greeting-guard",
@@ -766,7 +868,7 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
     };
   }
 
-  if (!isRoutineRelatedRequest(safePayload)) {
+  if (!isRoutineRelatedRequest(normalizedPayload)) {
     logger.info("AI routine response", {
       provider: "local",
       model: "intent-guard",
@@ -782,16 +884,16 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
     };
   }
 
-  const prompt = buildAiRoutinePrompt(safePayload);
+  const prompt = buildAiRoutinePrompt(normalizedPayload);
   const apiKey = String(GEMINI_API_KEY.value() || process.env.GEMINI_API_KEY || "").trim();
 
   if (!apiKey) {
-    const routineText = buildFallbackRoutineText(safePayload);
+    const routineText = buildFallbackRoutineText(normalizedPayload);
     const historyEntry = await saveAiRoutineHistory({
       admin,
       uid: safeUid,
       payload: {
-        ...safePayload,
+        ...normalizedPayload,
         ownerEmail: authToken?.email || safePayload.ownerEmail || null,
         ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
       },
@@ -855,7 +957,7 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
       selectedModel = modelName;
       routineText = extractGeminiText(responseData);
 
-      if (!isCompleteRoutineText(routineText, safePayload.daysPerWeek)) {
+      if (!isCompleteRoutineText(routineText, requestedDaysPerWeek)) {
         const strictResponse = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
           {
@@ -870,7 +972,7 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
               contents: [
                 {
                   role: "user",
-                  parts: [{ text: buildStrictRoutinePrompt(prompt) }],
+                  parts: [{ text: buildStrictRoutinePrompt(prompt, normalizedPayload) }],
                 },
               ],
               generationConfig: {
@@ -885,18 +987,21 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
         const strictData = await strictResponse.json().catch(() => ({}));
         if (strictResponse.ok) {
           const strictText = extractGeminiText(strictData);
-          if (isCompleteRoutineText(strictText, safePayload.daysPerWeek)) {
+          if (isCompleteRoutineText(strictText, requestedDaysPerWeek)) {
             routineText = strictText;
           }
         }
       }
 
-      if (isCompleteRoutineText(routineText, safePayload.daysPerWeek)) {
+      if (isCompleteRoutineText(routineText, requestedDaysPerWeek)) {
         break;
       }
 
-      logger.warn("Gemini returned non-structured routine text", {
+      logger.warn("Gemini returned routine with invalid day count/structure", {
         model: modelName,
+        requestedDaysPerWeek,
+        returnedDaySections: countRoutineDaySections(routineText),
+        returnedUniqueDaySections: countUniqueRoutineDaySections(routineText),
       });
       routineText = "";
       continue;
@@ -921,12 +1026,12 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
   }
 
   if (!routineText) {
-    const fallbackRoutineText = buildFallbackRoutineText(safePayload);
+    const fallbackRoutineText = buildFallbackRoutineText(normalizedPayload);
     const fallbackHistoryEntry = await saveAiRoutineHistory({
       admin,
       uid: safeUid,
       payload: {
-        ...safePayload,
+        ...normalizedPayload,
         ownerEmail: authToken?.email || safePayload.ownerEmail || null,
         ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
       },
@@ -952,11 +1057,13 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
     };
   }
 
+  routineText = applyRequestedRoutineMetadata(routineText, normalizedPayload);
+
   const historyEntry = await saveAiRoutineHistory({
     admin,
     uid: safeUid,
     payload: {
-      ...safePayload,
+      ...normalizedPayload,
       ownerEmail: authToken?.email || safePayload.ownerEmail || null,
       ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
     },

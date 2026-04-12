@@ -194,8 +194,37 @@ service cloud.firestore {
     }
 
     match /users/{userId}/aiRoutineHistory/{historyId} {
-      allow read: if isAdmin() || isOwner(userId);
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          isOwner(userId) ||
+          resource.data.ownerUid == request.auth.uid ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid) ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.email == request.auth.token.email)
+        )
+      );
       allow create, update, delete: if false;
+    }
+
+    // Catalogo de maquinas para mantenimiento
+    match /catalogo_maquinas/{machineId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Reportes de mantenimiento generados por clientes
+    match /reportes_mantenimiento/{reportId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.creadoPorUid == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.creadoPorUid == request.auth.uid &&
+        request.resource.data.maquinaId is string &&
+        request.resource.data.maquinaNombre is string;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /memberRoutines/{memberId} {

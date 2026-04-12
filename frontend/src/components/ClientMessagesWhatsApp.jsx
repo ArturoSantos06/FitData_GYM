@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles } from 'lucide-react';
+import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { useAssistant } from './asistente/ContextoAsistente';
 import { auth } from '../firebase/config';
 import { generateAiRoutine, subscribeAiRoutineHistory } from '../firebase/aiRoutineService';
+import { suscribirCatalogoMaquinas } from '../firebase/mantenimiento';
+import FormularioReporteEnChat from './mantenimiento/FormularioReporteEnChat';
 
 const GOAL_OPTIONS = [
     { value: 'muscle_gain', label: 'Ganar masa muscular' },
@@ -31,6 +33,8 @@ const TIME_OPTIONS = [
     { value: '180', label: '3 horas' },
 ];
 
+const DAYS_PER_WEEK_OPTIONS = ['1', '2', '3', '4', '5', '6'];
+
 function formatBubbleTime(value) {
     try {
         const date = value?.toDate?.() || new Date(value || Date.now());
@@ -45,6 +49,11 @@ function formatBubbleTime(value) {
 
 function sanitizeNumericInput(value) {
     return String(value || '').replace(/[^0-9]/g, '');
+}
+
+function sanitizeDaysPerWeekInput(value) {
+    const numeric = Number(sanitizeNumericInput(value) || 4);
+    return String(Math.max(1, Math.min(6, numeric)));
 }
 
 function normalizeChatText(value) {
@@ -147,9 +156,24 @@ function isRoutineRelatedMessage(value) {
         'push',
         'pull',
         'legs',
+        'plan',
+        'entreno',
+        'entrenar',
+        'hazme',
+        'armame',
+        'generame',
+        'creame',
+        'enfocado',
+        'enfocada',
     ];
 
-    return routineKeywords.some((keyword) => normalized.includes(keyword));
+    if (routineKeywords.some((keyword) => normalized.includes(keyword))) {
+        return true;
+    }
+
+    const hasActionIntent = /(hazme|armame|genera|generame|crea|creame)/.test(normalized);
+    const hasTrainingContext = /(rutina|plan|entreno|entrenamiento|ejercicio|ejercicios|musculo|grasa|fuerza|cardio)/.test(normalized);
+    return hasActionIntent && hasTrainingContext;
 }
 
 function normalizeDurationToMinutes(value) {
@@ -213,10 +237,20 @@ function ClientMessagesWhatsApp() {
         {
             id: 'support_welcome',
             role: 'assistant',
-            text: 'Hola, soy Ayuda FitData. Te puedo responder dudas sobre horarios, ubicacion y reglamento.',
+            text: 'Hola, soy Ayuda FitData. Te puedo responder dudas sobre horarios, ubicacion y reglamento. Tambien puedo ayudarte a reportar una maquina descompuesta.',
             createdAt: Date.now(),
         },
     ]);
+    const [maintenanceMessages, setMaintenanceMessages] = useState([
+        {
+            id: 'maintenance_welcome',
+            role: 'assistant',
+            text: 'Hola. Este es el apartado de Mensajes para reportar maquinas echadas a perder. Puedes abrir el formulario y enviar foto de evidencia.',
+            createdAt: Date.now(),
+        },
+    ]);
+    const [catalogoMaquinas, setCatalogoMaquinas] = useState([]);
+    const [catalogoError, setCatalogoError] = useState('');
 
     const [aiSettings, setAiSettings] = useState({
         goal: 'recomposition',
@@ -274,7 +308,31 @@ function ClientMessagesWhatsApp() {
         };
     }, []);
 
+    useEffect(() => {
+        const unsubscribeCatalogo = suscribirCatalogoMaquinas(
+            (maquinas) => {
+                setCatalogoMaquinas(maquinas);
+                setCatalogoError('');
+            },
+            (error) => {
+                const message = String(error?.message || 'No se pudo cargar el catalogo de maquinas.');
+                if (/permisos suficientes|permission|insufficient/i.test(message)) {
+                    setCatalogoError('No tienes acceso al catalogo de mantenimiento con esta cuenta.');
+                    return;
+                }
+                setCatalogoError(message);
+            }
+        );
+
+        return () => unsubscribeCatalogo?.();
+    }, []);
+
+    useEffect(() => {
+        setChatInput('');
+    }, [activeChat]);
+
     const supportPreview = supportMessages[supportMessages.length - 1]?.text || 'Sin mensajes';
+    const maintenancePreview = maintenanceMessages[maintenanceMessages.length - 1]?.text || 'Reporta una maquina con foto.';
     const aiPreview = aiHistory[0]?.requestSummary || 'Describe tu objetivo para generar una rutina.';
 
     const aiMessages = useMemo(() => {
@@ -326,7 +384,11 @@ function ClientMessagesWhatsApp() {
         return formatted;
     }, [aiHistory, localAiMessages, pendingAiPrompt]);
 
-    const displayedMessages = activeChat === 'ia' ? aiMessages : supportMessages;
+    const displayedMessages = activeChat === 'ia'
+        ? aiMessages
+        : activeChat === 'mantenimiento'
+            ? maintenanceMessages
+            : supportMessages;
 
     useEffect(() => {
         if (chatBodyRef.current) {
@@ -340,6 +402,38 @@ function ClientMessagesWhatsApp() {
             ...prev,
             { id: `su_${Date.now()}`, role: 'user', text: question, createdAt: Date.now() },
             { id: `sa_${Date.now()}_${Math.random()}`, role: 'assistant', text: answer, createdAt: Date.now() },
+        ]);
+    };
+
+    const handleOpenMaintenanceReport = () => {
+        setActiveChat('mantenimiento');
+        setMaintenanceMessages((prev) => [
+            ...prev,
+            {
+                id: `sa_report_open_${Date.now()}_${Math.random()}`,
+                role: 'assistant',
+                text: 'Claro. Llena el formulario de abajo para reportar la maquina descompuesta y enviar evidencia.',
+                createdAt: Date.now(),
+            },
+        ]);
+    };
+
+    const handleReportCreated = ({ maquinaNombre, descripcion }) => {
+        const createdAt = Date.now();
+        setMaintenanceMessages((prev) => [
+            ...prev,
+            {
+                id: `su_report_${createdAt}_${Math.random()}`,
+                role: 'user',
+                text: `Reporte de maquina: ${maquinaNombre}\nDetalle: ${descripcion}`,
+                createdAt,
+            },
+            {
+                id: `sa_report_ok_${createdAt}_${Math.random()}`,
+                role: 'assistant',
+                text: 'Listo, tu reporte fue enviado al panel de mantenimiento. Gracias por avisar.',
+                createdAt,
+            },
         ]);
     };
 
@@ -397,7 +491,17 @@ function ClientMessagesWhatsApp() {
         }
 
         if (activeChat === 'soporte') {
+            const normalized = normalizeChatText(text);
+            if ((normalized.includes('report') || normalized.includes('descomp')) && normalized.includes('maquina')) {
+                handleOpenMaintenanceReport();
+                return;
+            }
             handleSupportQuickQuestion(text);
+            return;
+        }
+
+        if (activeChat === 'mantenimiento') {
+            handleOpenMaintenanceReport();
             return;
         }
 
@@ -408,7 +512,7 @@ function ClientMessagesWhatsApp() {
         try {
             const goalLabel = GOAL_OPTIONS.find((item) => item.value === aiSettings.goal)?.label || aiSettings.goal;
             const levelLabel = LEVEL_OPTIONS.find((item) => item.value === aiSettings.level)?.label || aiSettings.level;
-            const safeDaysPerWeek = sanitizeNumericInput(aiSettings.daysPerWeek) || '4';
+            const safeDaysPerWeek = sanitizeDaysPerWeekInput(aiSettings.daysPerWeek);
             const safeSessionLength = normalizeDurationToMinutes(aiSettings.sessionLength);
             const conversationContext = aiMessages
                 .slice(-4)
@@ -454,7 +558,24 @@ function ClientMessagesWhatsApp() {
 
             setPendingAiPrompt('');
         } catch (error) {
-            setAiSendError(error?.message || 'No se pudo generar la rutina con IA.');
+            const createdAt = Date.now();
+            const safeErrorMessage = error?.message || 'No se pudo generar la rutina con IA.';
+            setAiSendError(safeErrorMessage);
+            setLocalAiMessages((prev) => [
+                ...prev,
+                {
+                    id: `local_u_${createdAt}_${Math.random()}`,
+                    role: 'user',
+                    text,
+                    createdAt,
+                },
+                {
+                    id: `local_a_${createdAt}_${Math.random()}`,
+                    role: 'assistant',
+                    text: `No pude generar tu rutina en este intento. ${safeErrorMessage}`,
+                    createdAt,
+                },
+            ]);
             setPendingAiPrompt('');
         } finally {
             setIsGenerating(false);
@@ -505,18 +626,35 @@ function ClientMessagesWhatsApp() {
                                     </div>
                                 </div>
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveChat('mantenimiento')}
+                                className={`mt-2 w-full rounded-xl px-3 py-3 text-left transition ${activeChat === 'mantenimiento' ? 'bg-[#202c33] border border-cyan-500/40' : 'hover:bg-[#1f2c33] border border-transparent'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20 text-amber-300">
+                                        <Wrench size={18} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-slate-100">Reporte de Máquinas</p>
+                                        <p className="truncate text-xs text-slate-400">{maintenancePreview}</p>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
                     </aside>
 
                     <section className="flex min-h-0 flex-1 flex-col">
                         <header className="border-b border-slate-700 bg-[#202c33] px-4 py-3">
                             <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
-                                    {activeChat === 'ia' ? <Bot size={18} /> : <MessageCircle size={18} />}
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-200' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
+                                    {activeChat === 'ia' ? <Bot size={18} /> : activeChat === 'mantenimiento' ? <Wrench size={18} /> : <MessageCircle size={18} />}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-slate-100">{activeChat === 'ia' ? 'Entrenador IA' : 'Ayuda y Soporte'}</p>
-                                    <p className="text-xs text-slate-400">{activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : 'Preguntas frecuentes del gimnasio'}</p>
+                                    <p className="text-sm font-semibold text-slate-100">{activeChat === 'ia' ? 'Entrenador IA' : activeChat === 'mantenimiento' ? 'Reporte de Máquinas' : 'Ayuda y Soporte'}</p>
+                                    <p className="text-xs text-slate-400">{activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : activeChat === 'mantenimiento' ? 'Reporta maquinas dañadas con foto' : 'Preguntas frecuentes del gimnasio'}</p>
                                 </div>
                             </div>
 
@@ -554,12 +692,17 @@ function ClientMessagesWhatsApp() {
 
                                     <label className="space-y-1">
                                         <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Dias</span>
-                                        <input
+                                        <select
                                             value={aiSettings.daysPerWeek}
-                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, daysPerWeek: sanitizeNumericInput(event.target.value) }))}
+                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, daysPerWeek: sanitizeDaysPerWeekInput(event.target.value) }))}
                                             className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
-                                            placeholder="Ej. 4"
-                                        />
+                                        >
+                                            {DAYS_PER_WEEK_OPTIONS.map((value) => (
+                                                <option key={value} value={value}>
+                                                    {value}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </label>
 
                                     <label className="space-y-1">
@@ -623,38 +766,57 @@ function ClientMessagesWhatsApp() {
                                 </div>
                             )}
 
-                            {aiHistoryError && (
-                                <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                                    No se pudo leer el historial en Firestore, pero puedes seguir generando rutinas en este chat.
+                            {activeChat === 'mantenimiento' && (
+                                <div className="mb-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                                    Este chat queda fijo para reportar maquinas echadas a perder. Usa el formulario de abajo para elegir la maquina y adjuntar foto.
                                 </div>
                             )}
 
-                            {aiSendError && (
+                            {activeChat === 'mantenimiento' && catalogoError && (
+                                <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                    {catalogoError}
+                                </div>
+                            )}
+
+                            {activeChat === 'ia' && aiHistoryError && (
+                                <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                    No se pudo leer el historial de rutinas con esta sesion. Aun puedes generar nuevas rutinas en este chat.
+                                </div>
+                            )}
+
+                            {activeChat === 'ia' && aiSendError && (
                                 <div className="mb-2 rounded-lg border border-red-400/30 bg-red-500/15 px-3 py-2 text-xs text-red-200">
                                     {aiSendError}
                                 </div>
                             )}
 
-                            <form onSubmit={handleSend} className="flex items-center gap-2">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">
-                                    {activeChat === 'ia' ? <Dumbbell size={16} /> : <MessageCircle size={16} />}
-                                </div>
-
-                                <input
-                                    value={chatInput}
-                                    onChange={(event) => setChatInput(event.target.value)}
-                                    placeholder={activeChat === 'ia' ? 'Describe tu objetivo y te genero una rutina...' : 'Escribe tu duda...'}
-                                    className="h-11 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                            {activeChat === 'mantenimiento' ? (
+                                <FormularioReporteEnChat
+                                    maquinas={catalogoMaquinas}
+                                    onSuccess={handleReportCreated}
                                 />
+                            ) : (
+                                <form onSubmit={handleSend} className="flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">
+                                        {activeChat === 'ia' ? <Dumbbell size={16} /> : <MessageCircle size={16} />}
+                                    </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={isGenerating && activeChat === 'ia'}
-                                    className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-cyan-600 px-3 text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {isGenerating && activeChat === 'ia' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                                </button>
-                            </form>
+                                    <input
+                                        value={chatInput}
+                                        onChange={(event) => setChatInput(event.target.value)}
+                                        placeholder={activeChat === 'ia' ? 'Describe tu objetivo y te genero una rutina...' : 'Escribe tu duda...'}
+                                        className="h-11 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                                    />
+
+                                    <button
+                                        type="submit"
+                                        disabled={isGenerating && activeChat === 'ia'}
+                                        className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-cyan-600 px-3 text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isGenerating && activeChat === 'ia' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    </button>
+                                </form>
+                            )}
                         </footer>
                     </section>
                 </div>
