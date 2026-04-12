@@ -28,6 +28,7 @@ const getLocalMXDateISO = () => {
 };
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const TRAINER_PAYMENTS_COLLECTION = "pagos_entrenadores";
 
 const normalizeText = (value) =>
   String(value || '')
@@ -1575,9 +1576,8 @@ export const createTrainerPayment = async (paymentData) => {
 
     const folio = `PT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    await withAuthRetry(() => addDoc(collection(db, "ventas"), {
+    await withAuthRetry(() => addDoc(collection(db, TRAINER_PAYMENTS_COLLECTION), {
       folio,
-      tipo_venta: "PAGO_ENTRENADOR",
       categoria: "EGRESO",
       trainer_id: String(trainerId || ""),
       trainer_email: String(trainerEmail || ""),
@@ -1608,21 +1608,19 @@ export const createTrainerPayment = async (paymentData) => {
 
 export const getTrainerPayments = async (trainerId = null) => {
   try {
-    const paymentQuery = query(
-      collection(db, "ventas"),
-      where("tipo_venta", "==", "PAGO_ENTRENADOR")
-    );
+    const normalizedTrainerId = trainerId ? String(trainerId).trim() : null;
+    const paymentQuery = normalizedTrainerId
+      ? query(
+          collection(db, TRAINER_PAYMENTS_COLLECTION),
+          where("trainer_id", "==", normalizedTrainerId)
+        )
+      : query(collection(db, TRAINER_PAYMENTS_COLLECTION));
 
     const snapshot = await withAuthRetry(() => getDocs(paymentQuery));
     let payments = snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data(),
     }));
-
-    if (trainerId) {
-      const normalizedTrainerId = String(trainerId).trim();
-      payments = payments.filter((p) => String(p.trainer_id || "").trim() === normalizedTrainerId);
-    }
 
     payments.sort((a, b) => {
       const aDate = a.createdAt?.toDate?.() || new Date(a.fecha || 0);
