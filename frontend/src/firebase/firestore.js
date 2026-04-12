@@ -2122,3 +2122,175 @@ export const removeNutritionistFromClient = async (clientId) => {
   }
 };
 
+// NUTRITIONIST REVIEWS
+export const addNutritionistReview = async (clientId, nutritionistId, rating, comment = '') => {
+  try {
+    // Verificar que el cliente tenga asignado este nutriólogo
+    const assignment = await getClientNutritionistAssignment(clientId);
+    if (!assignment.success || assignment.data.nutritionistId !== nutritionistId) {
+      return { success: false, error: 'Solo puedes calificar a tu nutriólogo asignado' };
+    }
+
+    // Verificar si ya dejó reseña
+    const existingQuery = query(
+      collection(db, 'nutritionist_reviews'),
+      where('clientId', '==', clientId),
+      where('nutritionistId', '==', nutritionistId)
+    );
+    const existingSnap = await getDocs(existingQuery);
+    if (!existingSnap.empty) {
+      return { success: false, error: 'Ya has calificado a este nutriólogo' };
+    }
+
+    await withAuthRetry(() =>
+      addDoc(collection(db, 'nutritionist_reviews'), {
+        clientId,
+        nutritionistId,
+        rating: Math.max(1, Math.min(5, rating)), // Clamp 1-5
+        comment: comment.trim(),
+        createdAt: serverTimestamp()
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getNutritionistReviews = async (nutritionistIds) => {
+  try {
+    if (!nutritionistIds || nutritionistIds.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    const reviewsQuery = query(
+      collection(db, 'nutritionist_reviews'),
+      where('nutritionistId', 'in', nutritionistIds.slice(0, 10)) // Firestore limita a 10 en 'in'
+    );
+    const querySnap = await getDocs(reviewsQuery);
+
+    const reviewsByNutri = {};
+    querySnap.docs.forEach(doc => {
+      const data = doc.data();
+      const nutriId = data.nutritionistId;
+      if (!reviewsByNutri[nutriId]) {
+        reviewsByNutri[nutriId] = [];
+      }
+      reviewsByNutri[nutriId].push(data);
+    });
+
+    return { success: true, data: reviewsByNutri };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// TRAINER ASSIGNMENTS
+export const assignTrainerToClient = async (clientId, trainerId) => {
+  try {
+    // Verificar si ya tiene asignado
+    const existing = await getClientTrainerAssignment(clientId);
+    if (existing.success && existing.data) {
+      return { success: false, error: 'Ya tienes un entrenador asignado' };
+    }
+
+    await withAuthRetry(() =>
+      setDoc(doc(db, 'client_trainer_assignments', clientId), {
+        clientId,
+        trainerId,
+        assignedAt: serverTimestamp(),
+        status: 'active',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getClientTrainerAssignment = async (clientId) => {
+  try {
+    const docSnap = await withAuthRetry(() => getDoc(doc(db, 'client_trainer_assignments', clientId)));
+    if (docSnap.exists()) {
+      return { success: true, data: docSnap.data() };
+    }
+    return { success: false, error: 'No encontrado' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const removeTrainerFromClient = async (clientId) => {
+  try {
+    await withAuthRetry(() => deleteDoc(doc(db, 'client_trainer_assignments', clientId)));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// TRAINER REVIEWS
+export const addTrainerReview = async (clientId, trainerId, rating, comment = '') => {
+  try {
+    // Verificar que el cliente tenga asignado este entrenador
+    const assignment = await getClientTrainerAssignment(clientId);
+    if (!assignment.success || assignment.data.trainerId !== trainerId) {
+      return { success: false, error: 'Solo puedes calificar a tu entrenador asignado' };
+    }
+
+    // Verificar si ya dejó reseña
+    const existingQuery = query(
+      collection(db, 'trainer_reviews'),
+      where('clientId', '==', clientId),
+      where('trainerId', '==', trainerId)
+    );
+    const existingSnap = await getDocs(existingQuery);
+    if (!existingSnap.empty) {
+      return { success: false, error: 'Ya has calificado a este entrenador' };
+    }
+
+    await withAuthRetry(() =>
+      addDoc(collection(db, 'trainer_reviews'), {
+        clientId,
+        trainerId,
+        rating: Math.max(1, Math.min(5, rating)), // Clamp 1-5
+        comment: comment.trim(),
+        createdAt: serverTimestamp()
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTrainerReviews = async (trainerIds) => {
+  try {
+    if (!trainerIds || trainerIds.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    const reviewsQuery = query(
+      collection(db, 'trainer_reviews'),
+      where('trainerId', 'in', trainerIds.slice(0, 10)) // Firestore limita a 10 en 'in'
+    );
+    const querySnap = await getDocs(reviewsQuery);
+
+    const reviewsByTrainer = {};
+    querySnap.docs.forEach(doc => {
+      const data = doc.data();
+      const trainerId = data.trainerId;
+      if (!reviewsByTrainer[trainerId]) {
+        reviewsByTrainer[trainerId] = [];
+      }
+      reviewsByTrainer[trainerId].push(data);
+    });
+
+    return { success: true, data: reviewsByTrainer };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
