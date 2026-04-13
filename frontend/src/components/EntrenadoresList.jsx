@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
-import { getCurrentUser, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
+import { getCurrentUser, waitForAuthReady, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
 
 const EntrenadoresList = () => {
   const [entrenadores, setEntrenadores] = useState([]);
@@ -18,7 +18,9 @@ const EntrenadoresList = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
+        await waitForAuthReady();
+
         // Obtener cliente actual
         const currentUser = getCurrentUser();
         if (!currentUser) {
@@ -26,26 +28,26 @@ const EntrenadoresList = () => {
           return;
         }
         setCurrentClientId(currentUser.uid);
-        
+
         // Verificar si ya tiene entrenador asignado
         const assignment = await getClientTrainerAssignment(currentUser.uid);
         if (assignment.success) {
           setAssignedTrainerId(assignment.data.trainerId);
         }
-        
+
         // Obtener lista de entrenadores
         console.log("Iniciando consulta de entrenadores a Firestore...");
         const q = query(collection(db, "users"), where("role", "in", ["trainer", "entrenador"]));
         const querySnapshot = await getDocs(q);
-        
+
         const data = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         console.log("Entrenadores encontrados:", data);
         setEntrenadores(data);
-        
+
         // Obtener reseñas
         if (data.length > 0) {
           const trainerIds = data.map(e => e.id);

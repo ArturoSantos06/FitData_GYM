@@ -120,7 +120,8 @@ export {
 // Export Trainer Review services
 export {
   addTrainerReview,
-  getTrainerReviews
+  getTrainerReviews,
+  waitForAuthReady
 } from './firestore';
 
 // Export Storage services

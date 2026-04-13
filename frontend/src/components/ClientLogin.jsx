@@ -20,6 +20,13 @@ function ClientLogin() {
       const result = await loginUser(email, password);
       
       if (result.success) {
+        // Forzar refresh del token para asegurar que la sesión Firestore esté lista
+        try {
+          await result.user.getIdToken(true);
+        } catch (tokenError) {
+          console.warn('No se pudo refrescar el token después del login:', tokenError);
+        }
+
         // Guardar info del usuario en localStorage (compatible con el resto del código)
         localStorage.setItem('firebaseUser', JSON.stringify(result.user));
         

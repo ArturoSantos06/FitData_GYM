@@ -36,6 +36,8 @@ const normalizeText = (value) =>
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
+const getAuthenticatedUserId = () => auth.currentUser?.uid || null;
+
 const isPermissionDeniedError = (error) => {
   const raw = String(error?.message || error || '');
   const code = String(error?.code || '');
@@ -56,7 +58,7 @@ const normalizeFirestoreError = (error) => {
   return raw;
 };
 
-const waitForAuthReady = (timeoutMs = 3500) =>
+export const waitForAuthReady = (timeoutMs = 3500) =>
   new Promise((resolve) => {
     if (auth.currentUser) {
       resolve(auth.currentUser);
@@ -86,6 +88,9 @@ const withAuthRetry = async (operation, maxAttempts = 4) => {
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
+      if (auth.currentUser?.getIdToken) {
+        await auth.currentUser.getIdToken(true);
+      }
       return await operation();
     } catch (error) {
       lastError = error;
@@ -2103,13 +2108,14 @@ export const assignNutritionistToClient = async (clientId, nutritionistId) => {
 
 export const getClientNutritionistAssignment = async (clientId) => {
   try {
+    await waitForAuthReady();
     const docSnap = await withAuthRetry(() => getDoc(doc(db, 'client_nutritionist_assignments', clientId)));
     if (docSnap.exists()) {
       return { success: true, data: docSnap.data() };
     }
     return { success: false, error: 'No encontrado' };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -2118,13 +2124,28 @@ export const removeNutritionistFromClient = async (clientId) => {
     await withAuthRetry(() => deleteDoc(doc(db, 'client_nutritionist_assignments', clientId)));
     return { success: true };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
 // NUTRITIONIST REVIEWS
 export const addNutritionistReview = async (clientId, nutritionistId, rating, comment = '') => {
   try {
+    await waitForAuthReady();
+    const authUid = getAuthenticatedUserId();
+    if (!authUid) {
+      return { success: false, error: 'No hay sesión activa. Por favor inicia sesión.' };
+    }
+    if (!clientId || clientId !== authUid) {
+      clientId = authUid;
+    }
+
+    if (auth.currentUser?.getIdToken) {
+      await auth.currentUser.getIdToken(true);
+    }
+
+    console.debug('addNutritionistReview', { authUid, clientId, nutritionistId, rating, comment });
+
     // Verificar que el cliente tenga asignado este nutriólogo
     const assignment = await getClientNutritionistAssignment(clientId);
     if (!assignment.success || assignment.data.nutritionistId !== nutritionistId) {
@@ -2153,7 +2174,8 @@ export const addNutritionistReview = async (clientId, nutritionistId, rating, co
     );
     return { success: true };
   } catch (error) {
-    return { success: false, error: error.message };
+    console.error('addNutritionistReview failed', error);
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -2212,13 +2234,14 @@ export const assignTrainerToClient = async (clientId, trainerId) => {
 
 export const getClientTrainerAssignment = async (clientId) => {
   try {
+    await waitForAuthReady();
     const docSnap = await withAuthRetry(() => getDoc(doc(db, 'client_trainer_assignments', clientId)));
     if (docSnap.exists()) {
       return { success: true, data: docSnap.data() };
     }
     return { success: false, error: 'No encontrado' };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
@@ -2227,13 +2250,28 @@ export const removeTrainerFromClient = async (clientId) => {
     await withAuthRetry(() => deleteDoc(doc(db, 'client_trainer_assignments', clientId)));
     return { success: true };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 
 // TRAINER REVIEWS
 export const addTrainerReview = async (clientId, trainerId, rating, comment = '') => {
   try {
+    await waitForAuthReady();
+    const authUid = getAuthenticatedUserId();
+    if (!authUid) {
+      return { success: false, error: 'No hay sesión activa. Por favor inicia sesión.' };
+    }
+    if (!clientId || clientId !== authUid) {
+      clientId = authUid;
+    }
+
+    if (auth.currentUser?.getIdToken) {
+      await auth.currentUser.getIdToken(true);
+    }
+
+    console.debug('addTrainerReview', { authUid, clientId, trainerId, rating, comment });
+
     // Verificar que el cliente tenga asignado este entrenador
     const assignment = await getClientTrainerAssignment(clientId);
     if (!assignment.success || assignment.data.trainerId !== trainerId) {
@@ -2262,7 +2300,8 @@ export const addTrainerReview = async (clientId, trainerId, rating, comment = ''
     );
     return { success: true };
   } catch (error) {
-    return { success: false, error: error.message };
+    console.error('addTrainerReview failed', error);
+    return { success: false, error: normalizeFirestoreError(error) };
   }
 };
 

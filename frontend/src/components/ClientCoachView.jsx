@@ -1,63 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
-
-// Herramientas exactas de Firebase //
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/config'; 
+import { getCurrentUser, waitForAuthReady, getClientTrainerAssignment, removeTrainerFromClient } from '../firebase';
 
 const ClientCoachView = () => {
     // Estados a utilizar //
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [serviceStatus, setServiceStatus] = useState('active');
     const [loading, setLoading] = useState(true);
-    const [clienteId, setClienteId] = useState(null); 
+    const [clienteId, setClienteId] = useState(null);
 
     useEffect(() => {
-        const usuarioGuardado = localStorage.getItem('firebaseUser');
-        
-        if (usuarioGuardado) {
-            const usuarioReal = JSON.parse(usuarioGuardado);
-            const idReal = usuarioReal.uid || usuarioReal.id; 
-            setClienteId(idReal);
-        } else {
-            setLoading(false);
-        }
+        const initAuth = async () => {
+            const user = await waitForAuthReady();
+            if (user) {
+                setClienteId(user.uid);
+            } else {
+                setLoading(false);
+            }
+        };
+
+        initAuth();
     }, []);
 
     useEffect(() => {
         const fetchMiEntrenador = async () => {
-            if (!clienteId) return; 
+            if (!clienteId) {
+                setLoading(false);
+                return;
+            }
 
             try {
-                const docRef = doc(db, "miembros", clienteId);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    const estado = data.entrenadorActivo === false ? 'cancelled' : 'active';
+                const assignment = await getClientTrainerAssignment(clienteId);
+                if (assignment.success && assignment.data) {
+                    const estado = assignment.data.status === 'active' ? 'active' : 'cancelled';
                     setServiceStatus(estado);
+                } else {
+                    setServiceStatus('cancelled');
                 }
             } catch (error) {
                 console.error("Error al obtener datos del cliente:", error);
+                setServiceStatus('cancelled');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchMiEntrenador();
-    }, [clienteId]); 
+    }, [clienteId]);
 
     const handleCancelService = async () => {
         try {
-            const docRef = doc(db, "miembros", clienteId);
-            
-            await updateDoc(docRef, {
-                entrenadorActivo: false
-            });
+            const result = await removeTrainerFromClient(clienteId);
+            if (!result.success) {
+                throw new Error(result.error || 'No se pudo cancelar el servicio');
+            }
 
             setServiceStatus('cancelled');
             setIsModalOpen(false);
-            
         } catch (error) {
             console.error("Error al cancelar el servicio en Firebase:", error);
             alert("Hubo un error al intentar cancelar el servicio.");

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
-import { getCurrentUser, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../firebase';
+import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../firebase';
 
 const NutriologosList = () => {
   const [nutris, setNutris] = useState([]);
@@ -62,7 +62,9 @@ const NutriologosList = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
+        await waitForAuthReady();
+
         // Obtener cliente actual
         const currentUser = getCurrentUser();
         if (!currentUser) {
@@ -70,26 +72,26 @@ const NutriologosList = () => {
           return;
         }
         setCurrentClientId(currentUser.uid);
-        
+
         // Verificar si ya tiene nutriólogo asignado
         const assignment = await getClientNutritionistAssignment(currentUser.uid);
         if (assignment.success) {
           setAssignedNutritionistId(assignment.data.nutritionistId);
         }
-        
+
         // Obtener lista de nutriólogos
         console.log("Iniciando consulta a Firestore...");
         const q = query(collection(db, "users"), where("role", "==", "nutriologo"));
         const querySnapshot = await getDocs(q);
-        
+
         const data = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         console.log("Nutriólogos encontrados:", data);
         setNutris(data);
-        
+
         // Obtener reseñas
         if (data.length > 0) {
           const nutriIds = data.map(n => n.id);
