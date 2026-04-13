@@ -51,6 +51,16 @@ function ClientHome({ onNavigateToProfile }) {
           <h2 className="text-3xl font-bold text-white mb-1">{user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user.nombre || user.username)}</h2>
           <p className="text-blue-400 font-medium mb-4">{user.email}</p>
 
+          {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
+          <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-4 py-2 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-yellow-400 font-bold text-lg">{user.gymPoints || 0}</span>
+              <span className="text-yellow-500/70 font-medium tracking-wide">GYM-Points</span>
+          </div>
+          {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
+
           <div className="mt-8 space-y-3 text-left">
             <button onClick={onNavigateToProfile} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between group transition-all duration-200">
               <div className="flex items-center gap-4">

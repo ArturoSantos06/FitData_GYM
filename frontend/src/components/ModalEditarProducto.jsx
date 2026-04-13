@@ -31,11 +31,16 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
         
         try {
             // 1. Actualizar datos del producto
+            // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+            const precioNormal = parseFloat(datos.precio);
+            const precioPuntos = precioNormal * 2;
             const updateData = {
                 nombre: datos.nombre,
-                precio: parseFloat(datos.precio),
+                precio: precioNormal,
+                precioPuntos: precioPuntos,
                 stock: parseInt(datos.stock)
             };
+            // --- FIN CÓDIGO NUEVO GYM-POINTS ---
             
             // 2. Si hay imagen nueva, subirla
             if (datos.imagen) {
@@ -108,6 +113,15 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
                             <input type="text" name="nombre" value={datos.nombre} onChange={handleChange} style={styles.input} />
                             <label style={styles.label}>Precio ($):</label>
                             <input type="number" name="precio" value={datos.precio} onChange={handleChange} style={styles.input} />
+                            {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
+                            <label style={{...styles.label, color: '#fcd34d'}}>Precio en Puntos (GYM-Points):</label>
+                            <input 
+                                type="number" 
+                                value={datos.precio ? parseFloat(datos.precio) * 2 : ''} 
+                                style={{...styles.input, background: '#334155', color: '#fcd34d', cursor: 'not-allowed'}} 
+                                readOnly 
+                            />
+                            {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
                             <label style={styles.label}>Stock:</label>
                             <input type="number" name="stock" value={datos.stock} onChange={handleChange} style={styles.input} />
                             <label style={styles.label}>Imagen:</label>

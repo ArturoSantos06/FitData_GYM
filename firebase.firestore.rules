@@ -78,7 +78,11 @@ service cloud.firestore {
                     (isAuthenticated() && (
                       resource.data.authUid == request.auth.uid ||
                       resource.data.email == request.auth.token.email
-                    ));
+                    )) ||
+                    // Permitir actualizaciones de gymPoints desde transacciones autenticadas
+                    // (admin procesando venta actualiza puntos del cliente)
+                    (isAuthenticated() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gymPoints']));
       allow delete: if isAdmin();
     }
 
@@ -323,6 +327,26 @@ service cloud.firestore {
     // Notificaciones de usuario
     match /users/{userId}/notifications/{notifId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Historial de puntos de lealtad (GYM-Points)
+    // La transacción se ejecuta del lado del admin autenticado;
+    // además, el ID de documento de users puede ser numérico (ej. '44')
+    // y diferir del auth UID, por eso también verificamos el campo authUid
+    // del documento padre y permitimos a admins autenticados.
+    match /users/{userId}/point_history/{historyId} {
+      allow read: if isAdmin() ||
+        isOwner(userId) ||
+        (isAuthenticated() &&
+          exists(/databases/$(database)/documents/users/$(userId)) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid);
+      allow create: if isAdmin() ||
+        isOwner(userId) ||
+        (isAuthenticated() &&
+          exists(/databases/$(database)/documents/users/$(userId)) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid);
+      allow update: if isAdmin() || isOwner(userId);
+      allow delete: if isAdmin();
     }
 
     // Default deny all other collections
