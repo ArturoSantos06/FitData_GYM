@@ -6,7 +6,6 @@ import ModalReprogramar from './ModalReprogramar';
 const NutritionAppointments = () => {
     const [clienteId, setClienteId] = useState(null);
     const [cancelModal, setCancelModal] = useState({ isOpen: false, idToCancel: null });
-    // 2. Agregamos el estado para controlar la ventana de reprogramar
     const [reprogramarModal, setReprogramarModal] = useState({ isOpen: false, citaSeleccionada: null });
 
     useEffect(() => {
@@ -88,7 +87,7 @@ const NutritionAppointments = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-300">
                                         <div className="flex items-center gap-2"><Calendar size={16} className="text-emerald-500" /><span>{cita.fecha}</span></div>
                                         <div className="flex items-center gap-2"><Clock size={16} className="text-emerald-500" /><span>{cita.horaInicio} - {cita.horaFin}</span></div>
-                                        <div className="flex items-center gap-2 sm:col-span-2"><User size={16} className="text-emerald-500" /><span>Nutriólogo asignado (Contactar vía app)</span></div>
+                                        <div className="flex items-center gap-2 sm:col-span-2"><User size={16} className="text-emerald-500" /><span>Nutriólogo asignado (Contactar vía mensaje)</span></div>
                                     </div>
                                 </div>
                                 {cita.estado !== 'cancelada' && (
@@ -113,7 +112,7 @@ const NutritionAppointments = () => {
                     <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700 shadow-2xl">
                         <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} className="text-red-500" /></div>
                         <h3 className="text-xl font-bold text-white text-center mb-2">¿Cancelar esta cita?</h3>
-                        <p className="text-slate-400 text-center text-sm mb-6">Tu nutriólogo será notificado. Si cancelas, tendrás que solicitar un nuevo espacio sujeto a disponibilidad.</p>
+                        <p className="text-slate-400 text-center text-sm mb-6">Tu nutriólogo será notificado. Si cancelas, tendrás que solicitar un nuevo espacio sujeto a disponibilidad2.</p>
                         <div className="flex gap-3">
                             <button onClick={() => setCancelModal({ isOpen: false, idToCancel: null })} className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors">Volver</button>
                             <button onClick={handleCancelConfirm} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors shadow-lg shadow-red-900/20">Sí, Cancelar</button>
@@ -122,7 +121,7 @@ const NutritionAppointments = () => {
                 </div>
             )}
 
-            {/* 5. Modal de Reprogramar */}
+            {/*  Modal de Reprogramar */}
             {reprogramarModal.isOpen && (
                 <ModalReprogramar 
                     citaSeleccionada={reprogramarModal.citaSeleccionada}
