@@ -13,6 +13,7 @@ const EntrenadoresList = () => {
   const [assignedTrainerId, setAssignedTrainerId] = useState(null);
   const [assigning, setAssigning] = useState(false);
   const [reviews, setReviews] = useState({});
+  const [hoveredStars, setHoveredStars] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -215,18 +216,25 @@ const EntrenadoresList = () => {
                 <div className="flex items-center gap-1">
                   {assignedTrainerId === e.id ? (
                     // Estrellas interactivas para calificar
-                    <>
+                    <div className="flex items-center">
                       {[1, 2, 3, 4, 5].map((star) => {
-                        const currentAvgStr = calculateAverageRating(e.id);
-                        const currentAvg = currentAvgStr ? parseFloat(currentAvgStr) : 0;
+                        const trainerReviews = reviews[e.id] || [];
+                        const myReview = trainerReviews.find(r => r.clientId === currentClientId);
+                        const myRating = myReview ? myReview.rating : 0;
+                        const displayRating = hoveredStars[e.id] || myRating;
+                        const isFilled = star <= displayRating;
+                        
                         return (
                           <button
                             key={star}
                             onClick={() => handleRateTrainer(e.id, star)}
-                            className="focus:outline-none"
+                            onMouseEnter={() => setHoveredStars(prev => ({ ...prev, [e.id]: star }))}
+                            onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [e.id]: 0 }))}
+                            className="focus:outline-none disabled:cursor-default"
+                            disabled={myRating > 0}
                           >
                             <Star 
-                              className={`w-4 h-4 ${star <= currentAvg ? 'text-amber-400 fill-current' : 'text-slate-600'} hover:text-amber-400 transition-colors`} 
+                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
                             />
                           </button>
                         );
@@ -234,7 +242,7 @@ const EntrenadoresList = () => {
                       <span className="text-slate-400 text-xs ml-2">
                         {calculateAverageRating(e.id) ? `(${calculateAverageRating(e.id)})` : '(Sin calificaciones)'}
                       </span>
-                    </>
+                    </div>
                   ) : (
                     // Estrellas estáticas mostrando promedio
                     <>

@@ -13,6 +13,7 @@ const NutriologosList = () => {
   const [assignedNutritionistId, setAssignedNutritionistId] = useState(null);
   const [assigning, setAssigning] = useState(false);
   const [reviews, setReviews] = useState({});
+  const [hoveredStars, setHoveredStars] = useState({});
 
   const calculateAverageRating = (nutriId) => {
     const nutriReviews = reviews[nutriId] || [];
@@ -215,18 +216,25 @@ const NutriologosList = () => {
                 <div className="flex items-center gap-1">
                   {assignedNutritionistId === n.id ? (
                     // Estrellas interactivas para calificar
-                    <>
+                    <div className="flex items-center">
                       {[1, 2, 3, 4, 5].map((star) => {
-                        const currentAvgStr = calculateAverageRating(n.id);
-                        const currentAvg = currentAvgStr ? parseFloat(currentAvgStr) : 0;
+                        const nutriReviews = reviews[n.id] || [];
+                        const myReview = nutriReviews.find(r => r.clientId === currentClientId);
+                        const myRating = myReview ? myReview.rating : 0;
+                        const displayRating = hoveredStars[n.id] || myRating;
+                        const isFilled = star <= displayRating;
+                        
                         return (
                           <button
                             key={star}
                             onClick={() => handleRateNutri(n.id, star)}
-                            className="focus:outline-none"
+                            onMouseEnter={() => setHoveredStars(prev => ({ ...prev, [n.id]: star }))}
+                            onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [n.id]: 0 }))}
+                            className="focus:outline-none disabled:cursor-default"
+                            disabled={myRating > 0}
                           >
                             <Star 
-                              className={`w-4 h-4 ${star <= currentAvg ? 'text-amber-400 fill-current' : 'text-slate-600'} hover:text-amber-400 transition-colors`} 
+                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
                             />
                           </button>
                         );
@@ -234,7 +242,7 @@ const NutriologosList = () => {
                       <span className="text-slate-400 text-xs ml-2">
                         {calculateAverageRating(n.id) ? `(${calculateAverageRating(n.id)})` : '(Sin calificaciones)'}
                       </span>
-                    </>
+                    </div>
                   ) : (
                     // Estrellas estáticas mostrando promedio
                     <>
