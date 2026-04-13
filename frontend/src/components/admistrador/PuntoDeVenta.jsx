@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ProductoCard from './ProductoCard';
-import ModalNuevoProducto from './ModalNuevoProducto';
-import ModalEditarProducto from './ModalEditarProducto';
+import ModalNuevoProducto from '../ModalNuevoProducto';
+import ModalEditarProducto from '../ModalEditarProducto';
 import HistorialVentas from './HistorialVentas';
-import ConfirmModal from './ConfirmModal';
-import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal';
-import { getProducts, getUsers, deleteProduct, createSale } from '../firebase'; 
+import ConfirmModal from '../ConfirmModal';
+import SuccessModal from '../SuccessModal';
+import ErrorModal from '../ErrorModal';
+import { getProducts, getUsers, deleteProduct, createSale } from '../../firebase'; 
 
 function PuntoDeVenta() {
     const [listaProductos, setListaProductos] = useState([]);

@@ -102,6 +102,56 @@ export const registerTrainerByAdmin = async (payload) => {
   }
 };
 
+export const deactivateTrainerByAdmin = async (payload) => {
+  try {
+    const normalizedPayload = {
+      ...payload,
+      trainerUid: String(payload?.trainerUid || payload?.trainerId || payload?.uid || payload?.authUid || payload?.trainerEmail || '').trim(),
+    };
+    const deactivateFn = httpsCallable(functions, 'deactivateTrainerByAdmin');
+    const result = await deactivateFn(normalizedPayload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en deactivateTrainerByAdmin:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo desactivar al entrenador';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null
+    };
+  }
+};
+
+export const reactivateTrainerByAdmin = async (payload) => {
+  try {
+    const normalizedPayload = {
+      ...payload,
+      trainerUid: String(payload?.trainerUid || payload?.trainerId || payload?.uid || payload?.authUid || payload?.trainerEmail || '').trim(),
+    };
+    const reactivateFn = httpsCallable(functions, 'reactivateTrainerByAdmin');
+    const result = await reactivateFn(normalizedPayload);
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error en reactivateTrainerByAdmin:', error);
+    const friendlyError =
+      error?.details ||
+      error?.message ||
+      error?.customData?.message ||
+      'No se pudo reactivar al entrenador';
+
+    return {
+      success: false,
+      error: friendlyError,
+      code: error?.code || null
+    };
+  }
+};
+
 export const ensureUserClaim = async () => {
   try {
     const fn = httpsCallable(functions, 'ensureUserClaim');

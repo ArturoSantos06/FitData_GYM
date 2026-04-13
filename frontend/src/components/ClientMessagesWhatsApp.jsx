@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench } from 'lucide-react';
+import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench, User, Stethoscope } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { useAssistant } from './asistente/ContextoAsistente';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
+import ChatWindow from './chat/ChatWindow';
+import NotificationCenter from './chat/NotificationCenter';
 import { generateAiRoutine, subscribeAiRoutineHistory } from '../firebase/aiRoutineService';
 import { suscribirCatalogoMaquinas } from '../firebase/mantenimiento';
 import FormularioReporteEnChat from './mantenimiento/FormularioReporteEnChat';
@@ -269,10 +272,20 @@ function ClientMessagesWhatsApp() {
 
     const chatBodyRef = useRef(null);
 
+    // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START ---
+    const [currentUser, setCurrentUser] = useState(null);
+    const [trainerId, setTrainerId] = useState(null);
+    const [trainerName, setTrainerName] = useState('Entrenador Asignado');
+    const [nutritionistId, setNutritionistId] = useState(null);
+    const [nutritionistName, setNutritionistName] = useState('Nutriólogo Asignado');
+    const [showSidebarMobile, setShowSidebarMobile] = useState(true);
+    // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END ---
+
     useEffect(() => {
         let unsubscribeHistory = null;
 
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+            setCurrentUser(user);
             if (unsubscribeHistory) {
                 unsubscribeHistory();
                 unsubscribeHistory = null;
@@ -284,6 +297,36 @@ function ClientMessagesWhatsApp() {
                 setAiHistoryLoading(false);
                 return;
             }
+
+            // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START ---
+            try {
+                // Recupera la asignación del entrenador para el cliente autenticado
+                const tSnap = await getDoc(doc(db, 'client_trainer_assignments', user.uid));
+                if (tSnap.exists() && tSnap.data().trainerId) {
+                    setTrainerId(tSnap.data().trainerId);
+                    
+                    // Con el ID del entrenador, busca su nombre real en la colección users
+                    const tUserSnap = await getDoc(doc(db, 'users', tSnap.data().trainerId));
+                    if (tUserSnap.exists() && (tUserSnap.data().username || tUserSnap.data().clienteNombre)) {
+                        setTrainerName(tUserSnap.data().username || tUserSnap.data().clienteNombre);
+                    }
+                }
+
+                // Recupera la asignación del nutriólogo para el cliente autenticado
+                const nSnap = await getDoc(doc(db, 'client_nutritionist_assignments', user.uid));
+                if (nSnap.exists() && nSnap.data().nutritionistId) {
+                    setNutritionistId(nSnap.data().nutritionistId);
+                    
+                    // Con el ID del Nutriólogo, busca su nombre real
+                    const nUserSnap = await getDoc(doc(db, 'users', nSnap.data().nutritionistId));
+                    if (nUserSnap.exists() && (nUserSnap.data().username || nUserSnap.data().clienteNombre)) {
+                        setNutritionistName(nUserSnap.data().username || nUserSnap.data().clienteNombre);
+                    }
+                }
+            } catch (e) {
+                console.error("Error fetching assignments:", e);
+            }
+            // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END ---
 
             setAiHistoryLoading(true);
             unsubscribeHistory = subscribeAiRoutineHistory(
@@ -586,13 +629,58 @@ function ClientMessagesWhatsApp() {
         <div className="w-full animate-fade-in">
             <div className="mx-auto h-[calc(100vh-12rem)] min-h-[560px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0b141a] shadow-2xl">
                 <div className="flex h-full flex-col md:flex-row">
-                    <aside className="w-full border-b border-slate-700 bg-[#111b21] md:w-[340px] md:border-b-0 md:border-r">
-                        <div className="border-b border-slate-700 px-4 py-3">
-                            <h2 className="text-base font-bold text-slate-100">Mensajes</h2>
-                            <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
+                    <aside className={`w-full border-b border-slate-700 bg-[#111b21] md:w-[340px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
+                        <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-base font-bold text-slate-100">Mensajes</h2>
+                                <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
+                            </div>
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                            {currentUser && <NotificationCenter userId={currentUser.uid} />}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
                         </div>
 
-                        <div className="p-2">
+                        <div className="p-2 overflow-y-auto">
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                            {trainerId && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setActiveChat('entrenador'); setShowSidebarMobile(false); }}
+                                    className={`mb-2 w-full rounded-xl px-3 py-3 text-left transition ${activeChat === 'entrenador' ? 'bg-[#202c33] border border-cyan-500/40' : 'hover:bg-[#1f2c33] border border-transparent'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
+                                            <User size={18} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-100">Entrenador</p>
+                                            <p className="truncate text-xs text-slate-400">{trainerName}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+
+                            {nutritionistId && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setActiveChat('nutriologo'); setShowSidebarMobile(false); }}
+                                    className={`mb-2 w-full rounded-xl px-3 py-3 text-left transition ${activeChat === 'nutriologo' ? 'bg-[#202c33] border border-cyan-500/40' : 'hover:bg-[#1f2c33] border border-transparent'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-400">
+                                            <Stethoscope size={18} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-100">Nutriólogo</p>
+                                            <p className="truncate text-xs text-slate-400">{nutritionistName}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
+
                             <button
                                 type="button"
                                 onClick={() => setActiveChat('ia')}
@@ -646,7 +734,29 @@ function ClientMessagesWhatsApp() {
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 flex-1 flex-col">
+                    {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                    {activeChat === 'entrenador' ? (
+                        <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                            <ChatWindow 
+                                chatId={`${currentUser?.uid}_${trainerId}`}
+                                currentUserId={currentUser?.uid}
+                                title={trainerName}
+                                subtitle="Entrenador Asignado"
+                                onBack={() => setShowSidebarMobile(true)}
+                            />
+                        </div>
+                    ) : activeChat === 'nutriologo' ? (
+                        <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                            <ChatWindow 
+                                chatId={`${currentUser?.uid}_${nutritionistId}`}
+                                currentUserId={currentUser?.uid}
+                                title={nutritionistName}
+                                subtitle="Nutriólogo Asignado"
+                                onBack={() => setShowSidebarMobile(true)}
+                            />
+                        </div>
+                    ) : (
+                    <section className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
                         <header className="border-b border-slate-700 bg-[#202c33] px-4 py-3">
                             <div className="flex items-center gap-3">
                                 <div className={`flex h-10 w-10 items-center justify-center rounded-full ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-200' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
@@ -819,6 +929,8 @@ function ClientMessagesWhatsApp() {
                             )}
                         </footer>
                     </section>
+                    )}
+                    {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
                 </div>
             </div>
         </div>

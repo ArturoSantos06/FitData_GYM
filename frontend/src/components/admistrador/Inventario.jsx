@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from './SuccessModal';
-import { getProducts, getInventoryEntries, createInventoryEntry, getCurrentUser, getUser } from '../firebase';
+import SuccessModal from '../SuccessModal';
+import { getProducts, getInventoryEntries, createInventoryEntry, getCurrentUser, getUser } from '../../firebase';
 
 function Inventario() {
   const [productos, setProductos] = useState([]);

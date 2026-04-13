@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../firebase/config';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
 
 const EntrenadoresList = () => {
@@ -36,10 +36,29 @@ const EntrenadoresList = () => {
     fetchEntrenadores();
   }, []);
 
-  const handleSelectEntrenador = (entrenador) => {
+  const handleSelectEntrenador = async (entrenador) => {
     setSelectedEntrenador(entrenador);
-    // Aquí puedes agregar lógica para guardar la selección del entrenador
-    alert(`Has seleccionado a ${entrenador.nombre} como tu entrenador. Esta funcionalidad estará disponible próximamente.`);
+    
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Debes iniciar sesión para vincularte con un entrenador.");
+        return;
+      }
+      
+      const trainerName = entrenador.displayName || `${String(entrenador.firstName || '').trim()} ${String(entrenador.lastName || '').trim()}`.trim() || entrenador.nombre || 'tu nuevo entrenador';
+
+      await setDoc(doc(db, 'client_trainer_assignments', user.uid), {
+        clientId: user.uid,
+        trainerId: entrenador.id,
+        assignedAt: new Date()
+      });
+
+      alert(`¡Vinculación exitosa! Se ha guardado a ${trainerName} como tu entrenador.`);
+    } catch (err) {
+      console.error("Error al guardar la asignación:", err);
+      alert("Hubo un error al vincular el entrenador: " + err.message);
+    }
   };
 
   if (error) return (

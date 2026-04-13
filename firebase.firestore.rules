@@ -194,8 +194,37 @@ service cloud.firestore {
     }
 
     match /users/{userId}/aiRoutineHistory/{historyId} {
-      allow read: if isAdmin() || isOwner(userId);
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          isOwner(userId) ||
+          resource.data.ownerUid == request.auth.uid ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid) ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.email == request.auth.token.email)
+        )
+      );
       allow create, update, delete: if false;
+    }
+
+    // Catalogo de maquinas para mantenimiento
+    match /catalogo_maquinas/{machineId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Reportes de mantenimiento generados por clientes
+    match /reportes_mantenimiento/{reportId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.creadoPorUid == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.creadoPorUid == request.auth.uid &&
+        request.resource.data.maquinaId is string &&
+        request.resource.data.maquinaNombre is string;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /memberRoutines/{memberId} {
@@ -269,6 +298,31 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
       allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
       allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    // Asignaciones de entrenadores a clientes
+    match /client_trainer_assignments/{clientId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == clientId || 
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.auth.uid == clientId;
+      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin();
+      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin();
+    }
+
+    // Chats en tiempo real
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+      }
+    }
+
+    // Notificaciones de usuario
+    match /users/{userId}/notifications/{notifId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
 
     // Default deny all other collections

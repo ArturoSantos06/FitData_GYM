@@ -5,6 +5,7 @@ import TrainerNavbar from './TrainerNavbar';
 import TrainerManagement from './TrainerManagement';
 import HomeTrainer from './entrenador/HomeTrainer';
 import CitasTrainer from './CitasTrainer';
+import PerfilEntrenador from './entrenador/PerfilEntrenador';
 
 function TrainerPortal() {
     const [activeTab, setActiveTab] = useState('inicio');
@@ -38,9 +39,7 @@ function TrainerPortal() {
                 <TrainerManagement />
                )}
                {activeTab === 'perfil' && (
-                <div className="p-8 text-center border border-slate-800 rounded-xl bg-slate-900/50 text-slate-400">
-                    Perfil
-                </div>
+                <PerfilEntrenador />
                )}
 
             </div>

@@ -273,8 +273,8 @@ const CheckInOut = () => {
                           {asistencia.miembro_nombre}
                         </h3>
                         <div className="text-xs text-slate-400 space-y-0.5 mt-1">
-                          <div className="flex items-center gap-2">
-                            <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>🕐 {new Date(asistencia.fecha_hora_entrada).toLocaleDateString('es-MX')} {new Date(asistencia.fecha_hora_entrada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                             {asistencia.fecha_hora_salida ? (
                               <span>→ 🚪 {new Date(asistencia.fecha_hora_salida).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                             ) : (

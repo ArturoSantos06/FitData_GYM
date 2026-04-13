@@ -1,14 +1,14 @@
-import React, { useState } from 'react'; 
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
 function Navbar({ onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isVentasOpen, setIsVentasOpen] = useState(false); 
+  const [isVentasOpen, setIsVentasOpen] = useState(false);
   const location = useLocation();
 
   const isActive = (path) => {
-    return location.pathname === path 
+    return location.pathname === path
       ? "bg-linear-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/20 border border-cyan-300/30"
       : "bg-white/5 text-gray-200 border border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white";
   };
@@ -70,13 +70,16 @@ function Navbar({ onLogout }) {
             <Link to="/admin/gestion-entrenadores" className={`inline-flex h-8 items-center px-2 rounded-full text-[11px] xl:text-[12px] 2xl:text-sm font-semibold whitespace-nowrap box-border transition-all duration-200 ${isActive('/admin/gestion-entrenadores')}`}>
               Gestión Entrenadores
             </Link>
+            <Link to="/admin/mantenimiento" className={`inline-flex h-8 items-center px-2 rounded-full text-[11px] xl:text-[12px] 2xl:text-sm font-semibold whitespace-nowrap box-border transition-all duration-200 ${isActive('/admin/mantenimiento')}`}>
+              Mantenimiento
+            </Link>
             <Link to="/admin/chatbot" className={`inline-flex h-8 items-center px-2 rounded-full text-[11px] xl:text-[12px] 2xl:text-sm font-semibold whitespace-nowrap box-border transition-all duration-200 ${isActive('/admin/chatbot')}`}>
               Chat Bot
             </Link>
           </div>
 
           <div className="hidden lg:flex shrink-0 pl-2">
-            <button 
+            <button
               onClick={onLogout}
               className="inline-flex h-9 items-center bg-red-500 hover:bg-red-600 px-3.5 rounded-full text-[12px] lg:text-sm font-bold transition-colors shadow-md whitespace-nowrap box-border"
             >
@@ -86,8 +89,8 @@ function Navbar({ onLogout }) {
 
           {/* BOTÓN HAMBURGUESA  */}
           <div className="lg:hidden flex items-center shrink-0">
-            <button 
-              onClick={() => setIsOpen(!isOpen)} 
+            <button
+              onClick={() => setIsOpen(!isOpen)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -105,29 +108,29 @@ function Navbar({ onLogout }) {
 
       {isOpen && (
         <div className="lg:hidden mt-2 bg-slate-900/95 border border-white/10 rounded-2xl px-4 pt-2 pb-4 space-y-2 shadow-xl backdrop-blur-xl">
-          <Link 
-            to="/admin" 
+          <Link
+            to="/admin"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin')}`}
           >
             Inicio
           </Link>
-          <Link 
-            to="/admin/registrar" 
+          <Link
+            to="/admin/registrar"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/registrar')}`}
           >
             Registro
           </Link>
-          <Link 
-            to="/admin/asignar" 
+          <Link
+            to="/admin/asignar"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/asignar')}`}
           >
             Asignar Membresías
           </Link>
-          <Link 
-            to="/admin/configuracion" 
+          <Link
+            to="/admin/configuracion"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/configuracion')}`}
           >
@@ -145,22 +148,22 @@ function Navbar({ onLogout }) {
             </button>
             {isVentasOpen && (
               <div className="pl-4 space-y-2 mt-2 border-l-2 border-gray-700">
-                <Link 
-                  to="/admin/ventas" 
+                <Link
+                  to="/admin/ventas"
                   onClick={closeMenu}
                   className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/ventas')}`}
                 >
                   Punto de Venta
                 </Link>
-                <Link 
-                  to="/admin/inventario" 
+                <Link
+                  to="/admin/inventario"
                   onClick={closeMenu}
                   className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/inventario')}`}
                 >
                   Inventario
                 </Link>
-                <Link 
-                  to="/admin/reportes-facturas" 
+                <Link
+                  to="/admin/reportes-facturas"
                   onClick={closeMenu}
                   className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/reportes-facturas')}`}
                 >
@@ -170,26 +173,33 @@ function Navbar({ onLogout }) {
             )}
           </div>
 
-          <Link 
-            to="/admin/check-in-out" 
+          <Link
+            to="/admin/check-in-out"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/check-in-out')}`}
           >
             📱 Check In/Out
           </Link>
-          <Link 
-            to="/admin/fichas-medicas" 
+          <Link
+            to="/admin/fichas-medicas"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/fichas-medicas')}`}
           >
             🩺 Fichas Médicas
           </Link>
-          <Link 
-            to="/admin/gestion-entrenadores" 
+          <Link
+            to="/admin/gestion-entrenadores"
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/gestion-entrenadores')}`}
           >
             👥 Gestión Entrenadores
+          </Link>
+          <Link
+            to="/admin/mantenimiento"
+            onClick={closeMenu}
+            className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/mantenimiento')}`}
+          >
+            🛠️ Mantenimiento
           </Link>
           <Link
             to="/admin/chatbot"
@@ -198,10 +208,10 @@ function Navbar({ onLogout }) {
           >
             🤖 Chat Bot
           </Link>
-          
+
           {/* Botón Salir Móvil */}
           <div className="pt-4 border-t border-gray-700 mt-2">
-            <button 
+            <button
               onClick={() => { closeMenu(); onLogout(); }}
               className="w-full bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg text-base font-bold transition-colors shadow-md text-center"
             >
