@@ -15,7 +15,9 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
         request.auth.token.role == 'ADMIN' ||
+        request.auth.token.role == 'admin' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN' ||
         request.auth.token.email == 'admin@fitdata.gym' ||
         request.auth.uid == '1'
       );
@@ -156,6 +158,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Pagos a entrenadores 
+    match /pagos_entrenadores/{paymentId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.trainer_id ||
+        request.auth.token.email == resource.data.trainer_email
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Solicitudes de factura (cliente crea, admin gestiona)
     match /facturaRequests/{requestId} {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.requesterUid == request.auth.uid);
@@ -194,8 +208,37 @@ service cloud.firestore {
     }
 
     match /users/{userId}/aiRoutineHistory/{historyId} {
-      allow read: if isAdmin() || isOwner(userId);
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          isOwner(userId) ||
+          resource.data.ownerUid == request.auth.uid ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid) ||
+          (exists(/databases/$(database)/documents/users/$(userId)) &&
+            get(/databases/$(database)/documents/users/$(userId)).data.email == request.auth.token.email)
+        )
+      );
       allow create, update, delete: if false;
+    }
+
+    // Catalogo de maquinas para mantenimiento
+    match /catalogo_maquinas/{machineId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Reportes de mantenimiento generados por clientes
+    match /reportes_mantenimiento/{reportId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.creadoPorUid == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.creadoPorUid == request.auth.uid &&
+        request.resource.data.maquinaId is string &&
+        request.resource.data.maquinaNombre is string;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /memberRoutines/{memberId} {

@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+html,
+body,
+#root {
+    min-height: 100%;
+    height: auto;
+}
+
+body {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+#root {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body.drag-scroll-active {
+    cursor: grabbing;
+    user-select: none;
+}

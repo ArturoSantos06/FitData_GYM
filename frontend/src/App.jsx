@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import Login from './components/Login';
-import Navbar from './components/Navbar';
-import Home from './components/Home'; // El Dashboard del Admin
+import Login from './components/admistrador/Login';
+import Navbar from './components/admistrador/Navbar';
+import Home from './components/admistrador/Home'; // El Dashboard del Admin
 import RegisterUser from './components/admistrador/RegisterUser';
-import AssignMembership from './components/AssignMembership';
+import AssignMembership from './components/admistrador/AssignMembership';
 import UserMembershipList from './components/admistrador/UserMembershipList';
-import MembershipAdmin from './components/MembershipAdmin';
+import MembershipAdmin from './components/admistrador/MembershipAdmin';
 import PuntoDeVenta from './components/admistrador/PuntoDeVenta';
 import Inventario from './components/admistrador/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
-import BitacoraEntrenador from './components/BitacoraEntrenador';
+import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
@@ -28,6 +28,7 @@ import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
 import NutriPortal from './components/NutriPortal';
 import ReportesFacturacion from './components/ReportesFacturacion';
+import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 import { AssistantProvider } from './components/asistente/ContextoAsistente';
 import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
@@ -191,31 +192,65 @@ function RequireNutritionistAuth({ children }) {
 }
 
 
+// --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
+function NutriologoArea() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const firebaseUser = localStorage.getItem('firebaseUser');
+    if (firebaseUser) setIsAuthenticated(true);
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = () => setIsAuthenticated(true);
+
+  const handleLogout = () => {
+    localStorage.removeItem('firebaseUser');
+    setIsAuthenticated(false);
+    window.location.href = "/";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-white bg-gray-900 min-h-screen flex items-center justify-center">
+        Cargando...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <NutriologoLogin onLogin={handleLogin} />;
+  }
+
+  return <NutriologoPortal onLogout={handleLogout} />;
+}
+
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
-  
+
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
-  
+
   const handleUserRegistered = () => {
     setRefreshHealthProfiles(prev => prev + 1);
     setRefreshList(prev => prev + 1);
   };
-  
+
   useEffect(() => {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
   const handleLogin = () => setIsAuthenticated(true);
-  
+
   const handleLogout = async () => {
     await logoutUser();
     localStorage.removeItem('firebaseUser');
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     // Al salir, redirigir a la Landing Page
-    window.location.href = "/"; 
+    window.location.href = "/";
   };
 
   // Si NO está autenticado, mostramos el Login del Admin
@@ -232,41 +267,45 @@ function AdminArea() {
       <Navbar onLogout={handleLogout} />
       <main className="grow container mx-auto p-6 md:p-8">
         <Routes>
-          
+
           {/* 1. Dashboard Principal */}
           <Route path="/" element={<Home />} />
-          
+
           {/* 2. Registrar Clientes Nuevos */}
           <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
-          
+
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
             <div className="space-y-8">
-               <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
-               
-               <UserMembershipList refreshTrigger={refreshList} />
+              <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
+
+              <UserMembershipList refreshTrigger={refreshList} />
             </div>
           } />
-          
+
           {/* 4. Configuración de Tipos de Membresía */}
           <Route path="configuracion" element={<MembershipAdmin />} />
-          
+
           {/* 5. Punto de Venta */}
-          <Route path="ventas" element={<PuntoDeVenta />} /> 
+          <Route path="ventas" element={<PuntoDeVenta />} />
           <Route path="inventario" element={<Inventario />} />
-          
+
           {/* 6. Check In/Out con QR */}
           <Route path="check-in-out" element={<CheckInOut />} />
 
           {/* 7. Fichas Médicas (Health Profiles) */}
           <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
-          
+
+
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
           <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
           {/* 9. Feedback y comunicación */}
           <Route path="feedback" element={<FeedbackClie />} />
+
+          {/* 10. Mantenimiento de maquinas */}
+          <Route path="mantenimiento" element={<PortalMantenimiento modoSoloAdmin vistaInicial="admin" />} />
 
           {/* 12. Configuración Chatbot NLP */}
           <Route path="chatbot" element={<AssistantAdminConfig />} />
@@ -280,6 +319,79 @@ function AdminArea() {
 
 // --- 2. APP PRINCIPAL (Rutas Globales) ---
 function App() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    if (hasCoarsePointer) return;
+
+    const interactiveSelector = [
+      'input',
+      'textarea',
+      'select',
+      'button',
+      'a',
+      'label',
+      '[role="button"]',
+      '[contenteditable="true"]',
+      '[data-no-drag-scroll="true"]'
+    ].join(',');
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollX = 0;
+    let startScrollY = 0;
+
+    const shouldIgnoreTarget = (target) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest(interactiveSelector));
+    };
+
+    const onMouseDown = (event) => {
+      if (event.button !== 0) return;
+      if (shouldIgnoreTarget(event.target)) return;
+
+      isDragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollX = window.scrollX;
+      startScrollY = window.scrollY;
+      document.body.classList.add('drag-scroll-active');
+    };
+
+    const onMouseMove = (event) => {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      window.scrollTo({
+        left: startScrollX - deltaX,
+        top: startScrollY - deltaY,
+        behavior: 'auto'
+      });
+    };
+
+    const endDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      document.body.classList.remove('drag-scroll-active');
+    };
+
+    window.addEventListener('mousedown', onMouseDown, { passive: true });
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('blur', endDrag);
+
+    return () => {
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', endDrag);
+      window.removeEventListener('blur', endDrag);
+      document.body.classList.remove('drag-scroll-active');
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <AssistantProvider>
@@ -292,7 +404,7 @@ function App() {
           <Route path="/cliente" element={<ClientPortal />} />
           <Route path="/nutriologo/login" element={<NutriologoLogin />} />
           
-          {/* Ruta protegida del Nutriólogo usando tu componente */}
+          {/* Ruta protegida del Nutriólogo */}
           <Route 
             path="/nutriologo/*" 
             element={
@@ -334,7 +446,10 @@ function App() {
                 <BitacoraEntrenador />
               </RequireTrainerAuth>
             }
-          />
+          />          
+         
+
+          <Route path="/mantenimiento" element={<PortalMantenimiento vistaInicial="usuario" />} />
 
           <Route path="/admin/*" element={<AdminArea />} />
 

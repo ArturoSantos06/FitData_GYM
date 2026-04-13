@@ -98,6 +98,26 @@ service firebase.storage {
       allow delete: if isPrivilegedStaff();
     }
 
+      // Fotos para catalogo de maquinas de mantenimiento
+      match /mantenimiento/maquinas/{fileName} {
+        allow read: if true;
+        allow write: if isAdmin() &&
+          request.resource != null &&
+          request.resource.size <= maxDietFileSize() &&
+          request.resource.contentType.matches('image/jpeg|image/png|image/webp');
+        allow delete: if isAdmin();
+      }
+
+      // Fotos adjuntas por clientes al reportar mantenimiento
+      match /mantenimiento/reportes/{fileName} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() &&
+          request.resource != null &&
+          request.resource.size <= maxDietFileSize() &&
+          request.resource.contentType.matches('image/jpeg|image/png|image/webp');
+        allow delete: if isAdmin() || isAuthenticated();
+      }
+
     // Repositorio digital de dietas (ruta legacy)
     match /dietas/{memberId}/{fileName} {
       allow read: if isPrivilegedStaff() || ownsMember(memberId);

@@ -8,7 +8,8 @@ const buildAiRoutinePrompt = (payload = {}) => {
     const goalLabel = String(payload.goalLabel || payload.goal || "no especificado").trim();
     const levelLabel = String(payload.levelLabel || payload.level || "no especificado").trim();
     const daysPerWeek = String(payload.daysPerWeek || "no especificado").trim();
-    const sessionLength = String(payload.sessionLength || "no especificado").trim();
+    const sessionLengthRaw = String(payload.sessionLength || "").trim();
+    const sessionLengthLabel = sessionLengthRaw ? `${sessionLengthRaw} minutos` : "no especificada";
     const equipment = String(payload.equipment || "no especificado").trim();
     const limitations = String(payload.limitations || "ninguna especificada").trim();
     const preferences = String(payload.preferences || "no especificadas").trim();
@@ -21,6 +22,9 @@ const buildAiRoutinePrompt = (payload = {}) => {
         "Genera una rutina segura, clara, concreta y personalizada en español.",
         "Responde con un formato estructurado que incluya: objetivo, frecuencia semanal, calentamiento, rutina por día, ejercicios concretos, series, repeticiones, descanso, recomendaciones de técnica y advertencias de seguridad.",
         "Usa dias de la semana escritos como Lunes, Martes, Miercoles, Jueves, Viernes, Sabado y Domingo.",
+        `Debes entregar EXACTAMENTE ${daysPerWeek} dias de entrenamiento (ni mas ni menos).`,
+        "Los parametros elegidos en la interfaz (objetivo, nivel, dias y tiempo) son reglas fijas.",
+        "Si la solicitud libre del usuario entra en conflicto con esos parametros, prioriza SIEMPRE los parametros de la interfaz.",
         "Para cada dia, empieza con una linea como 'Lunes: Pierna y gluteo' y luego lista los ejercicios debajo con numeracion 1, 2, 3...",
         "Para cada día, lista entre 4 y 6 ejercicios exactos con nombres claros; no uses placeholders como 'ejercicio principal' o 'trabajo de piernas'.",
         "Para cada ejercicio indica series y repeticiones. Ejemplo: '1. Sentadilla libre - 4 series x 8 repeticiones'.",
@@ -34,7 +38,7 @@ const buildAiRoutinePrompt = (payload = {}) => {
         `Objetivo del cliente: ${goalLabel}.`,
         `Nivel: ${levelLabel}.`,
         `Días por semana: ${daysPerWeek}.`,
-        `Duración de sesión: ${sessionLength} minutos.`,
+        `Duración de sesión: ${sessionLengthLabel}.`,
         `Equipo disponible: ${equipment}.`,
         `Limitaciones o lesiones: ${limitations}.`,
         `Preferencias: ${preferences}.`,
@@ -75,11 +79,24 @@ const extractGeminiText = (responseData = {}) => {
 const buildFallbackRoutineText = (payload = {}) => {
     const goal = String(payload.goalLabel || payload.goal || "Objetivo general");
     const level = String(payload.levelLabel || payload.level || "principiante");
-    const daysPerWeek = Math.max(2, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
-    const sessionLength = Math.max(30, Math.min(120, Number(payload.sessionLength || 60) || 60));
+    const daysPerWeek = Math.max(1, Math.min(6, Number(payload.daysPerWeek || 4) || 4));
+    const sessionLength = Math.max(30, Math.min(180, Number(payload.sessionLength || 60) || 60));
     const limitations = String(payload.limitations || "sin limitaciones especificadas");
 
     const templates = {
+        1: [
+            {
+                day: "Lunes",
+                focus: "Cuerpo completo",
+                exercises: [
+                    ["Sentadilla goblet", "4 series x 10 repeticiones"],
+                    ["Press de banca con mancuernas", "4 series x 10 repeticiones"],
+                    ["Jalón al pecho", "4 series x 10 repeticiones"],
+                    ["Peso muerto rumano", "3 series x 10 repeticiones"],
+                    ["Plancha frontal", "3 series x 30-45 segundos"],
+                ],
+            },
+        ],
         2: [
             {
                 day: "Lunes",

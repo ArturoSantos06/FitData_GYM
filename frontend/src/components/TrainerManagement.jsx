@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAllMembers, ensureUserClaim } from '../firebase';
 
 import TrainerClientUnlink from './TrainerClientUnlink';
-import BitacoraEntrenador from './BitacoraEntrenador';
+import BitacoraEntrenador from './entrenador/BitacoraEntrenador';
 import HealthProfilesCoach from './HealthProfilesCoach';
 
 function RoutineManagementPanel() {

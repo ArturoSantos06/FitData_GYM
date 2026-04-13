@@ -66,8 +66,8 @@ const FeedbackClie = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-gray-100 font-sans">
-      
+    <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100 font-sans">
+
       {/* Header Cyberpunk */}
       <header className="px-6 py-4 bg-gray-900 border-b border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)] z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -84,18 +84,17 @@ const FeedbackClie = () => {
       </header>
 
       {/* Área de Mensajes */}
-      <main className="flex-1 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black scrollbar-thin scrollbar-thumb-purple-700 scrollbar-track-gray-900">
+      <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black scrollbar-thin scrollbar-thumb-purple-700 scrollbar-track-gray-900">
         {messages.map((msg) => {
           const isClient = msg.senderId === currentClientId;
 
           return (
             <div key={msg.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
-              <div 
-                className={`max-w-[75%] px-4 py-2 relative flex flex-col gap-1 ${
-                  isClient 
-                    ? 'bg-purple-900/40 border border-purple-500/70 text-purple-50 rounded-bl-2xl rounded-tl-2xl rounded-tr-md shadow-[0_0_10px_rgba(168,85,247,0.2)]' 
+              <div
+                className={`max-w-[75%] px-4 py-2 relative flex flex-col gap-1 ${isClient
+                    ? 'bg-purple-900/40 border border-purple-500/70 text-purple-50 rounded-bl-2xl rounded-tl-2xl rounded-tr-md shadow-[0_0_10px_rgba(168,85,247,0.2)]'
                     : 'bg-cyan-900/30 border border-cyan-500/70 text-cyan-50 rounded-br-2xl rounded-tr-2xl rounded-tl-md shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                }`}
+                  }`}
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
                 <div className="flex items-center justify-end gap-1">

@@ -3,7 +3,7 @@ import { MessageCircle, Send, X } from 'lucide-react';
 import { useAssistant } from './ContextoAsistente';
 import AssistantQuickQuestions from './PreguntasRapidasAsistente';
 
-export default function AssistantChatPanel({ title = 'Asistente FitData', embedded = false, onClose }) {
+export default function AssistantChatPanel({ title = 'Asistente FitData', embedded = false, onClose, panelStyle }) {
   const { ask, quickQuestions } = useAssistant();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState(() => [
@@ -41,10 +41,14 @@ export default function AssistantChatPanel({ title = 'Asistente FitData', embedd
 
   const wrapperClass = embedded
     ? 'rounded-2xl border border-slate-800 bg-slate-900/70 p-4'
-    : 'fixed bottom-20 right-4 z-50 w-[min(360px,92vw)] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl';
+    : 'fixed z-50 max-h-[75vh] w-[min(360px,92vw)] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden';
+
+  const floatingStyle = embedded
+    ? undefined
+    : (panelStyle || { right: '1rem', bottom: '5rem' });
 
   return (
-    <section className={wrapperClass}>
+    <section className={wrapperClass} style={floatingStyle}>
       <header className="mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2 text-slate-100">
           <MessageCircle size={16} className="text-cyan-300" />
@@ -65,11 +69,10 @@ export default function AssistantChatPanel({ title = 'Asistente FitData', embedd
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`rounded-xl px-3 py-2 text-sm ${
-              message.role === 'assistant'
-                ? 'bg-slate-800 text-slate-100'
-                : 'bg-cyan-500/20 text-cyan-100'
-            }`}
+            className={`rounded-xl px-3 py-2 text-sm ${message.role === 'assistant'
+              ? 'bg-slate-800 text-slate-100'
+              : 'bg-cyan-500/20 text-cyan-100'
+              }`}
           >
             {message.text}
           </div>
