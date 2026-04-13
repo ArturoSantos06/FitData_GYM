@@ -40,9 +40,14 @@ export default function NutritionAssistant() {
 
             const res = await getAllMembers();
             if (res.success && res.data) {
-              const assignedMembers = res.data.filter(m => 
-                assignedClientIds.includes(m.userId) || assignedClientIds.includes(m.id)
-              );
+              const assignedMembers = res.data.filter(m => {
+                const mUserId = String(m.userId || '').trim();
+                const mUser = String(m.user || '').trim();
+                const mId = String(m.id || '').trim();
+                return assignedClientIds.some(id => 
+                  id === mUserId || id === mUser || id === mId
+                );
+              });
               setPatients(assignedMembers);
             }
           } else {
