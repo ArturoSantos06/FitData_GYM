@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-
 import { useAppointments } from '../useAppointments'; 
+import ModalReprogramar from './ModalReprogramar'; 
 
 const NutritionAppointments = () => {
     const [clienteId, setClienteId] = useState(null);
     const [cancelModal, setCancelModal] = useState({ isOpen: false, idToCancel: null });
+    // 2. Agregamos el estado para controlar la ventana de reprogramar
+    const [reprogramarModal, setReprogramarModal] = useState({ isOpen: false, citaSeleccionada: null });
 
     useEffect(() => {
         const usuarioGuardado = localStorage.getItem('firebaseUser');
@@ -27,8 +29,8 @@ const NutritionAppointments = () => {
         }
     };
 
-    const handleReschedule = (id) => {
-        alert("Próximamente: Se abrirá el calendario para elegir nueva fecha y hora.");
+    const handleReschedule = (cita) => {
+        setReprogramarModal({ isOpen: true, citaSeleccionada: cita });
     };
 
     if (loading) {
@@ -91,7 +93,7 @@ const NutritionAppointments = () => {
                                 </div>
                                 {cita.estado !== 'cancelada' && (
                                     <div className="flex md:flex-col gap-2 md:min-w-[140px] pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-slate-700 md:pl-4 mt-2 md:mt-0">
-                                        <button onClick={() => handleReschedule(cita.id)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold text-sm transition-colors border border-slate-600">
+                                        <button onClick={() => handleReschedule(cita)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold text-sm transition-colors border border-slate-600">
                                             <RefreshCw size={16} />Cambiar
                                         </button>
                                         <button onClick={() => setCancelModal({ isOpen: true, idToCancel: cita.id })} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-900/20 hover:bg-red-600 text-red-400 font-semibold text-sm transition-all border border-red-900/50">
@@ -105,6 +107,7 @@ const NutritionAppointments = () => {
                 </div>
             )}
 
+            {/* Modal de Cancelar */}
             {cancelModal.isOpen && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700 shadow-2xl">
@@ -117,6 +120,17 @@ const NutritionAppointments = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* 5. Modal de Reprogramar */}
+            {reprogramarModal.isOpen && (
+                <ModalReprogramar 
+                    citaSeleccionada={reprogramarModal.citaSeleccionada}
+                    onClose={() => setReprogramarModal({ isOpen: false, citaSeleccionada: null })}
+                    onSuccess={() => {
+                        setReprogramarModal({ isOpen: false, citaSeleccionada: null });
+                    }}
+                />
             )}
         </div>
     );
