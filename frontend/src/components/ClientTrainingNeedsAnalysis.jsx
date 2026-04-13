@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Sparkles, Target } from 'lucide-react';
 
 const QUESTIONS = [
@@ -199,10 +199,48 @@ function getStorageKey() {
   }
 }
 
+function parseStoredHistory(rawValue) {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+
+    // Compatibilidad con el formato anterior (objeto único)
+    if (parsed && parsed.recommendation && parsed.answers) {
+      return [
+        {
+          id: parsed.id || Date.now(),
+          completedAt: parsed.completedAt || new Date().toISOString(),
+          answers: parsed.answers,
+          recommendation: parsed.recommendation,
+        },
+      ];
+    }
+
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 function ClientTrainingNeedsAnalysis() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isCompleted, setIsCompleted] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    const storageKey = getStorageKey();
+    const storedHistory = parseStoredHistory(localStorage.getItem(storageKey));
+    setHistory(storedHistory);
+  }, []);
 
   const currentQuestion = QUESTIONS[step];
   const totalSteps = QUESTIONS.length;
@@ -232,14 +270,20 @@ function ClientTrainingNeedsAnalysis() {
     if (step === totalSteps - 1) {
       setIsCompleted(true);
       const storageKey = getStorageKey();
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          answers,
-          completedAt: new Date().toISOString(),
-          recommendation: buildRecommendation(answers),
-        })
-      );
+
+      const recommendationResult = buildRecommendation(answers);
+      const entry = {
+        id: Date.now(),
+        answers,
+        completedAt: new Date().toISOString(),
+        recommendation: recommendationResult,
+      };
+
+      const currentHistory = parseStoredHistory(localStorage.getItem(storageKey));
+      const updatedHistory = [entry, ...currentHistory].slice(0, 12);
+
+      localStorage.setItem(storageKey, JSON.stringify(updatedHistory));
+      setHistory(updatedHistory);
 
       return;
     }
@@ -258,6 +302,20 @@ function ClientTrainingNeedsAnalysis() {
     setStep(0);
     setAnswers({});
     setIsCompleted(false);
+  };
+
+  const formatHistoryDate = (value) => {
+    if (!value) return 'Sin fecha';
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) return 'Sin fecha';
+
+    return parsedDate.toLocaleString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   if (isCompleted && recommendation) {
@@ -313,10 +371,36 @@ function ClientTrainingNeedsAnalysis() {
               <ArrowLeft size={16} />
               Volver a responder
             </button>
+            {history.length > 0 && (
+              <button
+                onClick={() => setShowHistory((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-semibold transition-colors"
+              >
+                <ClipboardList size={16} />
+                {showHistory ? 'Ocultar historial' : `Ver historial (${history.length})`}
+              </button>
+            )}
             <p className="text-sm text-slate-400 self-center">
               Esta recomendación es inicial. Tu entrenador puede ajustarla según evaluación técnica.
             </p>
           </div>
+
+          {showHistory && history.length > 0 && (
+            <div className="mt-6 border border-slate-700 rounded-xl p-4 bg-slate-950/70">
+              <h4 className="text-white font-bold mb-3">Historial de análisis</h4>
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {history.map((entry, index) => (
+                  <div key={`${entry.id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-slate-200 font-semibold">{entry.recommendation?.title || 'Sin recomendación'}</p>
+                      <p className="text-xs text-slate-400">{formatHistoryDate(entry.completedAt)}</p>
+                    </div>
+                    <p className="text-sm text-slate-400 mt-1">{entry.recommendation?.summary || 'Sin resumen disponible.'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -337,6 +421,37 @@ function ClientTrainingNeedsAnalysis() {
             Paso {step + 1} de {totalSteps}
           </div>
         </div>
+
+        {history.length > 0 && (
+          <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800/40 p-3 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-slate-300">
+              Tienes {history.length} análisis guardado{history.length === 1 ? '' : 's'}.
+            </p>
+            <button
+              onClick={() => setShowHistory((prev) => !prev)}
+              className="text-sm font-semibold text-cyan-300 hover:text-cyan-200"
+            >
+              {showHistory ? 'Ocultar historial' : 'Ver historial'}
+            </button>
+          </div>
+        )}
+
+        {showHistory && history.length > 0 && (
+          <div className="mb-6 border border-slate-700 rounded-xl p-4 bg-slate-950/70">
+            <h4 className="text-white font-bold mb-3">Historial de análisis</h4>
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {history.map((entry, index) => (
+                <div key={`${entry.id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-slate-200 font-semibold">{entry.recommendation?.title || 'Sin recomendación'}</p>
+                    <p className="text-xs text-slate-400">{formatHistoryDate(entry.completedAt)}</p>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-1">{entry.recommendation?.summary || 'Sin resumen disponible.'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <div className="h-2 rounded-full bg-slate-800 overflow-hidden">

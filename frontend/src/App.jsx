@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import Login from './components/Login';
-import Navbar from './components/Navbar';
-import Home from './components/Home'; // El Dashboard del Admin
+import Login from './components/admistrador/Login';
+import Navbar from './components/admistrador/Navbar';
+import Home from './components/admistrador/Home'; // El Dashboard del Admin
 import RegisterUser from './components/admistrador/RegisterUser';
-import AssignMembership from './components/AssignMembership';
+import AssignMembership from './components/admistrador/AssignMembership';
 import UserMembershipList from './components/admistrador/UserMembershipList';
-import MembershipAdmin from './components/MembershipAdmin';
+import MembershipAdmin from './components/admistrador/MembershipAdmin';
 import PuntoDeVenta from './components/admistrador/PuntoDeVenta';
 import Inventario from './components/admistrador/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
-import BitacoraEntrenador from './components/BitacoraEntrenador';
+import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMembershipTypes, createMembershipType, updateMembershipType, deleteMembershipType, uploadMembershipImage } from '../firebase';
+import { getMembershipTypes, createMembershipType, updateMembershipType, deleteMembershipType, uploadMembershipImage } from '../../firebase';
 
 // --- MODAL DE TÉRMINOS ---
 const TermsModal = ({ onClose }) => (

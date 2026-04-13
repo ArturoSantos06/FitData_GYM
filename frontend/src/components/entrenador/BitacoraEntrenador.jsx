@@ -3,10 +3,11 @@ import {
   getAllMembers, 
   createTrainerNote, 
   getTrainerNotesByMember, 
+  getAllTrainerNotes,
   updateTrainerNote, 
   deleteTrainerNote,
   getCurrentUser 
-} from '../firebase';
+} from '../../firebase';
 
 function BitacoraEntrenador({ embedded = false }) {
   const [members, setMembers] = useState([]);
@@ -18,6 +19,7 @@ function BitacoraEntrenador({ embedded = false }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [currentTrainer, setCurrentTrainer] = useState(null);
+  const [noteCounts, setNoteCounts] = useState({});
 
   const showMessage = useCallback((type, text) => {
     setMessage({ type, text });
@@ -43,12 +45,30 @@ function BitacoraEntrenador({ embedded = false }) {
     }
   }, [showMessage]);
 
+  const loadNoteCounts = useCallback(async () => {
+    const result = await getAllTrainerNotes();
+    if (!result.success) {
+      showMessage('error', 'Error al cargar el conteo de notas');
+      return;
+    }
+
+    const counts = result.data.reduce((accumulator, note) => {
+      const memberId = String(note.memberId || '').trim();
+      if (!memberId) return accumulator;
+      accumulator[memberId] = (accumulator[memberId] || 0) + 1;
+      return accumulator;
+    }, {});
+
+    setNoteCounts(counts);
+  }, [showMessage]);
+
   useEffect(() => {
     setTimeout(() => {
       loadMembers();
+      loadNoteCounts();
       loadCurrentTrainer();
     }, 0);
-  }, [loadMembers, loadCurrentTrainer]);
+  }, [loadMembers, loadNoteCounts, loadCurrentTrainer]);
 
   const loadNotes = async (memberId) => {
     setLoading(true);
@@ -100,6 +120,7 @@ function BitacoraEntrenador({ embedded = false }) {
       setNoteText('');
       setEditingNote(null);
       loadNotes(selectedMember.id);
+      loadNoteCounts();
     } else {
       showMessage('error', 'Error al guardar la nota');
     }
@@ -117,6 +138,7 @@ function BitacoraEntrenador({ embedded = false }) {
     if (result.success) {
       showMessage('success', '🗑️ Nota eliminada');
       loadNotes(selectedMember.id);
+      loadNoteCounts();
     } else {
       showMessage('error', 'Error al eliminar la nota');
     }
@@ -197,7 +219,16 @@ function BitacoraEntrenador({ embedded = false }) {
                         : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:border-purple-500/50 hover:bg-slate-800'
                     }`}
                   >
-                    <p className="font-bold">{member.nombre}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-bold">{member.nombre}</p>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                        selectedMember?.id === member.id
+                          ? 'bg-white/15 text-white'
+                          : 'bg-purple-500/15 text-purple-300'
+                      }`}>
+                        {noteCounts[member.id] || 0}
+                      </span>
+                    </div>
                     <p className={`text-xs ${selectedMember?.id === member.id ? 'text-purple-200' : 'text-slate-500'}`}>
                       {member.email}
                     </p>
