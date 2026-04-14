@@ -1,17 +1,34 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
+import { CircleHelp, Trash2 } from 'lucide-react';
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmLabel = 'Sí, Eliminar' }) => {
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmLabel = 'Sí, Eliminar',
+  variant = 'danger',
+  overlayClassName = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in',
+}) => {
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+  const isDanger = variant === 'danger';
+  const iconWrapClass = isDanger ? 'bg-red-500/20' : 'bg-blue-500/20';
+  const iconClass = isDanger ? 'text-red-500' : 'text-blue-400';
+  const confirmButtonClass = isDanger
+    ? 'bg-red-600 hover:bg-red-700'
+    : 'bg-blue-600 hover:bg-blue-700';
+
+  return createPortal(
+    <div className={overlayClassName}>
       <div className="bg-slate-900 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center transform scale-100 transition-transform">
         
         <div className="mb-4 flex justify-center">
-          <div className="bg-red-500/20 p-3 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+          <div className={`${iconWrapClass} p-3 rounded-full`}>
+            {isDanger ? <Trash2 className={`h-8 w-8 ${iconClass}`} /> : <CircleHelp className={`h-8 w-8 ${iconClass}`} />}
           </div>
         </div>
 
@@ -29,13 +46,14 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmLabel
           </button>
           <button 
             onClick={onConfirm} 
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors w-full shadow-lg"
+            className={`px-4 py-2 text-white rounded-lg font-bold transition-colors w-full shadow-lg ${confirmButtonClass}`}
           >
             {confirmLabel}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

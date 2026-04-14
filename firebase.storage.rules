@@ -47,10 +47,15 @@ service firebase.storage {
     function isNutritionist() {
       return isAuthenticated() && (
         request.auth.token.nutriologo == true ||
+        request.auth.token.nutritionist == true ||
+        request.auth.token.role == 'NUTRITIONIST' ||
+        request.auth.token.role == 'nutritionist' ||
         request.auth.token.role == 'NUTRIOLOGO' ||
         request.auth.token.role == 'nutriologo' ||
         request.auth.token.role == 'NUTRI' ||
         request.auth.token.role == 'nutri' ||
+        userRoleIs('nutritionist') ||
+        userRoleIs('NUTRITIONIST') ||
         userRoleIs('nutriologo') ||
         userRoleIs('nutri') ||
         userRoleIs('NUTRIOLOGO') ||

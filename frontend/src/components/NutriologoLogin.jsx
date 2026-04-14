@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { loginUser, getUser, getUserByEmail } from '../firebase';
 
+const NUTRITIONIST_ROLES = [
+  'nutritionist',
+  'nutriologo',
+  'nutriologa',
+  'nutriologo/a',
+  'nutricionista',
+  'nutri',
+];
+
 function NutriologoLogin({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,7 +48,8 @@ function NutriologoLogin({ onLogin }) {
         finalRole = emailDoc.success ? emailDoc.data?.role : null;
       }
 
-      if (finalRole !== 'nutriologo') {
+      const normalizedRole = String(finalRole || '').trim().toLowerCase();
+      if (!NUTRITIONIST_ROLES.includes(normalizedRole)) {
         throw new Error('Acceso denegado: solo nutriólogos pueden acceder aquí');
       }
 

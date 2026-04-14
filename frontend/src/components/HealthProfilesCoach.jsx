@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../firebase';
+
+const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
 
 function HealthProfilesCoach({ refreshTrigger }) {
   const [profiles, setProfiles] = useState([]);
@@ -15,12 +18,204 @@ function HealthProfilesCoach({ refreshTrigger }) {
     setLoading(true);
     setError('');
     try {
-      const querySnapshot = await getDocs(collection(db, 'healthProfiles'));
-      const data = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProfiles(data);
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+
+      const [assignmentsSnapshot, querySnapshot, membersSnapshot, byAuthUid, byDocId, byEmail] = await Promise.all([
+        getDocs(collection(db, 'client_trainer_assignments')),
+        getDocs(collection(db, 'healthProfiles')),
+        getDocs(collection(db, 'miembros')),
+        getUserByAuthUid(currentUser.uid),
+        getUser(currentUser.uid),
+        currentUser.email ? getUserByEmail(currentUser.email, currentUser.uid) : Promise.resolve({ success: false }),
+      ]);
+
+      const trainerKeys = new Set([
+        currentUser.uid,
+        currentUser.email,
+      ].map(normalizeLookupKey).filter(Boolean));
+
+      [byAuthUid, byDocId, byEmail]
+        .filter((result) => result?.success && result?.data)
+        .forEach((result) => {
+          const data = result.data;
+          [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+            const normalized = normalizeLookupKey(key);
+            if (normalized) {
+              trainerKeys.add(normalized);
+            }
+          });
+        });
+
+      const assignedClientKeys = new Set();
+      const assignedClientNames = new Set();
+      assignmentsSnapshot.docs.forEach((docSnap) => {
+        const assignment = docSnap.data() || {};
+        const status = String(assignment.status || assignment.trainerStatus || 'active').toLowerCase();
+        const assignmentTrainerId = normalizeLookupKey(assignment.trainerId || assignment.trainer_id);
+        const assignmentTrainerEmail = normalizeLookupKey(assignment.trainerEmail || assignment.trainer_email);
+        const matchesTrainer = trainerKeys.has(assignmentTrainerId) || trainerKeys.has(assignmentTrainerEmail);
+
+        if (!matchesTrainer || status !== 'active') {
+          return;
+        }
+
+        [assignment.clientId, assignment.memberId, docSnap.id].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
+          if (normalized) {
+            assignedClientKeys.add(normalized);
+          }
+        });
+      });
+
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberKeys = [
+          memberDoc.id,
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const matchesAssignment = memberKeys.some((key) => assignedClientKeys.has(key));
+        if (matchesAssignment) {
+          memberNames.forEach((name) => assignedClientNames.add(name));
+        }
+      });
+
+      const memberLookup = new Map();
+      const memberNameLookup = new Map();
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberRecord = {
+          id: memberDoc.id,
+          ...memberData,
+        };
+
+        [
+          memberDoc.id,
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
+          if (normalized) {
+            memberLookup.set(normalized, memberRecord);
+          }
+        });
+
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
+        ];
+
+        memberNames.forEach((nameValue) => {
+          const normalizedMemberName = normalizeLookupKey(nameValue);
+          if (normalizedMemberName) {
+            memberNameLookup.set(normalizedMemberName, memberRecord);
+          }
+        });
+      });
+
+      const profilesByMemberKey = new Map();
+      querySnapshot.docs.forEach((docSnap) => {
+        const profile = {
+          id: docSnap.id,
+          ...docSnap.data(),
+        };
+
+        const profileKeys = [
+          profile.id,
+          profile.memberId,
+          profile.userId,
+          profile.userIdDisplay,
+          profile.memberAuthUid,
+          profile.memberEmail,
+          profile.userEmail,
+          profile.email,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        profileKeys.forEach((key) => {
+          if (!profilesByMemberKey.has(key)) {
+            profilesByMemberKey.set(key, profile);
+          }
+        });
+      });
+
+      const assignedMembers = [];
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberKeys = [
+          memberDoc.id,
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const matchesAssignment = memberKeys.some((key) => assignedClientKeys.has(key)) || memberNames.some((name) => assignedClientNames.has(name));
+        if (matchesAssignment) {
+          assignedMembers.push({
+            id: memberDoc.id,
+            ...memberData,
+          });
+        }
+      });
+
+      const assignedProfiles = assignedMembers
+        .map((member) => {
+          const memberNames = [
+            `${member.nombre || ''} ${member.apellido || ''}`.trim(),
+            `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+            member.displayName,
+            member.username,
+          ].map(normalizeLookupKey).filter(Boolean);
+
+          const memberKeys = [
+            member.id,
+            member.userId,
+            member.authUid,
+            member.email,
+          ].map(normalizeLookupKey).filter(Boolean);
+
+          const profileMatch = [...memberKeys, ...memberNames]
+            .map((key) => profilesByMemberKey.get(key))
+            .find(Boolean);
+
+          if (!profileMatch) {
+            return null;
+          }
+
+          return {
+            ...member,
+            ...profileMatch,
+            id: profileMatch.id,
+            memberName: profileMatch.memberName || `${member.nombre || ''} ${member.apellido || ''}`.trim() || member.displayName || member.username || 'Sin nombre',
+            userIdDisplay: profileMatch.userIdDisplay || member.id || member.userId || '',
+          };
+        })
+        .filter(Boolean);
+
+      setProfiles(assignedProfiles);
     } catch (err) {
       console.error('❌ Error en loadProfiles:', err);
       setError("Error al conectar con la base de datos: " + err.message);
@@ -144,7 +339,7 @@ function HealthProfilesCoach({ refreshTrigger }) {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-slate-800 rounded-lg p-3">
                   <p className="text-slate-400 text-xs">Edad</p>
-                  <p className="text-white font-semibold text-lg">{selected.age ?? '—'}</p>
+                  <p className="text-white font-semibold text-lg">{selected.age ?? selected.edad ?? '—'}</p>
                 </div>
                 <div className={`rounded-lg p-3 border ${selected.high_blood_pressure ? 'bg-orange-900/20 border-orange-800' : 'bg-slate-800 border-transparent'}`}>
                   <p className="text-slate-400 text-xs">Presión Alta</p>
@@ -158,7 +353,7 @@ function HealthProfilesCoach({ refreshTrigger }) {
 
               <div>
                 <p className="text-slate-400 text-xs mb-2">Notas del Cliente</p>
-                <div className="bg-purple-950/30 border border-purple-800/40 rounded-lg p-3 text-purple-100 whitespace-pre-wrap min-h-[80px]">
+                <div className="bg-purple-950/30 border border-purple-800/40 rounded-lg p-3 text-purple-100 whitespace-pre-wrap min-h-20">
                   {selected.additional_info || 'Sin observaciones adicionales.'}
                 </div>
               </div>

@@ -15,6 +15,7 @@ import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
+import GestionNutriologos from './components/admistrador/GestionNutriologos';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
 
@@ -299,6 +300,7 @@ function AdminArea() {
 
           {/* 8. Gestión de Entrenadores (RF-018) */}
           <Route path="gestion-entrenadores" element={<GestionEntrenadores />} />
+          <Route path="gestion-nutriologos" element={<GestionNutriologos />} />
           <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
           {/* 9. Feedback y comunicación */}

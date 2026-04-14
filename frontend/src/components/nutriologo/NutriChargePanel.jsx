@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, CreditCard, Search, UserRound, XCircle } from 'lucide-react';
-import { createMembershipSale, getAllMembers, getCurrentUser } from '../../firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import {
+  createMembershipSale,
+  getAllMembers,
+  getCurrentUser,
+  getUser,
+  getUserByAuthUid,
+  getUserByEmail,
+} from '../../firebase';
 
 const DEFAULT_PRICE = 500;
 
@@ -10,6 +19,8 @@ const normalize = (value) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+
+  const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('es-MX', {
@@ -36,7 +47,23 @@ export default function NutriChargePanel({ onChargeCreated }) {
 
     const loadMembers = async () => {
       setLoadingMembers(true);
-      const membersResult = await getAllMembers();
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        if (!mounted) return;
+        setMembers([]);
+        setMessage('No hay una sesión activa de nutriólogo.');
+        setMessageType('error');
+        setLoadingMembers(false);
+        return;
+      }
+
+      const [membersResult, assignmentsSnap, byAuthUid, byDocId, byEmail] = await Promise.all([
+        getAllMembers(),
+        getDocs(collection(db, 'client_nutritionist_assignments')),
+        getUserByAuthUid(currentUser.uid),
+        getUser(currentUser.uid),
+        currentUser.email ? getUserByEmail(currentUser.email, currentUser.uid) : Promise.resolve({ success: false }),
+      ]);
       if (!mounted) return;
 
       if (!membersResult.success) {
@@ -47,6 +74,43 @@ export default function NutriChargePanel({ onChargeCreated }) {
         return;
       }
 
+      const nutritionistKeys = new Set([
+        currentUser.uid,
+        currentUser.email,
+      ].map(normalizeLookupKey).filter(Boolean));
+
+      [byAuthUid, byDocId, byEmail]
+        .filter((result) => result?.success && result?.data)
+        .forEach((result) => {
+          const data = result.data;
+          [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+            const normalized = normalizeLookupKey(key);
+            if (normalized) {
+              nutritionistKeys.add(normalized);
+            }
+          });
+        });
+
+      const assignedClientIds = new Set();
+      assignmentsSnap.docs.forEach((docSnap) => {
+        const assignment = docSnap.data() || {};
+        const status = String(assignment.status || 'active').toLowerCase();
+        const assignmentNutritionistId = normalizeLookupKey(assignment.nutritionistId);
+        const assignmentNutritionistEmail = normalizeLookupKey(assignment.nutritionistEmail);
+        const matchesNutritionist =
+          nutritionistKeys.has(assignmentNutritionistId)
+          || nutritionistKeys.has(assignmentNutritionistEmail);
+
+        if (!matchesNutritionist || status !== 'active') {
+          return;
+        }
+
+        const clientId = String(assignment.clientId || assignment.memberId || docSnap.id || '').trim();
+        if (clientId) {
+          assignedClientIds.add(normalizeLookupKey(clientId));
+        }
+      });
+
       const allMembers = Array.isArray(membersResult.data) ? membersResult.data : [];
       const listToShow = allMembers.map((member) => ({
         id: member.id,
@@ -56,7 +120,12 @@ export default function NutriChargePanel({ onChargeCreated }) {
         nombre: member.nombre || '',
         apellido: member.apellido || '',
         createdAt: member.createdAt || null
-      }));
+      })).filter((member) => {
+        const memberKeys = [member.userId, member.id, member.authUid, member.email]
+          .map(normalizeLookupKey)
+          .filter(Boolean);
+        return memberKeys.some((key) => assignedClientIds.has(key));
+      });
 
       setMembers(listToShow);
       setLoadingMembers(false);
@@ -68,6 +137,14 @@ export default function NutriChargePanel({ onChargeCreated }) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    const exists = members.some((member) => String(member.id) === String(selectedMemberId));
+    if (!exists) {
+      setSelectedMemberId('');
+    }
+  }, [members, selectedMemberId]);
 
   const memberOptions = useMemo(() => {
     const sortedByRecent = [...members].sort((a, b) => {

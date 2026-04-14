@@ -415,7 +415,7 @@ function RegisterUser({ onUserRegistered }) {
           message={successMessage}
           subMessage={successSubMessage}
         >
-          {showHealthForm && activeTab === 'cliente' && (
+          {showHealthForm && (
             <div className="mt-2">
               <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
               <AdminHealthForm

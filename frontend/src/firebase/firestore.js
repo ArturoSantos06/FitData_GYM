@@ -37,6 +37,65 @@ const normalizeText = (value) =>
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
+const TRAINER_SERVICE_TYPE_PERSONAL = 'PERSONAL';
+const TRAINER_SERVICE_TYPE_GROUP = 'GRUPAL';
+
+const normalizeTrainerServiceType = (value) => {
+  const raw = normalizeText(value);
+  if (!raw) return '';
+  if (raw.includes('grupal') || raw.includes('group') || raw.includes('grupo')) {
+    return TRAINER_SERVICE_TYPE_GROUP;
+  }
+  if (raw.includes('personal') || raw.includes('individual') || raw.includes('uno a uno') || raw.includes('1 a 1')) {
+    return TRAINER_SERVICE_TYPE_PERSONAL;
+  }
+  if (raw === TRAINER_SERVICE_TYPE_GROUP.toLowerCase()) {
+    return TRAINER_SERVICE_TYPE_GROUP;
+  }
+  if (raw === TRAINER_SERVICE_TYPE_PERSONAL.toLowerCase()) {
+    return TRAINER_SERVICE_TYPE_PERSONAL;
+  }
+  return '';
+};
+
+const getTrainerServiceSettings = (trainerData = {}) => {
+  const legacyPrice = Number(
+    trainerData.personalServicePrice ??
+    trainerData.groupServicePrice ??
+    trainerData.trainerServicePrice ??
+    trainerData.servicePrice ??
+    trainerData.costoServicio ??
+    trainerData.costo_servicio ??
+    0
+  );
+
+  const serviceOptions = trainerData.serviceOptions || trainerData.service_options || trainerData.serviceTypes || trainerData.service_types || {};
+  const personalPrice = Number(
+    trainerData.personalServicePrice ??
+    trainerData.personal_service_price ??
+    serviceOptions.personalPrice ??
+    serviceOptions.personal_price ??
+    legacyPrice
+  );
+  const groupPrice = Number(
+    trainerData.groupServicePrice ??
+    trainerData.group_service_price ??
+    serviceOptions.groupPrice ??
+    serviceOptions.group_price ??
+    legacyPrice
+  );
+
+  const offersPersonal = trainerData.offersPersonalService ?? trainerData.personalServiceEnabled ?? serviceOptions.personal ?? serviceOptions.PERSONAL;
+  const offersGroup = trainerData.offersGroupService ?? trainerData.groupServiceEnabled ?? serviceOptions.group ?? serviceOptions.GRUPAL;
+
+  return {
+    offersPersonal: offersPersonal === undefined ? legacyPrice > 0 : Boolean(offersPersonal),
+    offersGroup: offersGroup === undefined ? legacyPrice > 0 : Boolean(offersGroup),
+    personalPrice: Number.isFinite(personalPrice) && personalPrice > 0 ? personalPrice : 0,
+    groupPrice: Number.isFinite(groupPrice) && groupPrice > 0 ? groupPrice : 0,
+  };
+};
+
 const getAuthenticatedUserId = () => auth.currentUser?.uid || null;
 
 const isPermissionDeniedError = (error) => {
@@ -1399,6 +1458,10 @@ const generateSaleFolio = () => {
   return `V-${timestamp}-${random}`;
 };
 
+const TRAINER_SERVICE_SALE_TYPE = 'SERVICIO_ENTRENAMIENTO';
+const TRAINER_SERVICE_PENDING_STATUS = 'pending';
+const TRAINER_SERVICE_COMPLETED_STATUS = 'completed';
+
 export const createSale = async (saleData) => {
   try {
     const { cliente_id, metodo_pago, total, productos, monto_recibido } = saleData;
@@ -1467,6 +1530,351 @@ export const createSale = async (saleData) => {
       folio: folio
     };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const createTrainerServiceSale = async (saleData) => {
+  try {
+    const {
+      clientId,
+      clientEmail,
+      clientName,
+      trainerId,
+      trainerName,
+      trainerEmail,
+      amount,
+      paymentMethod = 'EFECTIVO',
+      serviceType = '',
+    } = saleData || {};
+
+    const totalAmount = Number(amount || 0);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return { success: false, error: 'Ingresa un monto válido para el servicio de entrenamiento.' };
+    }
+
+    const folio = generateSaleFolio();
+    const safeClientId = String(clientId || '').trim();
+    const safeTrainerId = String(trainerId || '').trim();
+    const normalizedPaymentMethod = String(paymentMethod || 'EFECTIVO').trim().toUpperCase();
+    const normalizedServiceType = normalizeTrainerServiceType(serviceType);
+    const initialPaymentStatus = normalizedPaymentMethod === 'EFECTIVO'
+      ? TRAINER_SERVICE_PENDING_STATUS
+      : TRAINER_SERVICE_COMPLETED_STATUS;
+
+    let trainerServiceLabel = '';
+    let trainerServicePrice = Number(amount || 0);
+
+    if (safeTrainerId) {
+      const trainerDoc = await withAuthRetry(() => getDoc(doc(db, 'users', safeTrainerId)));
+      if (trainerDoc.exists()) {
+        const trainerData = trainerDoc.data();
+        const serviceSettings = getTrainerServiceSettings(trainerData);
+        const resolvedTrainerServiceType = normalizedServiceType || (serviceSettings.offersPersonal && !serviceSettings.offersGroup
+          ? TRAINER_SERVICE_TYPE_PERSONAL
+          : (!serviceSettings.offersPersonal && serviceSettings.offersGroup
+            ? TRAINER_SERVICE_TYPE_GROUP
+            : ''));
+
+        const serviceTypeValue = normalizeTrainerServiceType(resolvedTrainerServiceType);
+        if (!serviceTypeValue) {
+          return { success: false, error: 'Debes seleccionar un tipo de servicio válido.' };
+        }
+
+        if (serviceTypeValue === TRAINER_SERVICE_TYPE_PERSONAL) {
+          if (!serviceSettings.offersPersonal) {
+            return { success: false, error: 'Este entrenador no ofrece servicio personal.' };
+          }
+          trainerServicePrice = serviceSettings.personalPrice;
+          trainerServiceLabel = 'Personal';
+        } else {
+          if (!serviceSettings.offersGroup) {
+            return { success: false, error: 'Este entrenador no ofrece servicio grupal.' };
+          }
+          trainerServicePrice = serviceSettings.groupPrice;
+          trainerServiceLabel = 'Grupal';
+        }
+      }
+    }
+
+    if (!normalizedServiceType) {
+      return { success: false, error: 'Selecciona si el servicio será personal o grupal.' };
+    }
+
+    if (!Number.isFinite(trainerServicePrice) || trainerServicePrice <= 0) {
+      return { success: false, error: 'El entrenador no tiene un precio válido configurado para este servicio.' };
+    }
+
+    const existingSalesQuery = query(collection(db, 'ventas'), where('cliente_id', '==', safeClientId));
+    const existingSalesSnap = await withAuthRetry(() => getDocs(existingSalesQuery));
+    const hasPendingSale = existingSalesSnap.docs.some((docSnap) => {
+      const data = docSnap.data();
+      const type = String(data.tipo_venta || data.tipoVenta || '').trim();
+      const status = String(data.payment_status || '').trim().toLowerCase();
+      return type === TRAINER_SERVICE_SALE_TYPE && status === TRAINER_SERVICE_PENDING_STATUS;
+    });
+
+    if (hasPendingSale) {
+      return { success: false, error: 'Ya existe un pago de entrenamiento pendiente de validación en recepción.' };
+    }
+
+    let cliente_username = null;
+    let cliente_email = String(clientEmail || '').trim() || null;
+    let clienteNombre = String(clientName || '').trim() || null;
+
+    if (safeClientId) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', safeClientId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const nombre = userData.firstName || userData.first_name || '';
+          const apellido = userData.lastName || userData.last_name || '';
+          const nombreCompleto = `${nombre} ${apellido}`.trim();
+          cliente_username = userData.username || userData.email;
+          cliente_email = userData.email || cliente_email;
+          clienteNombre = nombreCompleto || userData.displayName || userData.username || userData.email || clienteNombre || 'Cliente';
+        }
+      } catch {
+        // Usamos los datos disponibles en el cliente si no se puede leer users.
+      }
+    }
+
+    const receivedAmount = trainerServicePrice;
+
+    await withAuthRetry(() => addDoc(collection(db, 'ventas'), {
+      folio,
+      cliente: safeClientId || null,
+      cliente_id: safeClientId || null,
+      cliente_auth_uid: safeClientId || null,
+      cliente_username,
+      cliente_email,
+      clienteEmail: cliente_email,
+      clienteNombre,
+      trainerId: safeTrainerId || null,
+      trainer_id: safeTrainerId || null,
+      trainer_email: String(trainerEmail || '').trim() || null,
+      trainerEmail: String(trainerEmail || '').trim() || null,
+      trainer_name: String(trainerName || 'Entrenador').trim(),
+      trainerName: String(trainerName || 'Entrenador').trim(),
+      service_type: normalizedServiceType,
+      serviceType: normalizedServiceType,
+      service_label: trainerServiceLabel,
+      serviceLabel: trainerServiceLabel,
+      trainer_service_price: trainerServicePrice,
+      trainerServicePrice: trainerServicePrice,
+      metodo_pago: normalizedPaymentMethod,
+      total: trainerServicePrice,
+      monto_recibido: receivedAmount,
+      payment_status: initialPaymentStatus,
+      tipo_venta: TRAINER_SERVICE_SALE_TYPE,
+      detalle_productos: JSON.stringify([
+        {
+          nombre: `Servicio ${trainerServiceLabel || 'de entrenamiento'}: ${trainerName || 'Entrenador'}`,
+          precio: trainerServicePrice,
+          cantidad: 1,
+        }
+      ]),
+      createdAt: getLocalMXDate(),
+      fecha: getLocalMXDateISO(),
+    }));
+
+    return { success: true, folio, paymentStatus: initialPaymentStatus };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para registrar el pago del servicio de entrenamiento.' };
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+export const hasClientPaidTrainerService = async (clientId, trainerId = null, serviceType = null) => {
+  try {
+    const safeClientId = String(clientId || '').trim();
+    if (!safeClientId) {
+      return { success: true, paid: false };
+    }
+
+    const q = query(collection(db, 'ventas'), where('cliente_id', '==', safeClientId));
+    const snap = await withAuthRetry(() => getDocs(q));
+
+    const match = snap.docs.find((docSnap) => {
+      const data = docSnap.data();
+      const type = String(data.tipo_venta || data.tipoVenta || '').trim();
+      if (type !== TRAINER_SERVICE_SALE_TYPE) return false;
+
+      const status = String(data.payment_status || '').trim().toLowerCase();
+      if (status !== TRAINER_SERVICE_COMPLETED_STATUS) return false;
+
+      if (!trainerId) return true;
+      const normalizedTrainerId = String(trainerId).trim();
+      const saleTrainerId = String(data.trainerId || data.trainer_id || '').trim();
+      if (saleTrainerId !== normalizedTrainerId) return false;
+
+      const requestedServiceType = normalizeTrainerServiceType(serviceType || data.serviceType || data.service_type || '');
+      if (!requestedServiceType) return true;
+
+      const saleServiceType = normalizeTrainerServiceType(data.serviceType || data.service_type || '');
+      return saleServiceType === requestedServiceType;
+    });
+
+    return { success: true, paid: Boolean(match), data: match ? { id: match.id, ...match.data() } : null };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para consultar pagos del servicio de entrenamiento.' };
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTrainerServiceSales = async () => {
+  try {
+    // Try to get all SERVICIO_ENTRENAMIENTO sales (may fail with permission denied)
+    const q = query(collection(db, 'ventas'), where('tipo_venta', '==', TRAINER_SERVICE_SALE_TYPE));
+    const snapshot = await withAuthRetry(() => getDocs(q));
+    const sales = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+    // Filter by current month client-side
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    
+    const filtered = sales.filter((sale) => {
+      const saleDate = sale.createdAt?.toDate?.() || new Date(sale.fecha || 0);
+      return saleDate >= startOfMonth && saleDate <= endOfMonth;
+    });
+
+    filtered.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.fecha || 0);
+      const bDate = b.createdAt?.toDate?.() || new Date(b.fecha || 0);
+      return bDate - aDate;
+    });
+
+    return { success: true, data: filtered };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      try {
+        await waitForAuthReady();
+        const currentUser = auth.currentUser;
+        const uid = String(currentUser?.uid || '').trim();
+        const email = String(currentUser?.email || '').trim();
+
+        if (!uid && !email) {
+          return { success: false, error: 'No hay sesión activa para consultar pagos de servicios.' };
+        }
+
+        const queries = [];
+        if (uid) {
+          queries.push(query(collection(db, 'ventas'), where('trainerId', '==', uid)));
+          queries.push(query(collection(db, 'ventas'), where('trainer_id', '==', uid)));
+        }
+        if (email) {
+          queries.push(query(collection(db, 'ventas'), where('trainerEmail', '==', email)));
+          queries.push(query(collection(db, 'ventas'), where('trainer_email', '==', email)));
+        }
+
+        const snapshots = await Promise.all(queries.map((qRef) => withAuthRetry(() => getDocs(qRef))));
+
+        const salesMap = new Map();
+        snapshots.forEach((snap) => {
+          snap.docs.forEach((docSnap) => {
+            const sale = { id: docSnap.id, ...docSnap.data() };
+            const type = String(sale.tipo_venta || sale.tipoVenta || '').trim();
+            if (type !== TRAINER_SERVICE_SALE_TYPE) return;
+            salesMap.set(docSnap.id, sale);
+          });
+        });
+
+        const sales = Array.from(salesMap.values());
+        
+        // Filter by current month
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        
+        const filtered = sales.filter((sale) => {
+          const saleDate = sale.createdAt?.toDate?.() || new Date(sale.fecha || 0);
+          return saleDate >= startOfMonth && saleDate <= endOfMonth;
+        });
+
+        filtered.sort((a, b) => {
+          const aDate = a.createdAt?.toDate?.() || new Date(a.fecha || 0);
+          const bDate = b.createdAt?.toDate?.() || new Date(b.fecha || 0);
+          return bDate - aDate;
+        });
+
+        return { success: true, data: filtered };
+      } catch {
+        return { success: false, error: 'No hay permisos para consultar pagos de servicios de entrenamiento.' };
+      }
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+export const completeTrainerServicePayment = async (saleId) => {
+  try {
+    const safeSaleId = String(saleId || '').trim();
+    if (!safeSaleId) {
+      return { success: false, error: 'saleId es requerido' };
+    }
+
+    const saleRef = doc(db, 'ventas', safeSaleId);
+    const saleSnap = await withAuthRetry(() => getDoc(saleRef));
+    if (!saleSnap.exists()) {
+      return { success: false, error: 'Pago no encontrado' };
+    }
+
+    const saleData = saleSnap.data();
+    const saleType = String(saleData.tipo_venta || saleData.tipoVenta || '').trim();
+    if (saleType !== TRAINER_SERVICE_SALE_TYPE) {
+      return { success: false, error: 'La venta no corresponde a un servicio de entrenamiento.' };
+    }
+
+    const paymentStatus = String(saleData.payment_status || '').trim().toLowerCase();
+    if (paymentStatus === TRAINER_SERVICE_COMPLETED_STATUS) {
+      return { success: true, alreadyCompleted: true };
+    }
+
+    const clientId = String(saleData.cliente_id || saleData.cliente || saleData.cliente_auth_uid || '').trim();
+    const trainerId = String(saleData.trainerId || saleData.trainer_id || '').trim();
+    if (!clientId || !trainerId) {
+      return { success: false, error: 'El pago no tiene cliente o entrenador asociado.' };
+    }
+
+    const saleServiceType = normalizeTrainerServiceType(saleData.serviceType || saleData.service_type || '');
+    const saleServiceLabel = String(saleData.serviceLabel || saleData.service_label || '').trim() || (saleServiceType === TRAINER_SERVICE_TYPE_GROUP ? 'Grupal' : 'Personal');
+
+    await withAuthRetry(() => updateDoc(saleRef, {
+      payment_status: TRAINER_SERVICE_COMPLETED_STATUS,
+      completedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+
+    const assignmentRef = doc(db, 'client_trainer_assignments', clientId);
+    const assignmentSnap = await withAuthRetry(() => getDoc(assignmentRef));
+    if (!assignmentSnap.exists()) {
+      await withAuthRetry(() =>
+        setDoc(assignmentRef, {
+          clientId,
+          trainerId,
+          serviceType: saleServiceType || TRAINER_SERVICE_TYPE_PERSONAL,
+          serviceLabel: saleServiceLabel,
+          servicePrice: Number(saleData.total || saleData.trainerServicePrice || 0),
+          assignedAt: serverTimestamp(),
+          status: 'active',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          saleId: safeSaleId,
+        })
+      );
+      return { success: true, assigned: true };
+    }
+
+    return { success: true, assigned: false };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { success: false, error: 'No hay permisos para completar este pago.' };
+    }
     return { success: false, error: error.message };
   }
 };
@@ -1773,7 +2181,9 @@ export const createHealthProfile = async (healthData) => {
       ...completedData,
       memberId: String(completedData.memberId || canonicalId),
       userId: String(completedData.userId || canonicalId),
-      userIdDisplay: String(completedData.userIdDisplay || canonicalId)
+      userIdDisplay: String(completedData.userIdDisplay || canonicalId),
+      age: completedData.age ?? completedData.edad ?? null,
+      edad: completedData.edad ?? completedData.age ?? null
     };
 
     const getLocalMXDate = () => {
@@ -1818,14 +2228,16 @@ export const getHealthProfileByMemberId = async (memberId) => {
     const canonicalRef = doc(db, "healthProfiles", String(memberId));
     const canonicalSnap = await getDoc(canonicalRef);
     if (canonicalSnap.exists()) {
-      return { success: true, data: { id: canonicalSnap.id, ...canonicalSnap.data() } };
+      const data = canonicalSnap.data();
+      return { success: true, data: { id: canonicalSnap.id, ...data, age: data.age ?? data.edad ?? null, edad: data.edad ?? data.age ?? null } };
     }
 
     const q = query(collection(db, "healthProfiles"), where("memberId", "==", memberId));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const profileDoc = querySnapshot.docs[0];
-      return { success: true, data: { id: profileDoc.id, ...profileDoc.data() } };
+      const data = profileDoc.data();
+      return { success: true, data: { id: profileDoc.id, ...data, age: data.age ?? data.edad ?? null, edad: data.edad ?? data.age ?? null } };
     }
     return { success: false, error: "Perfil de salud no encontrado" };
   } catch (error) {
@@ -2133,6 +2545,20 @@ export const getAllTrainerNotes = async () => {
   }
 };
 
+export const getAllClientTrainerAssignments = async () => {
+  try {
+    const q = query(collection(db, 'client_trainer_assignments'), orderBy('updatedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const assignments = querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+    return { success: true, data: assignments };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const updateTrainerNote = async (noteId, noteData) => {
   try {
     const noteRef = doc(db, "trainerNotes", noteId);
@@ -2282,21 +2708,30 @@ export const addNutritionistReview = async (clientId, nutritionistId, rating, co
 
     console.debug('addNutritionistReview', { authUid, clientId, nutritionistId, rating, comment });
 
-    // Verificar que el cliente tenga asignado este nutriólogo
-    const assignment = await getClientNutritionistAssignment(clientId);
-    if (!assignment.success || assignment.data.nutritionistId !== nutritionistId) {
-      return { success: false, error: 'Solo puedes calificar a tu nutriólogo asignado' };
-    }
-
-    // Verificar si ya dejó reseña
+    // Si ya existe reseña previa, permitir actualizarla aunque la asignación haya cambiado.
     const existingQuery = query(
       collection(db, 'nutritionist_reviews'),
       where('clientId', '==', clientId),
-      where('nutritionistId', '==', nutritionistId)
+      where('nutritionistId', '==', nutritionistId),
+      limit(1)
     );
     const existingSnap = await getDocs(existingQuery);
     if (!existingSnap.empty) {
-      return { success: false, error: 'Ya has calificado a este nutriólogo' };
+      const existingDoc = existingSnap.docs[0];
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'nutritionist_reviews', existingDoc.id), {
+          rating: Math.max(1, Math.min(5, rating)),
+          comment: comment.trim(),
+          updatedAt: serverTimestamp(),
+        })
+      );
+      return { success: true, updated: true };
+    }
+
+    // Para una nueva reseña, sí exigimos asignación activa con el nutriólogo.
+    const assignment = await getClientNutritionistAssignment(clientId);
+    if (!assignment.success || assignment.data.nutritionistId !== nutritionistId) {
+      return { success: false, error: 'Solo puedes calificar a tu nutriólogo asignado' };
     }
 
     await withAuthRetry(() =>
@@ -2344,8 +2779,18 @@ export const getNutritionistReviews = async (nutritionistIds) => {
 };
 
 // TRAINER ASSIGNMENTS
-export const assignTrainerToClient = async (clientId, trainerId) => {
+export const assignTrainerToClient = async (clientId, trainerId, options = {}) => {
   try {
+    const serviceTypeOption = typeof options === 'string' ? options : options.serviceType;
+    const paymentCheck = await hasClientPaidTrainerService(clientId, trainerId, serviceTypeOption);
+    if (!paymentCheck.success) {
+      return { success: false, error: paymentCheck.error || 'No se pudo validar el pago del servicio.' };
+    }
+
+    if (!paymentCheck.paid) {
+      return { success: false, error: 'Primero debes pagar el servicio de entrenamiento en el gimnasio.' };
+    }
+
     // Verificar si ya tiene asignado
     const existing = await getClientTrainerAssignment(clientId);
     if (existing.success && existing.data) {
@@ -2356,6 +2801,10 @@ export const assignTrainerToClient = async (clientId, trainerId) => {
       setDoc(doc(db, 'client_trainer_assignments', clientId), {
         clientId,
         trainerId,
+        serviceType: normalizeTrainerServiceType(serviceTypeOption) || normalizeTrainerServiceType(paymentCheck.data?.serviceType || paymentCheck.data?.service_type || '') || TRAINER_SERVICE_TYPE_PERSONAL,
+        serviceLabel: paymentCheck.data?.serviceLabel || paymentCheck.data?.service_label || (normalizeTrainerServiceType(serviceTypeOption) === TRAINER_SERVICE_TYPE_GROUP ? 'Grupal' : 'Personal'),
+        servicePrice: Number(paymentCheck.data?.total || paymentCheck.data?.trainerServicePrice || paymentCheck.data?.trainer_service_price || 0),
+        saleId: paymentCheck.data?.id || null,
         assignedAt: serverTimestamp(),
         status: 'active',
         createdAt: serverTimestamp(),
@@ -2383,7 +2832,12 @@ export const getClientTrainerAssignment = async (clientId) => {
 
 export const removeTrainerFromClient = async (clientId) => {
   try {
-    await withAuthRetry(() => deleteDoc(doc(db, 'client_trainer_assignments', clientId)));
+    const safeClientId = String(clientId || '').trim();
+    if (!safeClientId) {
+      return { success: false, error: 'clientId es requerido' };
+    }
+
+    await withAuthRetry(() => deleteDoc(doc(db, 'client_trainer_assignments', safeClientId)));
     return { success: true };
   } catch (error) {
     return { success: false, error: normalizeFirestoreError(error) };
@@ -2408,21 +2862,30 @@ export const addTrainerReview = async (clientId, trainerId, rating, comment = ''
 
     console.debug('addTrainerReview', { authUid, clientId, trainerId, rating, comment });
 
-    // Verificar que el cliente tenga asignado este entrenador
-    const assignment = await getClientTrainerAssignment(clientId);
-    if (!assignment.success || assignment.data.trainerId !== trainerId) {
-      return { success: false, error: 'Solo puedes calificar a tu entrenador asignado' };
-    }
-
-    // Verificar si ya dejó reseña
+    // Si ya existe reseña previa, permitir actualizarla aunque la asignación haya cambiado.
     const existingQuery = query(
       collection(db, 'trainer_reviews'),
       where('clientId', '==', clientId),
-      where('trainerId', '==', trainerId)
+      where('trainerId', '==', trainerId),
+      limit(1)
     );
     const existingSnap = await getDocs(existingQuery);
     if (!existingSnap.empty) {
-      return { success: false, error: 'Ya has calificado a este entrenador' };
+      const existingDoc = existingSnap.docs[0];
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'trainer_reviews', existingDoc.id), {
+          rating: Math.max(1, Math.min(5, rating)),
+          comment: comment.trim(),
+          updatedAt: serverTimestamp(),
+        })
+      );
+      return { success: true, updated: true };
+    }
+
+    // Para una nueva reseña, sí exigimos asignación activa con el entrenador.
+    const assignment = await getClientTrainerAssignment(clientId);
+    if (!assignment.success || assignment.data.trainerId !== trainerId) {
+      return { success: false, error: 'Solo puedes calificar a tu entrenador asignado' };
     }
 
     await withAuthRetry(() =>

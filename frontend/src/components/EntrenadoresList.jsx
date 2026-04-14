@@ -2,7 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
-import { getCurrentUser, waitForAuthReady, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
+import { getCurrentUser, waitForAuthReady, createTrainerServiceSale, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
+import ConfirmModal from './ConfirmModal';
+import SuccessModal from './SuccessModal';
+import ErrorModal from './ErrorModal';
+import ModalPagoServicioEntrenador from './ModalPagoServicioEntrenador';
+
+const SERVICE_TYPE_LABELS = {
+  PERSONAL: 'Personal',
+  GRUPAL: 'Grupal',
+};
+
+const normalizeServiceType = (value) => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+  if (raw.includes('grupal') || raw.includes('group') || raw.includes('grupo')) return 'GRUPAL';
+  if (raw.includes('personal') || raw.includes('individual') || raw.includes('uno a uno') || raw.includes('1 a 1')) return 'PERSONAL';
+  if (raw === 'grupal') return 'GRUPAL';
+  if (raw === 'personal') return 'PERSONAL';
+  return '';
+};
+
+const formatMoney = (value) => Number(value || 0).toLocaleString();
 
 const EntrenadoresList = () => {
   const [entrenadores, setEntrenadores] = useState([]);
@@ -14,6 +35,69 @@ const EntrenadoresList = () => {
   const [assigning, setAssigning] = useState(false);
   const [reviews, setReviews] = useState({});
   const [hoveredStars, setHoveredStars] = useState({});
+  const [pendingTrainerSelection, setPendingTrainerSelection] = useState(null);
+  const [pendingRating, setPendingRating] = useState(null);
+  const [pendingPaymentTrainer, setPendingPaymentTrainer] = useState(null);
+  const [selectedServiceType, setSelectedServiceType] = useState('PERSONAL');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
+
+  const normalizeTrainerKey = (trainer = {}) => {
+    const authUid = String(trainer.authUid || trainer.uid || trainer.id || '').trim().toLowerCase();
+    const email = String(trainer.email || '').trim().toLowerCase();
+    const displayName = String(trainer.displayName || '').trim().toLowerCase();
+    return authUid || email || displayName;
+  };
+
+  const getTrainerServicePrice = (trainer = {}) => {
+    const value = Number(
+      trainer.trainerServicePrice ??
+      trainer.personalServicePrice ??
+      trainer.groupServicePrice ??
+      trainer.servicePrice ??
+      trainer.costoServicio ??
+      trainer.costo_servicio ??
+      trainer.price ??
+      0
+    );
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  };
+
+  const getTrainerServiceSettings = (trainer = {}) => {
+    const legacyPrice = getTrainerServicePrice(trainer);
+    const serviceOptions = trainer.serviceOptions || trainer.service_options || trainer.serviceTypes || trainer.service_types || {};
+    const personalPrice = Number(
+      trainer.personalServicePrice ??
+      trainer.personal_service_price ??
+      serviceOptions.personalPrice ??
+      serviceOptions.personal_price ??
+      legacyPrice
+    );
+    const groupPrice = Number(
+      trainer.groupServicePrice ??
+      trainer.group_service_price ??
+      serviceOptions.groupPrice ??
+      serviceOptions.group_price ??
+      legacyPrice
+    );
+    const offersPersonal = trainer.offersPersonalService ?? trainer.personalServiceEnabled ?? serviceOptions.personal ?? serviceOptions.PERSONAL;
+    const offersGroup = trainer.offersGroupService ?? trainer.groupServiceEnabled ?? serviceOptions.group ?? serviceOptions.GRUPAL;
+
+    return {
+      offersPersonal: offersPersonal === undefined ? legacyPrice > 0 : Boolean(offersPersonal),
+      offersGroup: offersGroup === undefined ? legacyPrice > 0 : Boolean(offersGroup),
+      personalPrice: Number.isFinite(personalPrice) && personalPrice > 0 ? personalPrice : legacyPrice,
+      groupPrice: Number.isFinite(groupPrice) && groupPrice > 0 ? groupPrice : legacyPrice,
+    };
+  };
+
+  const getTrainerServicePriceByType = (trainer = {}, serviceType = 'PERSONAL') => {
+    const settings = getTrainerServiceSettings(trainer);
+    const normalizedType = normalizeServiceType(serviceType) || 'PERSONAL';
+    return normalizedType === 'GRUPAL' ? settings.groupPrice : settings.personalPrice;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,17 +125,30 @@ const EntrenadoresList = () => {
         const q = query(collection(db, "users"), where("role", "in", ["trainer", "entrenador"]));
         const querySnapshot = await getDocs(q);
 
-        const data = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const uniqueTrainers = [];
+        const seenTrainerKeys = new Set();
 
-        console.log("Entrenadores encontrados:", data);
-        setEntrenadores(data);
+        querySnapshot.docs.forEach((docSnap) => {
+          const trainer = {
+            id: docSnap.id,
+            ...docSnap.data()
+          };
+
+          const trainerKey = normalizeTrainerKey(trainer);
+          if (!trainerKey || seenTrainerKeys.has(trainerKey)) {
+            return;
+          }
+
+          seenTrainerKeys.add(trainerKey);
+          uniqueTrainers.push(trainer);
+        });
+
+        console.log("Entrenadores encontrados:", uniqueTrainers);
+        setEntrenadores(uniqueTrainers);
 
         // Obtener reseñas
-        if (data.length > 0) {
-          const trainerIds = data.map(e => e.id);
+        if (uniqueTrainers.length > 0) {
+          const trainerIds = uniqueTrainers.map(e => e.id);
           const reviewsResult = await getTrainerReviews(trainerIds);
           if (reviewsResult.success) {
             setReviews(reviewsResult.data);
@@ -81,34 +178,126 @@ const EntrenadoresList = () => {
 
   const handleSelectEntrenador = async (entrenador) => {
     if (!currentClientId) {
-      alert('Error: No se pudo identificar al cliente');
+      setErrorModal({
+        isOpen: true,
+        title: 'Sesión no identificada',
+        message: 'No se pudo identificar al cliente actual.',
+      });
       return;
     }
     
     if (assignedTrainerId) {
-      alert('Ya tienes un entrenador asignado. Si deseas cambiar, contacta a recepción.');
+      setErrorModal({
+        isOpen: true,
+        title: 'Entrenador ya asignado',
+        message: 'Ya tienes un entrenador asignado. Si deseas cambiar, contacta a recepción.',
+      });
       return;
     }
-    
-    const confirmSelection = window.confirm(
-      `¿Estás seguro de seleccionar a ${entrenador.displayName || `${entrenador.firstName} ${entrenador.lastName}`.trim() || entrenador.nombre} como tu entrenador?\n\nEsto iniciará tu plan de entrenamiento personalizado.`
-    );
-    
-    if (!confirmSelection) return;
-    
+
+    setPendingTrainerSelection(entrenador);
+  };
+
+  const confirmSelectEntrenador = async () => {
+    const entrenador = pendingTrainerSelection;
+    if (!entrenador || !currentClientId) return;
+
+    const serviceSettings = getTrainerServiceSettings(entrenador);
+    const serviceTypeOptions = [];
+    if (serviceSettings.offersPersonal) serviceTypeOptions.push('PERSONAL');
+    if (serviceSettings.offersGroup) serviceTypeOptions.push('GRUPAL');
+
+    if (serviceTypeOptions.length === 0) {
+      setPendingTrainerSelection(null);
+      setErrorModal({
+        isOpen: true,
+        title: 'Servicios no configurados',
+        message: 'Este entrenador aún no tiene servicios configurados. Contacta a recepción.',
+      });
+      return;
+    }
+
+    const defaultServiceType = serviceTypeOptions[0];
+    setPendingTrainerSelection(null);
+    setPendingPaymentTrainer({
+      ...entrenador,
+      serviceTypeOptions,
+    });
+    setSelectedServiceType(defaultServiceType);
+    setPaymentAmount(String(getTrainerServicePriceByType(entrenador, defaultServiceType)));
+    setPaymentMethod('EFECTIVO');
+  };
+
+  const handleServiceTypeChange = (serviceType) => {
+    const normalizedType = normalizeServiceType(serviceType) || 'PERSONAL';
+    setSelectedServiceType(normalizedType);
+    if (pendingPaymentTrainer) {
+      setPaymentAmount(String(getTrainerServicePriceByType(pendingPaymentTrainer, normalizedType)));
+    }
+  };
+
+  const confirmPayAndAssignTrainer = async () => {
+    const trainerToPay = pendingPaymentTrainer;
+    const amountValue = Number(String(paymentAmount).replace(',', '.'));
+    const normalizedServiceType = normalizeServiceType(selectedServiceType) || 'PERSONAL';
+
+    if (!trainerToPay || !currentClientId) return;
+
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Monto inválido',
+        message: 'Ingresa un monto válido mayor a 0 para continuar.',
+      });
+      return;
+    }
+
     setAssigning(true);
     try {
-      const result = await assignTrainerToClient(currentClientId, entrenador.id);
-      if (result.success) {
-        setAssignedTrainerId(entrenador.id);
-        setSelectedEntrenador(entrenador);
-        alert(`¡Felicidades! Has contratado a ${entrenador.displayName || `${entrenador.firstName} ${entrenador.lastName}`.trim() || entrenador.nombre} como tu entrenador.\n\nPronto recibirás tu plan de entrenamiento personalizado.`);
+      const paymentResult = await createTrainerServiceSale({
+        clientId: currentClientId,
+        trainerId: trainerToPay.id,
+        trainerName: trainerToPay.displayName || `${trainerToPay.firstName || ''} ${trainerToPay.lastName || ''}`.trim() || trainerToPay.nombre || 'Entrenador',
+        trainerEmail: trainerToPay.email,
+        amount: amountValue,
+        paymentMethod,
+        serviceType: normalizedServiceType,
+      });
+
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'No se pudo registrar el pago.');
+      }
+
+      setPendingPaymentTrainer(null);
+      setSelectedServiceType('PERSONAL');
+
+      if (paymentResult.paymentStatus === 'pending') {
+        setSuccessModal({
+          isOpen: true,
+          title: 'Pago pendiente de validación',
+          message: 'Tu pago en efectivo fue registrado. Acude a recepción para validarlo y activar la asignación del entrenador.',
+        });
       } else {
-        alert(`Error al asignar entrenador: ${result.error}`);
+        const assignmentResult = await assignTrainerToClient(currentClientId, trainerToPay.id, { serviceType: normalizedServiceType });
+        if (!assignmentResult.success) {
+          throw new Error(assignmentResult.error || 'No se pudo asignar el entrenador.');
+        }
+
+        setAssignedTrainerId(trainerToPay.id);
+        setSelectedEntrenador(trainerToPay);
+        setSuccessModal({
+          isOpen: true,
+          title: 'Pago registrado y entrenador asignado',
+          message: `Tu pago fue confirmado y se asignó a ${trainerToPay.displayName || `${trainerToPay.firstName || ''} ${trainerToPay.lastName || ''}`.trim() || trainerToPay.nombre || 'tu entrenador'}.`,
+        });
       }
     } catch (err) {
-      console.error('Error asignando entrenador:', err);
-      alert('Error al procesar la selección. Inténtalo de nuevo.');
+      console.error('Error pagando y asignando entrenador:', err);
+      setErrorModal({
+        isOpen: true,
+        title: 'Error al procesar pago',
+        message: err.message || 'Inténtalo de nuevo en unos segundos.',
+      });
     } finally {
       setAssigning(false);
     }
@@ -116,22 +305,38 @@ const EntrenadoresList = () => {
 
   const handleRateTrainer = async (trainerId, rating) => {
     if (!currentClientId) {
-      alert('Error: No se pudo identificar al cliente');
+      setErrorModal({
+        isOpen: true,
+        title: 'Sesión no identificada',
+        message: 'No se pudo identificar al cliente actual.',
+      });
       return;
     }
     
     if (assignedTrainerId !== trainerId) {
-      alert('Solo puedes calificar a tu entrenador asignado');
+      setErrorModal({
+        isOpen: true,
+        title: 'Calificación no permitida',
+        message: 'Solo puedes calificar a tu entrenador asignado.',
+      });
       return;
     }
-    
-    const confirmRating = window.confirm(`¿Calificar a este entrenador con ${rating} estrella(s)?`);
-    if (!confirmRating) return;
+
+    setPendingRating({ trainerId, rating });
+  };
+
+  const confirmRateTrainer = async () => {
+    const ratingData = pendingRating;
+    if (!ratingData?.trainerId || !ratingData?.rating) return;
     
     try {
-      const result = await addTrainerReview(currentClientId, trainerId, rating);
+      const result = await addTrainerReview(currentClientId, ratingData.trainerId, ratingData.rating);
       if (result.success) {
-        alert('¡Gracias por tu calificación!');
+        setSuccessModal({
+          isOpen: true,
+          title: result.updated ? 'Calificación actualizada' : 'Calificación registrada',
+          message: result.updated ? 'Tu calificación se actualizó correctamente.' : 'Gracias por calificar a tu entrenador.',
+        });
         // Refresh reviews
         const trainerIds = entrenadores.map(e => e.id);
         const reviewsResult = await getTrainerReviews(trainerIds);
@@ -139,11 +344,21 @@ const EntrenadoresList = () => {
           setReviews(reviewsResult.data);
         }
       } else {
-        alert(`Error al calificar: ${result.error}`);
+        setErrorModal({
+          isOpen: true,
+          title: 'Error al calificar',
+          message: result.error || 'No se pudo registrar la calificación.',
+        });
       }
     } catch (err) {
       console.error('Error calificando:', err);
-      alert('Error al procesar la calificación. Inténtalo de nuevo.');
+      setErrorModal({
+        isOpen: true,
+        title: 'Error al procesar calificación',
+        message: 'Inténtalo de nuevo en unos segundos.',
+      });
+    } finally {
+      setPendingRating(null);
     }
   };
 
@@ -185,11 +400,14 @@ const EntrenadoresList = () => {
       )}
       
       {entrenadores.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div
+          className="grid gap-6 justify-center"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 260px))' }}
+        >
           {entrenadores.map((e) => (
             <div
               key={e.id}
-              className={`relative bg-slate-900/60 border rounded-xl p-6 transition-all duration-300 hover:bg-slate-800/80 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 ${
+              className={`relative w-full bg-slate-900/60 border rounded-xl p-6 transition-all duration-300 hover:bg-slate-800/80 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 ${
                 selectedEntrenador?.id === e.id
                   ? 'border-blue-500 bg-blue-900/20 shadow-lg shadow-blue-500/20'
                   : 'border-slate-700'
@@ -211,6 +429,18 @@ const EntrenadoresList = () => {
                     {e.displayName || `${String(e.firstName || '').trim()} ${String(e.lastName || '').trim()}`.trim() || e.nombre || 'Sin nombre'}
                   </h3>
                   <p className="text-blue-400 text-sm font-medium">{e.especialidad || 'Entrenador Personal'}</p>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2 text-[11px] font-semibold">
+                    {getTrainerServiceSettings(e).offersPersonal ? (
+                      <span className="px-2 py-1 rounded-full bg-cyan-900/40 text-cyan-200 border border-cyan-700">
+                        Personal ${formatMoney(getTrainerServicePriceByType(e, 'PERSONAL'))} MXN
+                      </span>
+                    ) : null}
+                    {getTrainerServiceSettings(e).offersGroup ? (
+                      <span className="px-2 py-1 rounded-full bg-emerald-900/40 text-emerald-200 border border-emerald-700">
+                        Grupal ${formatMoney(getTrainerServicePriceByType(e, 'GRUPAL'))} MXN
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -230,8 +460,7 @@ const EntrenadoresList = () => {
                             onClick={() => handleRateTrainer(e.id, star)}
                             onMouseEnter={() => setHoveredStars(prev => ({ ...prev, [e.id]: star }))}
                             onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [e.id]: 0 }))}
-                            className="focus:outline-none disabled:cursor-default"
-                            disabled={myRating > 0}
+                            className="focus:outline-none"
                           >
                             <Star 
                               className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
@@ -305,6 +534,76 @@ const EntrenadoresList = () => {
           <p className="text-slate-500 text-sm mt-2">Estamos trabajando para expandir nuestro equipo de entrenadores.</p>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(pendingTrainerSelection)}
+        onClose={() => {
+          if (!assigning) {
+            setPendingTrainerSelection(null);
+          }
+        }}
+        onConfirm={confirmSelectEntrenador}
+        title="Confirmar entrenador"
+        message={pendingTrainerSelection
+          ? `¿Estas seguro de seleccionar a ${pendingTrainerSelection.displayName || `${pendingTrainerSelection.firstName || ''} ${pendingTrainerSelection.lastName || ''}`.trim() || pendingTrainerSelection.nombre || 'este entrenador'} como tu entrenador?\n\nEsto iniciara tu plan de entrenamiento personalizado.`
+          : ''}
+        confirmLabel={assigning ? 'Asignando...' : 'Si, Seleccionar'}
+        variant="info"
+      />
+
+      <ModalPagoServicioEntrenador
+        isOpen={Boolean(pendingPaymentTrainer)}
+        title="Confirmar pago del servicio"
+        subtitle={pendingPaymentTrainer
+          ? `Para continuar con tu servicio de entrenamiento, elige el tipo de servicio y confirma el pago.`
+          : ''}
+        serviceType={selectedServiceType}
+        serviceTypeOptions={(pendingPaymentTrainer?.serviceTypeOptions || []).map((type) => ({
+          value: type,
+          label: SERVICE_TYPE_LABELS[type] || type,
+        }))}
+        serviceTypeReadOnly={(pendingPaymentTrainer?.serviceTypeOptions || []).length <= 1}
+        onServiceTypeChange={handleServiceTypeChange}
+        value={paymentAmount}
+        amountReadOnly={true}
+        amountHelperText="El monto se ajusta automáticamente según el tipo de servicio seleccionado."
+        paymentMethod={paymentMethod}
+        onChange={setPaymentAmount}
+        onPaymentMethodChange={setPaymentMethod}
+        onConfirm={confirmPayAndAssignTrainer}
+        confirmLabel={assigning ? 'Procesando...' : 'Pagar y asignar'}
+        onClose={() => {
+          setPendingPaymentTrainer(null);
+          setSelectedServiceType('PERSONAL');
+          setPaymentAmount('');
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(pendingRating)}
+        onClose={() => setPendingRating(null)}
+        onConfirm={confirmRateTrainer}
+        title="Confirmar calificación"
+        message={pendingRating
+          ? `¿Calificar a este entrenador con ${pendingRating.rating} estrella(s)?`
+          : ''}
+        confirmLabel="Sí, Calificar"
+        variant="info"
+      />
+
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 };

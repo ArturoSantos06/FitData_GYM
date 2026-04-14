@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronRight,
   CreditCard,
+  DollarSign,
   Hash,
   Lock,
   Mail,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import {
   getCurrentUser,
+  getUsers,
   getUser,
   getUserByAuthUid,
   getUserByEmail,
@@ -21,6 +23,13 @@ import {
 } from '../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const getDateValue = (value) => {
+  if (!value) return 0;
+  if (typeof value?.toDate === 'function') return value.toDate().getTime();
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 const splitName = (user) => {
   const firstName = String(user?.firstName || '').trim();
@@ -46,14 +55,56 @@ const splitName = (user) => {
   };
 };
 
-const DEFAULT_CONTRACT_TYPE = 'Asignación por cliente';
+const DEFAULT_CONTRACT_TYPE = 'Comisiones';
 
 const CONTRACT_OPTIONS = [
-  'Asignación por cliente',
   'Asimilados a Salarios',
   'Honorarios (Persona Fisica)',
   'Comisiones',
 ];
+
+const SERVICE_TYPE_OPTIONS = [
+  { value: 'PERSONAL', label: 'Personal' },
+  { value: 'GRUPAL', label: 'Grupal' },
+];
+
+const getTrainerServiceSettings = (user = {}) => {
+  const legacyPrice = Number(
+    user.personalServicePrice ??
+    user.groupServicePrice ??
+    user.trainerServicePrice ??
+    user.servicePrice ??
+    user.costoServicio ??
+    user.costo_servicio ??
+    0
+  );
+
+  const serviceOptions = user.serviceOptions || user.service_options || user.serviceTypes || user.service_types || {};
+  const personalPrice = Number(
+    user.personalServicePrice ??
+    user.personal_service_price ??
+    serviceOptions.personalPrice ??
+    serviceOptions.personal_price ??
+    legacyPrice
+  );
+  const groupPrice = Number(
+    user.groupServicePrice ??
+    user.group_service_price ??
+    serviceOptions.groupPrice ??
+    serviceOptions.group_price ??
+    legacyPrice
+  );
+
+  const offersPersonal = user.offersPersonalService ?? user.personalServiceEnabled ?? serviceOptions.personal ?? serviceOptions.PERSONAL;
+  const offersGroup = user.offersGroupService ?? user.groupServiceEnabled ?? serviceOptions.group ?? serviceOptions.GRUPAL;
+
+  return {
+    offersPersonal: offersPersonal === undefined ? legacyPrice > 0 : Boolean(offersPersonal),
+    offersGroup: offersGroup === undefined ? legacyPrice > 0 : Boolean(offersGroup),
+    personalPrice: Number.isFinite(personalPrice) && personalPrice > 0 ? personalPrice : 0,
+    groupPrice: Number.isFinite(groupPrice) && groupPrice > 0 ? groupPrice : 0,
+  };
+};
 
 const normalizeContractType = (value) => {
   const raw = String(value || '').trim();
@@ -65,7 +116,7 @@ const normalizeContractType = (value) => {
     .toLowerCase();
 
   if (cleaned.includes('asignacion') && cleaned.includes('cliente')) {
-    return 'Asignación por cliente';
+    return 'Comisiones';
   }
 
   if (cleaned.includes('asimilados') && cleaned.includes('salarios')) {
@@ -126,6 +177,26 @@ const resolveTrainerFromAuth = async (firebaseUser) => {
 
       if (!next.clabe && (item.clabe || item.CLABE || item.cuentaBancaria || item.numeroCuenta || item.accountNumber)) {
         next.clabe = item.clabe || item.CLABE || item.cuentaBancaria || item.numeroCuenta || item.accountNumber;
+      }
+
+      if (next.offersPersonalService === undefined && (item.offersPersonalService !== undefined || item.personalServiceEnabled !== undefined || item.serviceOptions)) {
+        next.offersPersonalService = item.offersPersonalService ?? item.personalServiceEnabled ?? item.serviceOptions?.personal ?? item.serviceOptions?.PERSONAL;
+      }
+
+      if (next.offersGroupService === undefined && (item.offersGroupService !== undefined || item.groupServiceEnabled !== undefined || item.serviceOptions)) {
+        next.offersGroupService = item.offersGroupService ?? item.groupServiceEnabled ?? item.serviceOptions?.group ?? item.serviceOptions?.GRUPAL;
+      }
+
+      if (next.personalServicePrice === undefined && (item.personalServicePrice !== undefined || item.personal_service_price !== undefined || item.serviceOptions)) {
+        next.personalServicePrice = item.personalServicePrice ?? item.personal_service_price ?? item.serviceOptions?.personalPrice ?? item.serviceOptions?.personal_price;
+      }
+
+      if (next.groupServicePrice === undefined && (item.groupServicePrice !== undefined || item.group_service_price !== undefined || item.serviceOptions)) {
+        next.groupServicePrice = item.groupServicePrice ?? item.group_service_price ?? item.serviceOptions?.groupPrice ?? item.serviceOptions?.group_price;
+      }
+
+      if (next.serviceOptions === undefined && item.serviceOptions) {
+        next.serviceOptions = item.serviceOptions;
       }
 
       return next;
@@ -194,7 +265,7 @@ const ProfileMenu = ({ user, onNavigate }) => {
   );
 };
 
-const PersonalData = ({ user, onSave, onBack }) => {
+const PersonalData = ({ user, trainerCode, onSave, onBack }) => {
   const nameParts = splitName(user);
   const [editForm, setEditForm] = useState({
     ...user,
@@ -204,6 +275,17 @@ const PersonalData = ({ user, onSave, onBack }) => {
     contractType: normalizeContractType(
       user.contractType || user.tipoContrato || user.contract_type || user.tipo_contrato || ''
     ),
+    trainerServicePrice: String(
+      user.trainerServicePrice ?? user.servicePrice ?? user.costoServicio ?? user.costo_servicio ?? ''
+    ),
+    offersPersonalService: getTrainerServiceSettings(user).offersPersonal,
+    offersGroupService: getTrainerServiceSettings(user).offersGroup,
+    personalServicePrice: String(
+      user.personalServicePrice ?? user.personal_service_price ?? user.trainerServicePrice ?? user.servicePrice ?? user.costoServicio ?? user.costo_servicio ?? ''
+    ),
+    groupServicePrice: String(
+      user.groupServicePrice ?? user.group_service_price ?? user.trainerServicePrice ?? user.servicePrice ?? user.costoServicio ?? user.costo_servicio ?? ''
+    ),
     rfc: user.rfc || user.RFC || '',
     clabe: user.clabe || user.CLABE || user.cuentaBancaria || user.numeroCuenta || user.accountNumber || '',
   });
@@ -212,7 +294,12 @@ const PersonalData = ({ user, onSave, onBack }) => {
   const [successMsg, setSuccessMsg] = useState('');
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setEditForm((prev) => ({ ...prev, [name]: checked }));
+      return;
+    }
+
     if (name === 'telefono') {
       const numericValue = value.replace(/\D/g, '').slice(0, 10);
       setEditForm((prev) => ({ ...prev, [name]: numericValue }));
@@ -231,6 +318,18 @@ const PersonalData = ({ user, onSave, onBack }) => {
       return;
     }
 
+    if (name === 'trainerServicePrice') {
+      const normalized = value.replace(/[^0-9.]/g, '');
+      setEditForm((prev) => ({ ...prev, [name]: normalized }));
+      return;
+    }
+
+    if (name === 'personalServicePrice' || name === 'groupServicePrice') {
+      const normalized = value.replace(/[^0-9.]/g, '');
+      setEditForm((prev) => ({ ...prev, [name]: normalized }));
+      return;
+    }
+
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -243,6 +342,10 @@ const PersonalData = ({ user, onSave, onBack }) => {
     try {
       const normalizedRfc = String(editForm.rfc || '').trim().toUpperCase();
       const normalizedClabe = String(editForm.clabe || '').replace(/\D/g, '').slice(0, 18);
+      const normalizedPersonalPrice = Number(String(editForm.personalServicePrice || editForm.trainerServicePrice || '').replace(',', '.'));
+      const normalizedGroupPrice = Number(String(editForm.groupServicePrice || editForm.trainerServicePrice || '').replace(',', '.'));
+      const offersPersonal = Boolean(editForm.offersPersonalService);
+      const offersGroup = Boolean(editForm.offersGroupService);
 
       if (normalizedRfc && normalizedRfc.length !== 12 && normalizedRfc.length !== 13) {
         throw new Error('El RFC debe tener 12 o 13 caracteres');
@@ -250,6 +353,18 @@ const PersonalData = ({ user, onSave, onBack }) => {
 
       if (normalizedClabe && normalizedClabe.length !== 18) {
         throw new Error('La CLABE debe tener 18 dígitos');
+      }
+
+      if (!offersPersonal && !offersGroup) {
+        throw new Error('Debes habilitar al menos un tipo de servicio');
+      }
+
+      if (offersPersonal && (!Number.isFinite(normalizedPersonalPrice) || normalizedPersonalPrice <= 0)) {
+        throw new Error('Define un precio válido para el servicio personal');
+      }
+
+      if (offersGroup && (!Number.isFinite(normalizedGroupPrice) || normalizedGroupPrice <= 0)) {
+        throw new Error('Define un precio válido para el servicio grupal');
       }
 
       await onSave(editForm);
@@ -279,10 +394,10 @@ const PersonalData = ({ user, onSave, onBack }) => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className={labelClass}>ID de Usuario</label>
+            <label className={labelClass}>Código de Entrenador</label>
             <div className="relative">
               <Hash className="absolute left-3 top-3.5 text-slate-500" size={18} />
-              <input type="text" value={editForm.id} disabled className={inputClass} />
+              <input type="text" value={`#${trainerCode || '---'}`} disabled className={inputClass} />
             </div>
           </div>
 
@@ -341,6 +456,75 @@ const PersonalData = ({ user, onSave, onBack }) => {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className={`${labelClass} text-cyan-300 font-semibold`}>Costo del Servicio Personal (MXN)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-3.5 text-cyan-400" size={18} />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="personalServicePrice"
+                value={editForm.personalServicePrice || ''}
+                onChange={handleChange}
+                disabled={!editForm.offersPersonalService}
+                className={`${inputClass} border-cyan-500/30 focus:border-cyan-500 text-white bg-cyan-900/10`}
+                placeholder="Ej: 499"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={`${labelClass} text-emerald-300 font-semibold`}>Costo del Servicio Grupal (MXN)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-3.5 text-emerald-400" size={18} />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="groupServicePrice"
+                value={editForm.groupServicePrice || ''}
+                onChange={handleChange}
+                disabled={!editForm.offersGroupService}
+                className={`${inputClass} border-emerald-500/30 focus:border-emerald-500 text-white bg-emerald-900/10`}
+                placeholder="Ej: 299"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-slate-800 rounded-xl p-4 bg-slate-950/30">
+          <h3 className="text-sm md:text-base font-semibold text-fuchsia-300 mb-4">Tipos de servicio ofrecidos</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="flex items-start gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                name="offersPersonalService"
+                checked={Boolean(editForm.offersPersonalService)}
+                onChange={handleChange}
+                className="mt-1 h-4 w-4 rounded border-slate-500 text-cyan-500 focus:ring-cyan-500"
+              />
+              <div>
+                <p className="text-white font-semibold">Servicio personal</p>
+                <p className="text-slate-400 text-sm">Entrenamiento uno a uno con precio propio.</p>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                name="offersGroupService"
+                checked={Boolean(editForm.offersGroupService)}
+                onChange={handleChange}
+                className="mt-1 h-4 w-4 rounded border-slate-500 text-emerald-500 focus:ring-emerald-500"
+              />
+              <div>
+                <p className="text-white font-semibold">Servicio grupal</p>
+                <p className="text-slate-400 text-sm">Clases o sesiones en grupo con precio propio.</p>
+              </div>
+            </label>
           </div>
         </div>
 
@@ -488,6 +672,7 @@ const ChangePassword = ({ onBack }) => {
 
 function PerfilEntrenador() {
   const [user, setUser] = useState(null);
+  const [trainerCode, setTrainerCode] = useState('');
   const [currentView, setCurrentView] = useState('menu');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -511,10 +696,46 @@ function PerfilEntrenador() {
         }
 
         const trainerData = userResult.data;
+        const usersResult = await getUsers();
         const nameParts = splitName(trainerData);
         const rawContractType =
           trainerData.contractType || trainerData.tipoContrato || trainerData.contract_type || trainerData.tipo_contrato || '';
         const resolvedContractType = normalizeContractType(rawContractType);
+        const resolvedTrainerPrice = Number(
+          trainerData.trainerServicePrice ?? trainerData.servicePrice ?? trainerData.costoServicio ?? trainerData.costo_servicio ?? 0
+        );
+        const serviceSettings = getTrainerServiceSettings(trainerData);
+
+        const trainerUsers = usersResult.success ? (usersResult.data || []).filter((item) => {
+          const role = String(item.role || item.user_type || '').toLowerCase();
+          return role === 'trainer' || role === 'entrenador' || role === 'coach' || item.isTrainer === true || item.is_trainer === true;
+        }) : [];
+
+        const normalizedCurrentKey = normalizeEmail(trainerData.email) || String(trainerData.authUid || trainerData.id || currentUser.uid || '').trim().toLowerCase();
+        const uniqueTrainers = [];
+        const seenKeys = new Set();
+
+        trainerUsers
+          .slice()
+          .sort((a, b) => {
+            const aDate = getDateValue(a.createdAt || a.updatedAt);
+            const bDate = getDateValue(b.createdAt || b.updatedAt);
+            if (aDate !== bDate) return aDate - bDate;
+            const aLabel = String(a.displayName || a.username || a.email || '').toLowerCase();
+            const bLabel = String(b.displayName || b.username || b.email || '').toLowerCase();
+            return aLabel.localeCompare(bLabel);
+          })
+          .forEach((item) => {
+            const key = normalizeEmail(item.email) || String(item.authUid || item.id || '').trim().toLowerCase();
+            if (!key || seenKeys.has(key)) return;
+            seenKeys.add(key);
+            uniqueTrainers.push(item);
+          });
+
+        const trainerIndex = uniqueTrainers.findIndex((item) => {
+          const itemKey = normalizeEmail(item.email) || String(item.authUid || item.id || '').trim().toLowerCase();
+          return itemKey === normalizedCurrentKey;
+        });
 
         setUser({
           ...trainerData,
@@ -522,9 +743,21 @@ function PerfilEntrenador() {
           lastName: trainerData.lastName || nameParts.lastName,
           telefono: trainerData.telefono || trainerData.phone || '',
           contractType: resolvedContractType,
+          trainerServicePrice: Number.isFinite(resolvedTrainerPrice) && resolvedTrainerPrice > 0 ? resolvedTrainerPrice : 0,
+          offersPersonalService: serviceSettings.offersPersonal,
+          offersGroupService: serviceSettings.offersGroup,
+          personalServicePrice: serviceSettings.personalPrice,
+          groupServicePrice: serviceSettings.groupPrice,
+          serviceOptions: {
+            personal: serviceSettings.offersPersonal,
+            group: serviceSettings.offersGroup,
+            PERSONAL: serviceSettings.offersPersonal,
+            GRUPAL: serviceSettings.offersGroup,
+          },
           rfc: trainerData.rfc || trainerData.RFC || '',
           clabe: trainerData.clabe || trainerData.CLABE || trainerData.cuentaBancaria || trainerData.numeroCuenta || trainerData.accountNumber || '',
         });
+        setTrainerCode(trainerIndex >= 0 ? String(trainerIndex + 1).padStart(3, '0') : '---');
 
         if (!String(rawContractType || '').trim()) {
           const userDocId = String(trainerData.id || currentUser.uid || '').trim();
@@ -561,12 +794,28 @@ function PerfilEntrenador() {
     const normalizedContractType = normalizeContractType(
       updatedData.contractType || updatedData.tipoContrato || updatedData.contract_type || updatedData.tipo_contrato || ''
     );
+    const normalizedPersonalPrice = Number(String(updatedData.personalServicePrice || updatedData.trainerServicePrice || '').replace(',', '.'));
+    const normalizedGroupPrice = Number(String(updatedData.groupServicePrice || updatedData.trainerServicePrice || '').replace(',', '.'));
+    const offersPersonal = Boolean(updatedData.offersPersonalService);
+    const offersGroup = Boolean(updatedData.offersGroupService);
     const normalizedRfc = String(updatedData.rfc || updatedData.RFC || '').trim().toUpperCase();
     const normalizedClabe = String(updatedData.clabe || updatedData.CLABE || '').replace(/\D/g, '').slice(0, 18);
     const normalizedDisplayName = [normalizedFirstName, normalizedLastName].filter(Boolean).join(' ').trim() || normalizedUsername;
 
     if (!normalizedUsername) {
       throw new Error('El nombre de usuario no puede estar vacío');
+    }
+
+    if (!offersPersonal && !offersGroup) {
+      throw new Error('Debes habilitar al menos un tipo de servicio');
+    }
+
+    if (offersPersonal && (!Number.isFinite(normalizedPersonalPrice) || normalizedPersonalPrice <= 0)) {
+      throw new Error('Define un costo válido para el servicio personal');
+    }
+
+    if (offersGroup && (!Number.isFinite(normalizedGroupPrice) || normalizedGroupPrice <= 0)) {
+      throw new Error('Define un costo válido para el servicio grupal');
     }
 
     const result = await updateUser(userDocId, {
@@ -580,6 +829,22 @@ function PerfilEntrenador() {
       contractType: normalizedContractType,
       tipoContrato: normalizedContractType,
       contract_type: normalizedContractType,
+      offersPersonalService: offersPersonal,
+      offersGroupService: offersGroup,
+      serviceOptions: {
+        personal: offersPersonal,
+        group: offersGroup,
+        PERSONAL: offersPersonal,
+        GRUPAL: offersGroup,
+      },
+      trainerServicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      servicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      personalServicePrice: normalizedPersonalPrice,
+      personal_service_price: normalizedPersonalPrice,
+      groupServicePrice: normalizedGroupPrice,
+      group_service_price: normalizedGroupPrice,
+      costoServicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      costo_servicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
       rfc: normalizedRfc,
       RFC: normalizedRfc,
       clabe: normalizedClabe,
@@ -601,6 +866,22 @@ function PerfilEntrenador() {
         contractType: normalizedContractType,
         tipoContrato: normalizedContractType,
         contract_type: normalizedContractType,
+        offersPersonalService: offersPersonal,
+        offersGroupService: offersGroup,
+        serviceOptions: {
+          personal: offersPersonal,
+          group: offersGroup,
+          PERSONAL: offersPersonal,
+          GRUPAL: offersGroup,
+        },
+        trainerServicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+        servicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+        personalServicePrice: normalizedPersonalPrice,
+        personal_service_price: normalizedPersonalPrice,
+        groupServicePrice: normalizedGroupPrice,
+        group_service_price: normalizedGroupPrice,
+        costoServicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+        costo_servicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
         rfc: normalizedRfc,
         RFC: normalizedRfc,
         clabe: normalizedClabe,
@@ -628,6 +909,22 @@ function PerfilEntrenador() {
       contractType: normalizedContractType,
       tipoContrato: normalizedContractType,
       contract_type: normalizedContractType,
+      offersPersonalService: offersPersonal,
+      offersGroupService: offersGroup,
+      serviceOptions: {
+        personal: offersPersonal,
+        group: offersGroup,
+        PERSONAL: offersPersonal,
+        GRUPAL: offersGroup,
+      },
+      trainerServicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      servicePrice: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      personalServicePrice: normalizedPersonalPrice,
+      personal_service_price: normalizedPersonalPrice,
+      groupServicePrice: normalizedGroupPrice,
+      group_service_price: normalizedGroupPrice,
+      costoServicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
+      costo_servicio: offersPersonal ? normalizedPersonalPrice : normalizedGroupPrice,
       rfc: normalizedRfc,
       RFC: normalizedRfc,
       clabe: normalizedClabe,
@@ -686,6 +983,7 @@ function PerfilEntrenador() {
       {currentView === 'edit-personal' && (
         <PersonalData
           user={user}
+          trainerCode={trainerCode}
           onSave={handleUpdateUser}
           onBack={() => setCurrentView('menu')}
         />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut } from 'lucide-react';
+import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut, UserCircle2 } from 'lucide-react';
 
 const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
@@ -8,6 +8,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
         { id: 'calculadora', label: 'Calculadora', icon: Calculator },
         { id: 'dietas', label: 'Dietas', icon: BookOpen },
         { id: 'financiero', label: 'Finanzas', icon: Activity },
+        { id: 'perfil', label: 'Perfil', icon: UserCircle2 },
     ];
 
     return (
@@ -49,7 +50,10 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
           </header>
 
           <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-          <div className="grid grid-cols-5 h-full">
+          <div
+            className="grid h-full"
+            style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}
+          >
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;

@@ -1,38 +1,210 @@
 import React, {useState, useEffect} from 'react';
 import { Search } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail, getTrainerServiceSales, onAuthChanged } from '../firebase';
+
+const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
+
+const toDate = (value) => {
+    if (!value) return null;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const waitForFirebaseUser = () => {
+    const currentUser = getCurrentUser();
+    if (currentUser?.uid && currentUser?.email) {
+        return Promise.resolve(currentUser);
+    }
+
+    return new Promise((resolve) => {
+        let settled = false;
+
+        const finish = (user) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            unsubscribe();
+            resolve(user || null);
+        };
+
+        const unsubscribe = onAuthChanged((user) => {
+            if (user?.uid && user?.email) {
+                finish(user);
+            }
+        });
+
+        const timeoutId = setTimeout(() => {
+            finish(getCurrentUser());
+        }, 4000);
+    });
+};
 
 function TrainerClientUnlink() {
     //Estados a utilizar//
     const [clients, setClients] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarArchivados, setMostrarArchivados] = useState(false);
 
     useEffect(() => {
         const fetchClientes = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "miembros"));
-                
-                const clientesFirebase = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
+                setIsLoading(true);
+                const authUser = await waitForFirebaseUser();
+                if (!authUser) {
+                    setClients([]);
+                    setIsLoading(false);
+                    return;
+                }
+
+                const [querySnapshot, assignmentsSnapshot, byAuthUid, byDocId, byEmail, trainerSalesResult] = await Promise.all([
+                    getDocs(collection(db, "miembros")),
+                    getDocs(collection(db, 'client_trainer_assignments')),
+                    getUserByAuthUid(authUser.uid),
+                    getUser(authUser.uid),
+                    authUser.email ? getUserByEmail(authUser.email, authUser.uid) : Promise.resolve({ success: false }),
+                    getTrainerServiceSales(),
+                ]);
+
+                const trainerServiceSales = trainerSalesResult?.success ? trainerSalesResult.data : [];
+
+                const trainerKeys = new Set([
+                    authUser.uid,
+                    authUser.email,
+                ].map(normalizeLookupKey).filter(Boolean));
+
+                [byAuthUid, byDocId, byEmail]
+                    .filter((entry) => entry?.success && entry?.data)
+                    .forEach((entry) => {
+                        const data = entry.data;
+                        [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+                            const normalized = normalizeLookupKey(key);
+                            if (normalized) {
+                                trainerKeys.add(normalized);
+                            }
+                        });
+                    });
+
+                const assignedClientKeys = new Set();
+                assignmentsSnapshot.docs.forEach((docSnap) => {
+                    const assignment = docSnap.data() || {};
+                    const status = String(assignment.status || assignment.trainerStatus || 'active').toLowerCase();
+                    const trainerId = normalizeLookupKey(assignment.trainerId || assignment.trainer_id);
+                    const trainerEmail = normalizeLookupKey(assignment.trainerEmail || assignment.trainer_email);
+                    const matchesTrainer = trainerKeys.has(trainerId) || trainerKeys.has(trainerEmail);
+
+                    if (!matchesTrainer || status !== 'active') {
+                        return;
+                    }
+
+                    [assignment.clientId, assignment.memberId, docSnap.id].forEach((key) => {
+                        const normalized = normalizeLookupKey(key);
+                        if (normalized) {
+                            assignedClientKeys.add(normalized);
+                        }
+                    });
+                });
+
+                const now = new Date();
+                const month = now.getMonth() + 1;
+                const year = now.getFullYear();
+
+                // Get all SERVICIO_ENTRENAMIENTO sales for this month (as fallback for records without trainerId)
+                let allClientSales = [...trainerServiceSales];
+                try {
+                    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+                    const ventasQ = query(
+                        collection(db, 'ventas'),
+                        where('tipo_venta', '==', 'SERVICIO_ENTRENAMIENTO')
+                    );
+                    const ventasSnapshot = await getDocs(ventasQ);
+
+                    ventasSnapshot.docs.forEach((docSnap) => {
+                        const sale = docSnap.data();
+                        const saleDate = toDate(sale.completedAt) || toDate(sale.updatedAt) || toDate(sale.createdAt) || toDate(sale.fecha);
+
+                        // Filter by month
+                        if (!saleDate || saleDate.getMonth() + 1 !== month || saleDate.getFullYear() !== year) return;
+
+                        // Check if client is assigned
+                        const clientId = String(sale.cliente_id || sale.cliente || '').trim();
+                        if (!clientId) return;
+
+                        const clientNormalized = normalizeLookupKey(clientId);
+                        if (!assignedClientKeys.has(clientNormalized)) return;
+
+                        // Add if not already in list
+                        if (!allClientSales.find(s => s.id === docSnap.id)) {
+                            allClientSales.push({ id: docSnap.id, ...sale });
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Could not fetch additional sales:', error.message);
+                }
+
+                const paidClientKeys = new Set();
+                allClientSales.forEach((sale) => {
+                    const status = String(sale.payment_status || '').trim().toLowerCase();
+                    if (status !== 'completed') return;
+
+                    const saleClientKeys = [
+                        sale.cliente_id,
+                        sale.cliente,
+                        sale.cliente_auth_uid,
+                        sale.clienteEmail,
+                        sale.cliente_email,
+                        sale.cliente_email_override,
+                    ].map(normalizeLookupKey).filter(Boolean);
+
+                    const belongsToAssignedClient = saleClientKeys.some((key) => assignedClientKeys.has(key));
+                    if (!belongsToAssignedClient) return;
+
+                    const saleDate = toDate(sale.completedAt) || toDate(sale.updatedAt) || toDate(sale.createdAt) || toDate(sale.fecha);
+                    if (!saleDate) return;
+                    if (saleDate.getMonth() + 1 !== month || saleDate.getFullYear() !== year) return;
+
+                    saleClientKeys.forEach((key) => paidClientKeys.add(key));
+                });
+                const clientesFirebase = querySnapshot.docs.map((docSnap) => {
+                    const data = docSnap.data();
+
+                    const memberKeys = [
+                        docSnap.id,
+                        data.userId,
+                        data.authUid,
+                        data.email,
+                    ].map(normalizeLookupKey).filter(Boolean);
+
+                    const isAssigned = memberKeys.some((key) => assignedClientKeys.has(key));
+                    if (!isAssigned) {
+                        return null;
+                    }
+
+                    const pagoAlCorriente = memberKeys.some((key) => paidClientKeys.has(key));
                     
                     return {
-                        id: doc.id, 
+                        id: docSnap.id,
                         name: data.nombre ? `${data.nombre} ${data.apellido || ''}`.trim() : "Sin nombre",
-                        pagoAlCorriente: data.active === true, 
-                        estadoServicio: data.active ? 'activo' : 'cancelado',
+                        pagoAlCorriente,
+                        estadoServicio: 'activo',
                         archivado: data.archivado || false,
                         // Leemos si el cliente fue eliminado previamente
                         eliminado: data.eliminado || false 
                     };
                 });
                 
-                const clientesVivos = clientesFirebase.filter(cliente => cliente.eliminado === false);
+                const clientesVivos = clientesFirebase.filter((cliente) => cliente && cliente.eliminado === false);
                 
                 setClients(clientesVivos);
             } catch (error) {
                 console.error("Error al conectar con Firebase:", error);
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -142,7 +314,15 @@ function TrainerClientUnlink() {
                     </tr>
                 </thead>
                 <tbody className="text-gray-200 text-sm">
-                    {filteredClients.map((client) => (
+                    {isLoading && (
+                        <tr>
+                            <td colSpan="4" className="py-10 text-center text-gray-400 italic">
+                                Cargando clientes asignados...
+                            </td>
+                        </tr>
+                    )}
+
+                    {!isLoading && filteredClients.map((client) => (
                       <tr key={client.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
                         {/* ID */}
                         <td className="py-4 px-6">
@@ -196,7 +376,7 @@ function TrainerClientUnlink() {
                     ))}
                     
                     {/* Mensaje si no hay resultado*/}
-                    {filteredClients.length === 0 && (
+                    {!isLoading && filteredClients.length === 0 && (
                         <tr>
                             <td colSpan="4" className="py-10 text-center text-gray-500 italic">
                                 No hay clientes que mostrar.

@@ -1,6 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { getSales } from '../../firebase';
 
+const TRAINER_SERVICE_SALE_TYPE = 'SERVICIO_ENTRENAMIENTO';
+const NUTRITION_PLAN_SALE_TYPE = 'PLAN_NUTRICIONAL';
+
+const MEMBERSHIP_SALE_TYPES = new Set([
+    'ALTA_MEMBRESIA',
+    'RENOVACION_MEMBRESIA',
+]);
+
+const PRODUCT_SALE_TYPES = new Set([
+    'VENTA_PRODUCTOS',
+    'VENTA_PRODUCTO',
+    'PRODUCTOS',
+    'PRODUCTO',
+]);
+
+const isMembershipOrProductSale = (sale = {}) => {
+    const tipoVenta = String(sale?.tipo_venta || sale?.tipoVenta || '').trim().toUpperCase();
+
+    // Si existe tipo_venta explícito, solo permitimos productos y membresías.
+    if (tipoVenta) {
+        return MEMBERSHIP_SALE_TYPES.has(tipoVenta) || PRODUCT_SALE_TYPES.has(tipoVenta);
+    }
+
+    // Fallback legacy: ventas sin tipo, pero que no sean de servicios.
+    const hasTrainerMarkers = Boolean(
+        sale?.trainerId || sale?.trainer_id || sale?.trainerEmail || sale?.trainer_email
+    );
+
+    const hasServiceType = [
+        TRAINER_SERVICE_SALE_TYPE,
+        NUTRITION_PLAN_SALE_TYPE,
+    ].includes(String(sale?.tipo_venta || sale?.tipoVenta || '').trim().toUpperCase());
+
+    return !hasTrainerMarkers && !hasServiceType;
+};
+
 const HistorialVentas = ({ reloadTrigger }) => {
     const [ventas, setVentas] = useState([]);
     const [filtro, setFiltro] = useState('');
@@ -10,7 +46,15 @@ const HistorialVentas = ({ reloadTrigger }) => {
             try {
                 const result = await getSales();
                 if (result.success) {
-                    setVentas(result.data);
+                    const allSales = Array.isArray(result.data) ? result.data : [];
+                    const salesForGeneralHistory = allSales.filter((sale) => {
+                        const tipoVenta = String(sale?.tipo_venta || sale?.tipoVenta || '').trim().toUpperCase();
+                        if (tipoVenta === TRAINER_SERVICE_SALE_TYPE || tipoVenta === NUTRITION_PLAN_SALE_TYPE) {
+                            return false;
+                        }
+                        return isMembershipOrProductSale(sale);
+                    });
+                    setVentas(salesForGeneralHistory);
                 }
             } catch (error) {
                 console.error("Error cargando historial:", error);

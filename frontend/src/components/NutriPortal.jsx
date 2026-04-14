@@ -9,6 +9,7 @@ import NutriFinancialDashboard from './nutriologo/NutriFinancialDashboard';
 import CitasNutri from './nutriologo/CitasNutri';
 import DietaRepositorio from './DietaRepositorio';
 import NutritionAssistant from './NutritionAssistant';
+import PerfilNutriologo from './nutriologo/PerfilNutriologo';
 
 
 function NutriPortal() {
@@ -40,6 +41,7 @@ const [activeTab, setActiveTab] = useState('inicio');
                 {activeTab === 'calculadora' && <MacroCalculatorForm />}
                 {activeTab === 'dietas' && <DietaRepositorio />}
                 {activeTab === 'financiero' && <NutriFinancialDashboard />}
+                {activeTab === 'perfil' && <PerfilNutriologo />}
             </div>
 
             {/* El asistente solo es visible en la pestaña de calculadora */}

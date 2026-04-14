@@ -38,7 +38,7 @@ export default function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
         if (profileResult.success && profileResult.data) {
           const hp = profileResult.data;
           setFormData({
-            edad: hp.age || '',
+            edad: hp.age ?? hp.edad ?? '',
             condicionCorazon: hp.heart_condition || false,
             presionAlta: hp.high_blood_pressure || false,
             lesionesRecientes: hp.recent_injuries || false,
