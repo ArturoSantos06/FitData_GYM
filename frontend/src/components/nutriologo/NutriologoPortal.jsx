@@ -6,6 +6,7 @@ import MacroCalculatorForm from '../MacroCalculatorForm';
 import NutriFinancialDashboard from './NutriFinancialDashboard';
 import CitasNutri from './CitasNutri';
 import DietaRepositorio from '../DietaRepositorio';
+import NutritionAssistant from '../NutritionAssistant';
 
 function NutriologoPortal() {
   const nutritionistName = localStorage.getItem('nutritionist_username') || 'Nutriologo';
@@ -108,6 +109,8 @@ function NutriologoPortal() {
         {activeTab === 'dietas' && <DietaRepositorio />}
         {activeTab === 'financiero' && <NutriFinancialDashboard />}
       </main>
+
+      <NutritionAssistant />
     </div>
   );
 }

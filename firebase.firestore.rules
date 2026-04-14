@@ -314,6 +314,33 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
     }
 
+    // Asignaciones de entrenadores a clientes
+    match /client_trainer_assignments/{clientId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == clientId || // Cliente puede leer su propia asignación
+        isAdmin() // Admin puede leer todas
+      );
+      allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
+      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    // Reseñas de nutriólogos
+    match /nutritionist_reviews/{reviewId} {
+      allow read: if isAuthenticated(); // Todos los autenticados pueden leer reseñas
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.clientId; // Solo el cliente puede crear su reseña
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente propietario o admin pueden actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    // Reseñas de entrenadores
+    match /trainer_reviews/{reviewId} {
+      allow read: if isAuthenticated(); // Todos los autenticados pueden leer reseñas
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.clientId; // Solo el cliente puede crear su reseña
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente propietario o admin pueden actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;

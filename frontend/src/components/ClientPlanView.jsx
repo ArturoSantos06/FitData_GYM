@@ -3,6 +3,7 @@ import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, Fil
 
 import ClientRoutine from './ClientRoutine';
 import ClientCoachView from './ClientCoachView';
+import ClientNutriView from './ClientNutriView';
 import ClientDietViewer from './ClientDietViewer';
 import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
 import NutriologosList from './NutriologosList';
@@ -227,21 +228,21 @@ function ClientPlanView() {
                 <ChevronRight className="text-slate-500 group-hover:text-lime-400" size={24}/>
               </button>
 
-              {/* Opción 3: Mis Citas de Nutrición (NUEVO) */}
-              <button
-                onClick={() => setCurrentView('nutriologo_citas')}
-                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-teal-500/50"
+              {/* Opción 3: Detener Servicio */}
+              <button 
+                onClick={() => setCurrentView('nutriologo_cancelar')} 
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-red-500/50"
               >
                 <div className="flex items-center gap-5 text-left">
-                  <div className="p-3.5 bg-teal-500/10 rounded-xl text-teal-400 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-inner">
-                    <Calendar size={28} />
+                  <div className="p-3.5 bg-red-500/10 rounded-xl text-red-400 group-hover:bg-red-500 group-hover:text-white transition-all shadow-inner">
+                    <XCircle size={28} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-teal-300 font-bold text-lg">Mis Citas</span>
-                    <span className="text-slate-400 text-sm mt-0.5">Gestiona, cancela o reprograma tus citas médicas.</span>
+                    <span className="text-red-300 font-bold text-lg">Detener Servicio</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Gestiona o cancela tu suscripción con el nutriólogo actual.</span>
                   </div>
                 </div>
-                <ChevronRight className="text-slate-500 group-hover:text-teal-400" size={24}/>
+                <ChevronRight className="text-slate-500 group-hover:text-red-400" size={24}/>
               </button>
             </div>
           </div>
@@ -258,6 +259,15 @@ function ClientPlanView() {
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
         <ClientDietViewer />
+      </div>
+    );
+  }
+
+  if (currentView === 'nutriologo_cancelar') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
+        <ClientNutriView />
       </div>
     );
   }

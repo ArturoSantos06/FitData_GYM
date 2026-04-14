@@ -1,20 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebase/config';
+import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
+import { getCurrentUser, waitForAuthReady, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
 
 const EntrenadoresList = () => {
   const [entrenadores, setEntrenadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedEntrenador, setSelectedEntrenador] = useState(null);
+  const [currentClientId, setCurrentClientId] = useState(null);
+  const [assignedTrainerId, setAssignedTrainerId] = useState(null);
+  const [assigning, setAssigning] = useState(false);
+  const [reviews, setReviews] = useState({});
+  const [hoveredStars, setHoveredStars] = useState({});
 
   useEffect(() => {
-    const fetchEntrenadores = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        console.log("Iniciando consulta de entrenadores a Firestore...");
 
+        await waitForAuthReady();
+
+        // Obtener cliente actual
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+          setError('No se pudo identificar al cliente actual');
+          return;
+        }
+        setCurrentClientId(currentUser.uid);
+
+        // Verificar si ya tiene entrenador asignado
+        const assignment = await getClientTrainerAssignment(currentUser.uid);
+        if (assignment.success) {
+          setAssignedTrainerId(assignment.data.trainerId);
+        }
+
+        // Obtener lista de entrenadores
+        console.log("Iniciando consulta de entrenadores a Firestore...");
         const q = query(collection(db, "users"), where("role", "in", ["trainer", "entrenador"]));
         const querySnapshot = await getDocs(q);
 
@@ -25,6 +48,15 @@ const EntrenadoresList = () => {
 
         console.log("Entrenadores encontrados:", data);
         setEntrenadores(data);
+
+        // Obtener reseñas
+        if (data.length > 0) {
+          const trainerIds = data.map(e => e.id);
+          const reviewsResult = await getTrainerReviews(trainerIds);
+          if (reviewsResult.success) {
+            setReviews(reviewsResult.data);
+          }
+        }
       } catch (err) {
         console.error("Error detallado:", err);
         setError(err.message);
@@ -33,13 +65,86 @@ const EntrenadoresList = () => {
       }
     };
 
-    fetchEntrenadores();
+    fetchData();
   }, []);
 
-  const handleSelectEntrenador = (entrenador) => {
-    setSelectedEntrenador(entrenador);
-    // Aquí puedes agregar lógica para guardar la selección del entrenador
-    alert(`Has seleccionado a ${entrenador.nombre} como tu entrenador. Esta funcionalidad estará disponible próximamente.`);
+  const calculateAverageRating = (trainerId) => {
+    const trainerReviews = reviews[trainerId] || [];
+    if (trainerReviews.length === 0) return null;
+    const sum = trainerReviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / trainerReviews.length).toFixed(1);
+  };
+
+  const getReviewCount = (trainerId) => {
+    return reviews[trainerId]?.length || 0;
+  };
+
+  const handleSelectEntrenador = async (entrenador) => {
+    if (!currentClientId) {
+      alert('Error: No se pudo identificar al cliente');
+      return;
+    }
+    
+    if (assignedTrainerId) {
+      alert('Ya tienes un entrenador asignado. Si deseas cambiar, contacta a recepción.');
+      return;
+    }
+    
+    const confirmSelection = window.confirm(
+      `¿Estás seguro de seleccionar a ${entrenador.displayName || `${entrenador.firstName} ${entrenador.lastName}`.trim() || entrenador.nombre} como tu entrenador?\n\nEsto iniciará tu plan de entrenamiento personalizado.`
+    );
+    
+    if (!confirmSelection) return;
+    
+    setAssigning(true);
+    try {
+      const result = await assignTrainerToClient(currentClientId, entrenador.id);
+      if (result.success) {
+        setAssignedTrainerId(entrenador.id);
+        setSelectedEntrenador(entrenador);
+        alert(`¡Felicidades! Has contratado a ${entrenador.displayName || `${entrenador.firstName} ${entrenador.lastName}`.trim() || entrenador.nombre} como tu entrenador.\n\nPronto recibirás tu plan de entrenamiento personalizado.`);
+      } else {
+        alert(`Error al asignar entrenador: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error asignando entrenador:', err);
+      alert('Error al procesar la selección. Inténtalo de nuevo.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleRateTrainer = async (trainerId, rating) => {
+    if (!currentClientId) {
+      alert('Error: No se pudo identificar al cliente');
+      return;
+    }
+    
+    if (assignedTrainerId !== trainerId) {
+      alert('Solo puedes calificar a tu entrenador asignado');
+      return;
+    }
+    
+    const confirmRating = window.confirm(`¿Calificar a este entrenador con ${rating} estrella(s)?`);
+    if (!confirmRating) return;
+    
+    try {
+      const result = await addTrainerReview(currentClientId, trainerId, rating);
+      if (result.success) {
+        alert('¡Gracias por tu calificación!');
+        // Refresh reviews
+        const trainerIds = entrenadores.map(e => e.id);
+        const reviewsResult = await getTrainerReviews(trainerIds);
+        if (reviewsResult.success) {
+          setReviews(reviewsResult.data);
+        }
+      } else {
+        alert(`Error al calificar: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error calificando:', err);
+      alert('Error al procesar la calificación. Inténtalo de nuevo.');
+    }
   };
 
   if (error) return (
@@ -69,6 +174,16 @@ const EntrenadoresList = () => {
 
   return (
     <div className="space-y-6">
+      {assignedTrainerId && (
+        <div className="bg-green-900/20 border border-green-500 rounded-xl p-4 text-green-400">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5" />
+            <p className="font-semibold">Ya tienes un entrenador asignado</p>
+          </div>
+          <p className="text-sm mt-1">Si deseas cambiar de especialista, contacta a recepción del gimnasio.</p>
+        </div>
+      )}
+      
       {entrenadores.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {entrenadores.map((e) => (
@@ -99,10 +214,54 @@ const EntrenadoresList = () => {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="w-4 h-4 text-amber-400 fill-current" />
-                  ))}
-                  <span className="text-slate-400 text-xs ml-2">(4.9)</span>
+                  {assignedTrainerId === e.id ? (
+                    // Estrellas interactivas para calificar
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const trainerReviews = reviews[e.id] || [];
+                        const myReview = trainerReviews.find(r => r.clientId === currentClientId);
+                        const myRating = myReview ? myReview.rating : 0;
+                        const displayRating = hoveredStars[e.id] || myRating;
+                        const isFilled = star <= displayRating;
+                        
+                        return (
+                          <button
+                            key={star}
+                            onClick={() => handleRateTrainer(e.id, star)}
+                            onMouseEnter={() => setHoveredStars(prev => ({ ...prev, [e.id]: star }))}
+                            onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [e.id]: 0 }))}
+                            className="focus:outline-none disabled:cursor-default"
+                            disabled={myRating > 0}
+                          >
+                            <Star 
+                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                            />
+                          </button>
+                        );
+                      })}
+                      <span className="text-slate-400 text-xs ml-2">
+                        {calculateAverageRating(e.id) ? `(${calculateAverageRating(e.id)})` : '(Sin calificaciones)'}
+                      </span>
+                    </div>
+                  ) : (
+                    // Estrellas estáticas mostrando promedio
+                    <>
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const avgStr = calculateAverageRating(e.id);
+                        const avg = avgStr ? parseFloat(avgStr) : null;
+                        const filled = avg ? star <= Math.round(avg) : false;
+                        return (
+                          <Star 
+                            key={star} 
+                            className={`w-4 h-4 ${filled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                          />
+                        );
+                      })}
+                      <span className="text-slate-400 text-xs ml-2">
+                        {calculateAverageRating(e.id) ? `(${calculateAverageRating(e.id)})` : '(Sin reseñas)'}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 text-slate-400 text-xs">
@@ -112,13 +271,28 @@ const EntrenadoresList = () => {
 
                 <button
                   onClick={() => handleSelectEntrenador(e)}
+                  disabled={assigning || assignedTrainerId === e.id}
                   className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
-                    selectedEntrenador?.id === e.id
+                    assignedTrainerId === e.id
+                      ? 'bg-green-600 hover:bg-green-500 text-white cursor-not-allowed'
+                      : selectedEntrenador?.id === e.id
                       ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50'
                   }`}
                 >
-                  {selectedEntrenador?.id === e.id ? 'Seleccionado' : 'Seleccionar'}
+                  {assigning && selectedEntrenador?.id === e.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
+                      Asignando...
+                    </>
+                  ) : assignedTrainerId === e.id ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 inline mr-2" />
+                      Asignado
+                    </>
+                  ) : (
+                    'Seleccionar'
+                  )}
                 </button>
               </div>
             </div>
