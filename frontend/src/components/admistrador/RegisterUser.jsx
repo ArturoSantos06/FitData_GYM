@@ -396,260 +396,283 @@ function RegisterUser({ onUserRegistered }) {
     return handleClientSubmit(e);
   };
 
+  const fieldClass = 'w-full bg-slate-950/70 border border-slate-600/80 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 focus:border-cyan-400/50 transition-all';
+  const labelClass = 'block text-xs tracking-wide uppercase font-semibold text-slate-300 mb-1.5';
+  const cardClass = 'rounded-xl bg-slate-900/30 p-4 md:p-5 border-b border-slate-700/40';
+
   return (
-    <div className="bg-gray-800 p-6 rounded-xl shadow-xl mb-6 border-t-4 border-purple-500 text-gray-100 relative">
-      <ErrorModal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title={errorTitle} message={errorMessage} />
+    <div className="relative mb-6">
+      <div className="absolute -top-10 left-12 h-36 w-36 rounded-full bg-fuchsia-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-10 right-16 h-36 w-36 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
 
-      <SuccessModal 
-        isOpen={showSuccessModal}
-        onClose={() => { setShowSuccessModal(false); setShowHealthForm(false); }}
-        title="¡Registro Exitoso!"
-        message={successMessage}
-        subMessage={successSubMessage}
-      >
-        {showHealthForm && activeTab === 'cliente' && (
-          <div className="mt-2">
-            <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
-            <AdminHealthForm 
-              miembroEmail={recentEmail} 
-              onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }} 
-              onSaved={() => { if (onUserRegistered) onUserRegistered(); }}
-            />
-          </div>
-        )}
-      </SuccessModal>
+      <div className="relative mx-auto max-w-7xl bg-linear-to-br from-slate-800/90 via-slate-900/90 to-slate-950/90 p-5 md:p-7 text-gray-100 rounded-2xl">
+        <ErrorModal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title={errorTitle} message={errorMessage} />
 
-      <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-blue-400">
-        Registro
-      </h2>
-      
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Registro</label>
-          <select
-            name="user_type"
-            value={formData.user_type}
-            onChange={handleChange}
-            className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-          >
-            <option value="CLIENTE">Cliente</option>
-            <option value="ENTRENADOR">Entrenador</option>
-            <option value="NUTRIOLOGO">Nutriólogo</option>
-          </select>
-        </div>
-        
-        {/* DATOS PERSONALES */}
-        {formData.user_type !== 'NUTRIOLOGO' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Nombre de Usuario</label>
-            <input type="text" name="username" value={formData.username} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-          </div>
-        )}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Correo Electrónico</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Nombre(s)</label>
-          <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Apellidos</label>
-          <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
-        {formData.user_type === 'CLIENTE' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Teléfono (10 dígitos)</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-                placeholder="5512345678"
-                pattern="[0-9]{10}"
-                maxLength={10}
-                required
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => { setShowSuccessModal(false); setShowHealthForm(false); }}
+          title="¡Registro Exitoso!"
+          message={successMessage}
+          subMessage={successSubMessage}
+        >
+          {showHealthForm && activeTab === 'cliente' && (
+            <div className="mt-2">
+              <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
+              <AdminHealthForm
+                miembroEmail={recentEmail}
+                onClose={() => { setShowHealthForm(false); setShowSuccessModal(false); }}
+                onSaved={() => { if (onUserRegistered) onUserRegistered(); }}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Sexo</label>
-              <select name="sexo" value={formData.sexo} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required>
-                <option value="">-- Selecciona --</option>
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-              </select>
-            </div>
-          </>
-        )}
-        {formData.user_type === 'ENTRENADOR' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Tipo de Contrato</label>
-              <select
-                name="contract_type"
-                value={formData.contract_type}
-                onChange={handleChange}
-                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-                required
-              >
-                <option value="">-- Selecciona --</option>
-                <option value="Asimilados a Salarios">Asimilados a Salarios</option>
-                <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
-                <option value="Comisiones">Comisiones</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Especialidad</label>
-              <select
-                name="trainer_specialty"
-                value={formData.trainer_specialty}
-                onChange={handleChange}
-                className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-                required
-              >
-                <option value="">-- Selecciona --</option>
-                {trainerSpecialtyOptions.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-            {formData.trainer_specialty === 'Otro' && (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-1">Especifica la Especialidad</label>
-                <input
-                  type="text"
-                  name="trainer_specialty_other"
-                  value={formData.trainer_specialty_other}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none"
-                  placeholder="Ej: Entrenamiento prenatal"
-                  required
-                />
+          )}
+        </SuccessModal>
+
+        <div className="mb-8 relative">
+          <div className="absolute -top-8 left-0 w-96 h-24 bg-linear-to-r from-blue-500/20 via-cyan-500/20 to-blue-500/20 blur-3xl rounded-full" />
+          <div className="relative">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-wide text-blue-400">
+              Registro
+            </h2>
+          </div>
+          <p className="text-slate-400 text-sm mt-3 tracking-wide">Crea una nueva cuenta en FitData GYM</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 md:gap-5">
+          <section className={`${cardClass} col-span-12`}>
+            <label className={labelClass}>Tipo de Registro</label>
+            <select
+              name="user_type"
+              value={formData.user_type}
+              onChange={handleChange}
+              className={fieldClass}
+            >
+              <option value="CLIENTE">Cliente</option>
+              <option value="ENTRENADOR">Entrenador</option>
+              <option value="NUTRIOLOGO">Nutriólogo</option>
+            </select>
+          </section>
+
+          <section className={`${cardClass} col-span-12`}>
+            <h3 className="text-sm font-bold text-slate-200 mb-3">Datos personales</h3>
+            <div className="grid grid-cols-12 gap-4">
+              {formData.user_type !== 'NUTRIOLOGO' && (
+                <div className="col-span-12 md:col-span-6">
+                  <label className={labelClass}>Nombre de Usuario</label>
+                  <input type="text" name="username" value={formData.username} onChange={handleChange} className={fieldClass} required />
+                </div>
+              )}
+
+              <div className="col-span-12 md:col-span-6">
+                <label className={labelClass}>Correo Electrónico</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className={fieldClass} required />
               </div>
-            )}
-          </>
-        )}
-        {formData.user_type === 'NUTRIOLOGO' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Especialidad</label>
-            <input 
-              type="text" 
-              name="especialidad" 
-              value={formData.especialidad} 
-              onChange={handleChange} 
-              className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" 
-              placeholder="Ej: Nutrición Deportiva"
-              required 
-            />
-          </div>
-        )}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Contraseña {formData.user_type === 'CLIENTE' ? 'Temporal' : ''}</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-        </div>
-        {formData.user_type !== 'NUTRIOLOGO' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Contraseña</label>
-            <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-blue-500 outline-none" required />
-          </div>
-        )}
 
-        {/* SECCIÓN DE PAGO Y MEMBRESÍA */}
-        {formData.user_type === 'CLIENTE' && (
-        <div className="md:col-span-2 border-t border-gray-700 pt-4 mt-2">
-            <h3 className="text-lg font-bold text-cyan-400 mb-4">Asignación Inicial</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Membresía</label>
-                    <select 
-                        name="membership_id" 
-                        value={formData.membership_id} 
-                        onChange={handleChange} 
-                        className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none"
+              <div className="col-span-12 md:col-span-6">
+                <label className={labelClass}>Nombre(s)</label>
+                <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className={fieldClass} required />
+              </div>
+
+              <div className="col-span-12 md:col-span-6">
+                <label className={labelClass}>Apellidos</label>
+                <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className={fieldClass} required />
+              </div>
+
+              {formData.user_type === 'CLIENTE' && (
+                <>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className={labelClass}>Teléfono (10 dígitos)</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className={fieldClass}
+                      pattern="[0-9]{10}"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className={labelClass}>Sexo</label>
+                    <select name="sexo" value={formData.sexo} onChange={handleChange} className={fieldClass} required>
+                      <option value="">-- Selecciona --</option>
+                      <option value="M">Masculino</option>
+                      <option value="F">Femenino</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {formData.user_type === 'ENTRENADOR' && (
+                <>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className={labelClass}>Tipo de Contrato</label>
+                    <select
+                      name="contract_type"
+                      value={formData.contract_type}
+                      onChange={handleChange}
+                      className={fieldClass}
+                      required
+                    >
+                      <option value="">-- Selecciona --</option>
+                      <option value="Asimilados a Salarios">Asimilados a Salarios</option>
+                      <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
+                      <option value="Comisiones">Comisiones</option>
+                    </select>
+                  </div>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className={labelClass}>Especialidad</label>
+                    <select
+                      name="trainer_specialty"
+                      value={formData.trainer_specialty}
+                      onChange={handleChange}
+                      className={fieldClass}
+                      required
+                    >
+                      <option value="">-- Selecciona --</option>
+                      {trainerSpecialtyOptions.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {formData.trainer_specialty === 'Otro' && (
+                    <div className="col-span-12">
+                      <label className={labelClass}>Especifica la Especialidad</label>
+                      <input
+                        type="text"
+                        name="trainer_specialty_other"
+                        value={formData.trainer_specialty_other}
+                        onChange={handleChange}
+                        className={fieldClass}
+                        placeholder="Ej: Entrenamiento prenatal"
                         required
-                    >
-                        <option value="">-- Selecciona --</option>
-                        {memberships.map(m => (
-                            <option key={m.id} value={m.id}>{m.name} - ${m.price}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Método de Pago</label>
-                    <select 
-                        name="payment_method" 
-                        value={formData.payment_method} 
-                        onChange={handleChange} 
-                        className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 text-white focus:ring-cyan-500 outline-none"
-                    >
-                        <option value="EFECTIVO">Efectivo</option>
-                        <option value="TARJETA">Tarjeta</option>
-                        <option value="TRANSFERENCIA">Transferencia</option>
-                    </select>
-                </div>
-            </div>
-            
-            {/* INFORMACIÓN DE PAGO */}
-            {formData.membership_id && (
-                <div className="mt-4 bg-slate-900 p-4 rounded-lg border border-slate-600">
-                    <div className="flex justify-between items-center mb-3">
-                        <span className="text-gray-400 text-sm uppercase font-bold">Total a Cobrar</span>
-                        <span className="text-2xl font-extrabold text-green-400">${selectedPrice}</span>
-                        <span className="text-xs text-slate-500 ml-2">(IVA Incluido)</span>
+                      />
                     </div>
+                  )}
+                </>
+              )}
 
-                    {/* Input de Efectivo */}
-                    {formData.payment_method === 'EFECTIVO' && (
-                        <div className="border-t border-slate-600 pt-3 animate-fade-in">
-                            <div className="flex items-center gap-4 mb-2">
-                                <label className="text-sm text-gray-300 font-bold">Dinero Recibido:</label>
-                                <input 
-                                    type="number" 
-                                    value={montoRecibido} 
-                                    onChange={(e) => setMontoRecibido(e.target.value)} 
-                                    className="flex-1 p-2 bg-slate-800 border border-slate-500 rounded text-white text-right font-mono text-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div className="flex justify-between items-center bg-black/20 p-2 rounded">
-                                <span className="text-sm font-bold text-gray-400">Cambio:</span>
-                                <span className={`text-xl font-bold font-mono ${cambio < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
-                                    ${cambio.toFixed(2)}
-                                </span>
-                            </div>
-                        </div>
-                    )}
+              {formData.user_type === 'NUTRIOLOGO' && (
+                <div className="col-span-12 md:col-span-6">
+                  <label className={labelClass}>Especialidad</label>
+                  <input
+                    type="text"
+                    name="especialidad"
+                    value={formData.especialidad}
+                    onChange={handleChange}
+                    className={fieldClass}
+                    placeholder="Ej: Nutrición Deportiva"
+                    required
+                  />
                 </div>
-            )}
-        </div>
+              )}
+            </div>
+          </section>
+
+          <section className={`${cardClass} col-span-12`}>
+            <h3 className="text-sm font-bold text-slate-200 mb-3">Acceso</h3>
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-12 md:col-span-6">
+                <label className={labelClass}>Contraseña {formData.user_type === 'CLIENTE' ? 'Temporal' : ''}</label>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} className={fieldClass} required />
+              </div>
+              <div className="col-span-12 md:col-span-6">
+                <label className={labelClass}>Confirmar Contraseña</label>
+                <input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange} className={fieldClass} required />
+              </div>
+            </div>
+          </section>
+
+          {formData.user_type === 'CLIENTE' && (
+            <section className={`${cardClass} col-span-12 border-cyan-500/30 bg-cyan-950/15`}>
+              <h3 className="text-lg font-black tracking-tight text-cyan-300 mb-3">Asignación Inicial</h3>
+
+              <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-12 md:col-span-6">
+                  <label className={labelClass}>Membresía</label>
+                  <select
+                    name="membership_id"
+                    value={formData.membership_id}
+                    onChange={handleChange}
+                    className={fieldClass}
+                    required
+                  >
+                    <option value="">-- Selecciona --</option>
+                    {memberships.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name} - ${m.price}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-12 md:col-span-6">
+                  <label className={labelClass}>Método de Pago</label>
+                  <select
+                    name="payment_method"
+                    value={formData.payment_method}
+                    onChange={handleChange}
+                    className={fieldClass}
+                  >
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="TARJETA">Tarjeta</option>
+                    <option value="TRANSFERENCIA">Transferencia</option>
+                  </select>
+                </div>
+              </div>
+
+              {formData.membership_id && (
+                <div className="mt-4 rounded-lg bg-slate-950/40 p-4 border-b border-slate-600/40">
+                  <div className="grid grid-cols-12 items-center gap-3 mb-3">
+                    <span className="col-span-12 md:col-span-4 text-gray-400 text-xs uppercase font-bold tracking-wider">Total a Cobrar</span>
+                    <span className="col-span-8 md:col-span-4 text-2xl font-black text-emerald-400">${selectedPrice}</span>
+                    <span className="col-span-4 md:col-span-4 text-right text-xs text-slate-500">IVA incluido</span>
+                  </div>
+
+                  {formData.payment_method === 'EFECTIVO' && (
+                    <div className="border-t border-slate-700 pt-3 animate-fade-in">
+                      <div className="grid grid-cols-12 gap-3 items-center mb-2">
+                        <label className="col-span-12 md:col-span-4 text-sm font-semibold text-slate-300">Dinero Recibido</label>
+                        <input
+                          type="number"
+                          value={montoRecibido}
+                          onChange={(e) => setMontoRecibido(e.target.value)}
+                          className="col-span-12 md:col-span-8 bg-slate-900 border border-slate-500 rounded-lg px-4 py-2.5 text-white text-right font-mono text-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center rounded-lg bg-black/25 px-3 py-2">
+                        <span className="text-sm font-bold text-slate-400">Cambio</span>
+                        <span className={`text-xl font-black font-mono ${cambio < 0 ? 'text-red-400' : 'text-yellow-300'}`}>
+                          ${cambio.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
           )}
 
-        <div className="md:col-span-2 mt-4">
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className={`w-full bg-linear-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg transform active:scale-95 uppercase tracking-wide flex justify-center items-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Procesando...</span>
-              </>
-            ) : (
-              formData.user_type === 'ENTRENADOR' ? 'Registrar Entrenador' : formData.user_type === 'NUTRIOLOGO' ? 'Registrar Nutriólogo' : 'Registrar y Asignar'
-            )}
-          </button>
-        </div>
-
-      </form>
+          <div className="col-span-12 mt-1">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full rounded-lg bg-linear-to-r from-fuchsia-600 via-violet-600 to-cyan-600 px-5 py-3.5 text-white font-black tracking-wide shadow-xl transition-all hover:brightness-110 active:scale-[0.99] flex justify-center items-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                formData.user_type === 'ENTRENADOR' ? 'Registrar Entrenador' : formData.user_type === 'NUTRIOLOGO' ? 'Registrar Nutriólogo' : 'Registrar y Asignar'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

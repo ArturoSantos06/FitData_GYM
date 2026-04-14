@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from './SuccessModal';
-import { getUsers, getMembershipTypes, assignMembership } from '../firebase';
+import SuccessModal from '../SuccessModal';
+import { getUsers, getMembershipTypes, assignMembership } from '../../firebase';
 
 // MODAL DE RENOVACIÓNV 
 const RenewModal = ({ data, onConfirm, onCancel }) => {

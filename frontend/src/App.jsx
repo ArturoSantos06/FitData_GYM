@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import Login from './components/Login';
-import Navbar from './components/Navbar';
-import Home from './components/Home'; // El Dashboard del Admin
+import Login from './components/admistrador/Login';
+import Navbar from './components/admistrador/Navbar';
+import Home from './components/admistrador/Home'; // El Dashboard del Admin
 import RegisterUser from './components/admistrador/RegisterUser';
-import AssignMembership from './components/AssignMembership';
+import AssignMembership from './components/admistrador/AssignMembership';
 import UserMembershipList from './components/admistrador/UserMembershipList';
-import MembershipAdmin from './components/MembershipAdmin';
+import MembershipAdmin from './components/admistrador/MembershipAdmin';
 import PuntoDeVenta from './components/admistrador/PuntoDeVenta';
 import Inventario from './components/admistrador/Inventario';
 import CheckInOut from './components/CheckInOut';
 import HealthProfilesAdmin from './components/HealthProfilesAdmin';
-import BitacoraEntrenador from './components/BitacoraEntrenador';
+import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
 import CitasTrainer from './components/CitasTrainer';
 // Nuevos Componentes Públicos
@@ -212,7 +212,7 @@ function NutriologoArea() {
 
   if (isLoading) {
     return (
-      <div className="text-white bg-gray-900 h-screen flex items-center justify-center">
+      <div className="text-white bg-gray-900 min-h-screen flex items-center justify-center">
         Cargando...
       </div>
     );
@@ -314,6 +314,79 @@ function AdminArea() {
 
 // --- 2. APP PRINCIPAL (Rutas Globales) ---
 function App() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    if (hasCoarsePointer) return;
+
+    const interactiveSelector = [
+      'input',
+      'textarea',
+      'select',
+      'button',
+      'a',
+      'label',
+      '[role="button"]',
+      '[contenteditable="true"]',
+      '[data-no-drag-scroll="true"]'
+    ].join(',');
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollX = 0;
+    let startScrollY = 0;
+
+    const shouldIgnoreTarget = (target) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest(interactiveSelector));
+    };
+
+    const onMouseDown = (event) => {
+      if (event.button !== 0) return;
+      if (shouldIgnoreTarget(event.target)) return;
+
+      isDragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollX = window.scrollX;
+      startScrollY = window.scrollY;
+      document.body.classList.add('drag-scroll-active');
+    };
+
+    const onMouseMove = (event) => {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      window.scrollTo({
+        left: startScrollX - deltaX,
+        top: startScrollY - deltaY,
+        behavior: 'auto'
+      });
+    };
+
+    const endDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      document.body.classList.remove('drag-scroll-active');
+    };
+
+    window.addEventListener('mousedown', onMouseDown, { passive: true });
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('blur', endDrag);
+
+    return () => {
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', endDrag);
+      window.removeEventListener('blur', endDrag);
+      document.body.classList.remove('drag-scroll-active');
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <AssistantProvider>
