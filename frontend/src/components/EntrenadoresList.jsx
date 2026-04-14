@@ -198,6 +198,22 @@ const EntrenadoresList = () => {
     setPendingTrainerSelection(entrenador);
   };
 
+  const confirmPayAndAssignTrainer = async () => {
+    const trainerToPay = pendingPaymentTrainer;
+    const amountValue = Number(String(paymentAmount).replace(',', '.'));
+    const normalizedServiceType = normalizeServiceType(selectedServiceType) || 'PERSONAL';
+
+    if (!trainerToPay || !currentClientId) return;
+
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Monto inválido',
+        message: 'Ingresa un monto válido mayor a 0 para continuar.',
+      });
+      return;
+    }
+
     setAssigning(true);
     try {
       const paymentResult = await createTrainerServiceSale({
@@ -246,6 +262,44 @@ const EntrenadoresList = () => {
       });
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const confirmSelectEntrenador = async () => {
+    const entrenador = pendingTrainerSelection;
+    if (!entrenador || !currentClientId) return;
+
+    const serviceSettings = getTrainerServiceSettings(entrenador);
+    const serviceTypeOptions = [];
+    if (serviceSettings.offersPersonal) serviceTypeOptions.push('PERSONAL');
+    if (serviceSettings.offersGroup) serviceTypeOptions.push('GRUPAL');
+
+    if (serviceTypeOptions.length === 0) {
+      setPendingTrainerSelection(null);
+      setErrorModal({
+        isOpen: true,
+        title: 'Servicios no configurados',
+        message: 'Este entrenador aún no tiene servicios configurados. Contacta a recepción.',
+      });
+      return;
+    }
+
+    const defaultServiceType = serviceTypeOptions[0];
+    setPendingTrainerSelection(null);
+    setPendingPaymentTrainer({
+      ...entrenador,
+      serviceTypeOptions,
+    });
+    setSelectedServiceType(defaultServiceType);
+    setPaymentAmount(String(getTrainerServicePriceByType(entrenador, defaultServiceType)));
+    setPaymentMethod('EFECTIVO');
+  };
+
+  const handleServiceTypeChange = (serviceType) => {
+    const normalizedType = normalizeServiceType(serviceType) || 'PERSONAL';
+    setSelectedServiceType(normalizedType);
+    if (pendingPaymentTrainer) {
+      setPaymentAmount(String(getTrainerServicePriceByType(pendingPaymentTrainer, normalizedType)));
     }
   };
 
