@@ -1132,7 +1132,7 @@ exports.generateClientAiRoutine = onCall(
 );
 
 exports.generateClientAiRoutineHttp = onRequest(
-  { cors: true, invoker: "public", secrets: [GEMINI_API_KEY] },
+  { cors: true, invoker: "public", secrets: ["GEMINI_API_KEY"] },  
   async (req, res) => {
     applyRoutineCorsHeaders(req, res);
 
