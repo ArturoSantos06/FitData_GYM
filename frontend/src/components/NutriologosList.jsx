@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config'; 
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
-import { getCurrentUser, assignNutritionistToClient, getClientNutritionistAssignment } from '../firebase';
+import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../firebase';
 
 const NutriologosList = () => {
   const [nutris, setNutris] = useState([]);
@@ -12,12 +12,60 @@ const NutriologosList = () => {
   const [currentClientId, setCurrentClientId] = useState(null);
   const [assignedNutritionistId, setAssignedNutritionistId] = useState(null);
   const [assigning, setAssigning] = useState(false);
+  const [reviews, setReviews] = useState({});
+  const [hoveredStars, setHoveredStars] = useState({});
+
+  const calculateAverageRating = (nutriId) => {
+    const nutriReviews = reviews[nutriId] || [];
+    if (nutriReviews.length === 0) return null;
+    const sum = nutriReviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / nutriReviews.length).toFixed(1);
+  };
+
+  const getReviewCount = (nutriId) => {
+    return reviews[nutriId]?.length || 0;
+  };
+
+  const handleRateNutri = async (nutriId, rating) => {
+    if (!currentClientId) {
+      alert('Error: No se pudo identificar al cliente');
+      return;
+    }
+    
+    if (assignedNutritionistId !== nutriId) {
+      alert('Solo puedes calificar a tu nutriólogo asignado');
+      return;
+    }
+    
+    const confirmRating = window.confirm(`¿Calificar a este nutriólogo con ${rating} estrella(s)?`);
+    if (!confirmRating) return;
+    
+    try {
+      const result = await addNutritionistReview(currentClientId, nutriId, rating);
+      if (result.success) {
+        alert('¡Gracias por tu calificación!');
+        // Refresh reviews
+        const nutriIds = nutris.map(n => n.id);
+        const reviewsResult = await getNutritionistReviews(nutriIds);
+        if (reviewsResult.success) {
+          setReviews(reviewsResult.data);
+        }
+      } else {
+        alert(`Error al calificar: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error calificando:', err);
+      alert('Error al procesar la calificación. Inténtalo de nuevo.');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
+        await waitForAuthReady();
+
         // Obtener cliente actual
         const currentUser = getCurrentUser();
         if (!currentUser) {
@@ -25,25 +73,34 @@ const NutriologosList = () => {
           return;
         }
         setCurrentClientId(currentUser.uid);
-        
+
         // Verificar si ya tiene nutriólogo asignado
         const assignment = await getClientNutritionistAssignment(currentUser.uid);
         if (assignment.success) {
           setAssignedNutritionistId(assignment.data.nutritionistId);
         }
-        
+
         // Obtener lista de nutriólogos
         console.log("Iniciando consulta a Firestore...");
         const q = query(collection(db, "users"), where("role", "==", "nutriologo"));
         const querySnapshot = await getDocs(q);
-        
+
         const data = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         console.log("Nutriólogos encontrados:", data);
         setNutris(data);
+
+        // Obtener reseñas
+        if (data.length > 0) {
+          const nutriIds = data.map(n => n.id);
+          const reviewsResult = await getNutritionistReviews(nutriIds);
+          if (reviewsResult.success) {
+            setReviews(reviewsResult.data);
+          }
+        }
       } catch (err) {
         console.error("Error detallado:", err);
         setError(err.message);
@@ -157,10 +214,54 @@ const NutriologosList = () => {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="w-4 h-4 text-amber-400 fill-current" />
-                  ))}
-                  <span className="text-slate-400 text-xs ml-2">(4.8)</span>
+                  {assignedNutritionistId === n.id ? (
+                    // Estrellas interactivas para calificar
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const nutriReviews = reviews[n.id] || [];
+                        const myReview = nutriReviews.find(r => r.clientId === currentClientId);
+                        const myRating = myReview ? myReview.rating : 0;
+                        const displayRating = hoveredStars[n.id] || myRating;
+                        const isFilled = star <= displayRating;
+                        
+                        return (
+                          <button
+                            key={star}
+                            onClick={() => handleRateNutri(n.id, star)}
+                            onMouseEnter={() => setHoveredStars(prev => ({ ...prev, [n.id]: star }))}
+                            onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [n.id]: 0 }))}
+                            className="focus:outline-none disabled:cursor-default"
+                            disabled={myRating > 0}
+                          >
+                            <Star 
+                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                            />
+                          </button>
+                        );
+                      })}
+                      <span className="text-slate-400 text-xs ml-2">
+                        {calculateAverageRating(n.id) ? `(${calculateAverageRating(n.id)})` : '(Sin calificaciones)'}
+                      </span>
+                    </div>
+                  ) : (
+                    // Estrellas estáticas mostrando promedio
+                    <>
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const avgStr = calculateAverageRating(n.id);
+                        const avg = avgStr ? parseFloat(avgStr) : null;
+                        const filled = avg ? star <= Math.round(avg) : false;
+                        return (
+                          <Star 
+                            key={star} 
+                            className={`w-4 h-4 ${filled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                          />
+                        );
+                      })}
+                      <span className="text-slate-400 text-xs ml-2">
+                        {calculateAverageRating(n.id) ? `(${calculateAverageRating(n.id)})` : '(Sin reseñas)'}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 text-slate-400 text-xs">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { onAuthChanged } from '../firebase';
 import UserProfile from './UserProfile';
 import ClientMembership from './ClientMembership';
 import ClientStore from './ClientStore';
@@ -11,6 +12,7 @@ import AssistantWidget from './asistente/WidgetAsistente';
 function ClientPortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inicio');
+  const [authReady, setAuthReady] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('firebaseUser');
@@ -18,11 +20,24 @@ function ClientPortal() {
   };
 
   useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (!firebaseUser) {
-      navigate('/cliente/login');
-    }
+    const unsubscribe = onAuthChanged((user) => {
+      setAuthReady(true);
+      if (!user) {
+        localStorage.removeItem('firebaseUser');
+        navigate('/cliente/login');
+      }
+    });
+
+    return () => unsubscribe();
   }, [navigate]);
+
+  if (!authReady) {
+    return (
+      <div className="text-white bg-gray-900 h-screen flex items-center justify-center">
+        <p>Cargando sesión...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8 pb-24 md:pb-8">

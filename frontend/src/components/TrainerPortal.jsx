@@ -6,6 +6,7 @@ import TrainerManagement from './TrainerManagement';
 import HomeTrainer from './entrenador/HomeTrainer';
 import CitasTrainer from './CitasTrainer';
 import PerfilEntrenador from './entrenador/PerfilEntrenador';
+import ProfessionalMessagesView from './chat/ProfessionalMessagesView';
 
 function TrainerPortal() {
     const [activeTab, setActiveTab] = useState('inicio');
@@ -37,6 +38,9 @@ function TrainerPortal() {
                )}
                {activeTab === 'gestion' && (
                 <TrainerManagement />
+               )}
+               {activeTab === 'mensajes' && (
+                <ProfessionalMessagesView role="trainer" />
                )}
                {activeTab === 'perfil' && (
                 <PerfilEntrenador />

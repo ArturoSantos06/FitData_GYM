@@ -10,7 +10,6 @@ gmail_tokens.json
 credentials.json
 token.json
 firebase-service-account*.json
-/firebase-service-account.json
 *.pem
 *.key
 *.p12
@@ -40,7 +39,6 @@ ENV/
 # =========================
 # Node / Frontend
 # =========================
-node_modules/
 frontend/node_modules/
 frontend/dist/
 npm-debug.log*
@@ -61,8 +59,6 @@ db.sqlite3
 media/
 static/
 staticfiles/
-fase1/media/
-fase1/productos/
 
 # =========================
 # IDE / OS / logs
@@ -75,4 +71,4 @@ fase1/productos/
 *~
 .DS_Store
 Thumbs.db
-
+**/firebase-service-account.json

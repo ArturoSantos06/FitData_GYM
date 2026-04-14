@@ -67,13 +67,7 @@ service cloud.firestore {
 
     // Users Collection - Restrict access to own data or admins
     match /users/{userId} {
-      allow read: if isSignedIn() ||
-                  isOwner(userId) ||
-                  (isAuthenticated() && (
-                    resource.data.authUid == request.auth.uid ||
-                    resource.data.email == request.auth.token.email
-                  )) ||
-                  isAdmin();
+      allow read: if isSignedIn();
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isOwner(userId) ||
                     isAdmin() ||
@@ -81,11 +75,17 @@ service cloud.firestore {
                       resource.data.authUid == request.auth.uid ||
                       resource.data.email == request.auth.token.email
                     )) ||
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['selectedEntrenador'])) ||
                     // Permitir actualizaciones de gymPoints desde transacciones autenticadas
                     // (admin procesando venta actualiza puntos del cliente)
                     (isAuthenticated() &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gymPoints']));
       allow delete: if isAdmin();
+      
+      // Notificaciones de usuario
+      match /notifications/{notificationId} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      }
     }
 
     // Members Collection - Linked to users
@@ -227,7 +227,7 @@ service cloud.firestore {
 
     // Catalogo de maquinas para mantenimiento
     match /catalogo_maquinas/{machineId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
@@ -309,58 +309,57 @@ service cloud.firestore {
 
     // Asignaciones de nutriólogos a clientes
     match /client_nutritionist_assignments/{clientId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == clientId || // Cliente puede leer su propia asignación
-        isAdmin() // Admin puede leer todas
-      );
-      allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
-      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
-      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
     // Asignaciones de entrenadores a clientes
     match /client_trainer_assignments/{clientId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == clientId || 
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && request.auth.uid == clientId;
-      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin();
-      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
-    // Chats en tiempo real
+    // Permite al profesional leer la lista de vinculaciones
+    match /client_nutritionist_assignments/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /client_trainer_assignments/{document} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Permite leer los perfiles públicos para obtener el displayName y la foto
+    match /users/{userId} {
+      allow read: if request.auth != null;
+    }
+
+    // Reseñas de nutriólogos
+    match /nutritionist_reviews/{reviewId} {
+      allow read: if isAuthenticated(); // Todos los autenticados pueden leer reseñas
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.clientId; // Solo el cliente puede crear su reseña
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente propietario o admin pueden actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    // Reseñas de entrenadores
+    match /trainer_reviews/{reviewId} {
+      allow read: if isAuthenticated(); // Todos los autenticados pueden leer reseñas
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.clientId; // Solo el cliente puede crear su reseña
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente propietario o admin pueden actualizar
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == resource.data.uid);
+      allow write: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == request.resource.data.uid);
+    }
+    
+    // Chat y Mensajes
     match /chats/{chatId} {
-      allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
-      
+      allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
       match /messages/{messageId} {
-        allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+        allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
       }
-    }
-
-    // Notificaciones de usuario
-    match /users/{userId}/notifications/{notifId} {
-        allow read, write: if isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Historial de puntos de lealtad (GYM-Points)
-    // La transacción se ejecuta del lado del admin autenticado;
-    // además, el ID de documento de users puede ser numérico (ej. '44')
-    // y diferir del auth UID, por eso también verificamos el campo authUid
-    // del documento padre y permitimos a admins autenticados.
-    match /users/{userId}/point_history/{historyId} {
-      allow read: if isAdmin() ||
-        isOwner(userId) ||
-        (isAuthenticated() &&
-          exists(/databases/$(database)/documents/users/$(userId)) &&
-          get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid);
-      allow create: if isAdmin() ||
-        isOwner(userId) ||
-        (isAuthenticated() &&
-          exists(/databases/$(database)/documents/users/$(userId)) &&
-          get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid);
-      allow update: if isAdmin() || isOwner(userId);
-      allow delete: if isAdmin();
     }
 
     // Default deny all other collections

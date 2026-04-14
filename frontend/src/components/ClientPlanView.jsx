@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown, ClipboardList } from 'lucide-react';
+import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown, ClipboardList, Calendar } from 'lucide-react';
 
 import ClientRoutine from './ClientRoutine';
 import ClientCoachView from './ClientCoachView';
+import ClientNutriView from './ClientNutriView';
 import ClientDietViewer from './ClientDietViewer';
 import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
 import NutriologosList from './NutriologosList';
 import EntrenadoresList from './EntrenadoresList';
+// Importamos el nuevo componente de Citas
+import NutritionAppointments from './NutritionAppointments';
 
 function ClientPlanView() {
   const [currentView, setCurrentView] = useState('menu');
@@ -22,7 +25,9 @@ function ClientPlanView() {
     </button>
   );
 
-  // NIVEL 2: SUBMENÚ DEL ENTRENADOR //
+  // =========================================================
+  // NIVEL 2: SUBMENÚ DEL ENTRENADOR
+  // =========================================================
   if (currentView === 'entrenador_menu') {
     return (
       <div className="w-full animate-fade-in">
@@ -109,7 +114,6 @@ function ClientPlanView() {
                 </div>
                 <ChevronRight className="text-slate-500 group-hover:text-red-400" size={24} />
               </button>
-
             </div>
           </div>
         </div>
@@ -117,7 +121,9 @@ function ClientPlanView() {
     );
   }
 
-  // NIVEL 3: VISTAS FINALES DEL ENTRENADOR POR EL MOMENTO //
+  // =========================================================
+  // NIVEL 3: VISTAS FINALES DEL ENTRENADOR POR EL MOMENTO
+  // =========================================================
   if (currentView === 'entrenador_rutina') {
     return (
       <div className="w-full animate-fade-in">
@@ -221,6 +227,23 @@ function ClientPlanView() {
                 </div>
                 <ChevronRight className="text-slate-500 group-hover:text-lime-400" size={24}/>
               </button>
+
+              {/* Opción 3: Detener Servicio */}
+              <button 
+                onClick={() => setCurrentView('nutriologo_cancelar')} 
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-red-500/50"
+              >
+                <div className="flex items-center gap-5 text-left">
+                  <div className="p-3.5 bg-red-500/10 rounded-xl text-red-400 group-hover:bg-red-500 group-hover:text-white transition-all shadow-inner">
+                    <XCircle size={28} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-red-300 font-bold text-lg">Detener Servicio</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Gestiona o cancela tu suscripción con el nutriólogo actual.</span>
+                  </div>
+                </div>
+                <ChevronRight className="text-slate-500 group-hover:text-red-400" size={24}/>
+              </button>
             </div>
           </div>
         </div>
@@ -228,11 +251,23 @@ function ClientPlanView() {
     );
   }
 
+  // =========================================================
+  // NIVEL 3: VISTAS FINALES DE NUTRICIÓN
+  // =========================================================
   if (currentView === 'nutriologo_dieta') {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
         <ClientDietViewer />
+      </div>
+    );
+  }
+
+  if (currentView === 'nutriologo_cancelar') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
+        <ClientNutriView />
       </div>
     );
   }
@@ -261,6 +296,19 @@ function ClientPlanView() {
     );
   }
 
+  // NUEVA VISTA: Panel de Citas de Nutrición
+  if (currentView === 'nutriologo_citas') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
+        <NutritionAppointments />
+      </div>
+    );
+  }
+
+  // =========================================================
+  // NIVEL 1: MENÚ PRINCIPAL RAÍZ
+  // =========================================================
   // NIVEL 1: MENÚ PRINCIPAL RAÍZ //
   return (
     <div className="w-full flex justify-center animate-fade-in">

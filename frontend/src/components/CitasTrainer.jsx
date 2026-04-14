@@ -93,7 +93,9 @@ const CitasTrainer = ({ embedded = false }) => {
 
               <h3 className="text-xl font-bold mb-1 truncate uppercase leading-none flex-1">
                 {miembro.nombre} <br />
-                <span className="text-sm opacity-60 font-medium">{miembro.apellido}</span>
+                <span className="text-sm opacity-60 font-medium">
+                  {miembro.apellido ? `${miembro.apellido}` : "SIN APELLIDO"}
+                </span>
               </h3>
 
               <div className="mb-6 mt-2">

@@ -108,6 +108,26 @@ export {
   removeNutritionistFromClient
 } from './firestore';
 
+// Export Nutritionist Review services
+export {
+  addNutritionistReview,
+  getNutritionistReviews
+} from './firestore';
+
+// Export Trainer Assignment services
+export {
+  assignTrainerToClient,
+  getClientTrainerAssignment,
+  removeTrainerFromClient
+} from './firestore';
+
+// Export Trainer Review services
+export {
+  addTrainerReview,
+  getTrainerReviews,
+  waitForAuthReady
+} from './firestore';
+
 // Export Storage services
 export {
   uploadImage,

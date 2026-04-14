@@ -24,12 +24,15 @@ import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
-import NutriologoPortal from './components/nutriologo/NutriologoPortal';
+import NutriPortal from './components/NutriPortal';
 import ReportesFacturacion from './components/ReportesFacturacion';
 import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 import { AssistantProvider } from './components/asistente/ContextoAsistente';
 import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
+
+//Componete para el entrenador//
+import TrainerPortal from './components/TrainerPortal';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
@@ -50,7 +53,6 @@ function RequireTrainerAuth({ children }) {
 
       try {
         let role = '';
-
         const byAuthUid = await getUserByAuthUid(user.uid);
         if (byAuthUid.success) {
           role = String(byAuthUid.data?.role || '').toLowerCase();
@@ -124,7 +126,6 @@ function RequireNutritionistAuth({ children }) {
 
       try {
         let role = '';
-
         const byAuthUid = await getUserByAuthUid(user.uid);
         if (byAuthUid.success) {
           role = String(byAuthUid.data?.role || '').toLowerCase();
@@ -188,8 +189,6 @@ function RequireNutritionistAuth({ children }) {
   return children;
 }
 
-//Componete para el entrenador//
-import TrainerPortal from './components/TrainerPortal';
 
 // --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
 function NutriologoArea() {
@@ -398,7 +397,17 @@ function App() {
           <Route path="/cliente/login" element={<ClientLogin />} />
           <Route path="/cliente" element={<ClientPortal />} />
           <Route path="/nutriologo/login" element={<NutriologoLogin />} />
-          <Route path="/nutriologo" element={<NutriologoArea />} />
+
+          {/* Ruta protegida del Nutriólogo */}
+          <Route
+            path="/nutriologo/*"
+            element={
+              <RequireNutritionistAuth>
+                <NutriPortal />
+              </RequireNutritionistAuth>
+            }
+          />
+
           <Route path="/entrenador/login" element={<EntrenadorLogin />} />
           <Route
             path="/entrenador"
@@ -432,6 +441,7 @@ function App() {
               </RequireTrainerAuth>
             }
           />
+
 
           <Route path="/mantenimiento" element={<PortalMantenimiento vistaInicial="usuario" />} />
 
