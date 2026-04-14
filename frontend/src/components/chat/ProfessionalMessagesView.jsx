@@ -43,9 +43,14 @@ const MessagesBody = ({ role }) => {
                     const assignData = d.data();
                     console.log("3. Datos crudos de la asignación:", assignData);
 
-                    let clientId = d.id;
-                    if (assignData.clientId) {
-                        clientId = assignData.clientId;
+                    // --- LA CORRECCIÓN CLAVE ---
+                    // Tomamos ESTRICTAMENTE el valor guardado adentro del documento, nunca el d.id
+                    const clientId = assignData.clientId;
+
+                    // Si el documento de Firebase está mal hecho y no tiene el campo, lo saltamos.
+                    if (!clientId) {
+                        console.warn(`Saltando documento ${d.id}: No tiene el campo 'clientId' adentro.`);
+                        continue;
                     }
 
                     console.log(`4. ID del cliente a buscar en 'users': ${clientId}`);
@@ -60,6 +65,8 @@ const MessagesBody = ({ role }) => {
                         if (userSnap.exists()) {
                             const u = userSnap.data();
                             console.log(`5. Perfil de cliente encontrado: ${u.displayName}`);
+
+                            // Ahora estamos 100% seguros de que este 'clientId' es la cadena larga (ej. OsVis...)
                             clientsData.push({
                                 clientId: clientId,
                                 name: u.displayName || 'Cliente Sin Nombre',

@@ -338,6 +338,7 @@ function ClientMessagesWhatsApp() {
         const fetchAssignments = async () => {
             console.log("--- Iniciando búsqueda de vinculaciones ---");
             console.log("Mi UID (Cliente):", currentUser.uid);
+            console.log("Email del usuario actual:", currentUser.email);
 
             try {
                 // Auditoría Nutriólogo
@@ -658,13 +659,13 @@ function ClientMessagesWhatsApp() {
                                 <h2 className="text-base font-bold text-slate-100">Mensajes</h2>
                                 <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
                             </div>
-                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO --- */}
                             {currentUser && <NotificationCenter userId={currentUser.uid} />}
-                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN --- */}
                         </div>
 
                         <div className="p-2 overflow-y-auto">
-                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO --- */}
                             {trainerId && (
                                 <button
                                     type="button"
@@ -702,7 +703,7 @@ function ClientMessagesWhatsApp() {
                                     </div>
                                 </button>
                             )}
-                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN --- */}
 
                             <button
                                 type="button"
