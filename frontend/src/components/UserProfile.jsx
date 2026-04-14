@@ -69,6 +69,8 @@ function HealthForm() {
     });
 
     const [status, setStatus] = useState('idle');
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [saveMessage, setSaveMessage] = useState('');
     useEffect(() => {
         const loadUserData = async () => {
             try {
@@ -160,7 +162,8 @@ function HealthForm() {
             });
             if (!result.success) throw new Error(result.error || 'Error guardando ficha');
             const mensaje = result.updated ? 'Ficha médica actualizada correctamente' : 'Ficha médica creada correctamente';
-            alert(mensaje);
+            setSaveMessage(mensaje);
+            setShowSaveModal(true);
             setStatus('success');
         } catch (err) {
             alert(err.message);
@@ -182,7 +185,7 @@ function HealthForm() {
                                 const hp = hpResult.data;
                                 setFormData(prev => ({
                                     ...prev,
-                                    edad: hp.age || '',
+                                    edad: hp.age ?? hp.edad ?? '',
                                     condicionCorazon: hp.heart_condition || false,
                                     presionAlta: hp.high_blood_pressure || false,
                                     lesionesRecientes: hp.recent_injuries || false,
@@ -202,6 +205,13 @@ function HealthForm() {
 
         if (status === 'success') {
             return (
+                <>
+                <SuccessModal
+                    isOpen={showSaveModal}
+                    onClose={() => setShowSaveModal(false)}
+                    title="Ficha médica"
+                    message={saveMessage}
+                />
                 <div className="p-6 space-y-6">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
@@ -242,11 +252,18 @@ function HealthForm() {
                         <button onClick={() => setStatus('form')} className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Editar Ficha</button>
                     </div>
                 </div>
+                </>
             );
         }
 
     return (
         <div className="w-full">
+            <SuccessModal
+                isOpen={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                title="Ficha médica"
+                message={saveMessage}
+            />
             <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-center rounded-t-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-black/10"></div>
                 <h2 className="text-2xl font-bold text-white relative z-10 flex justify-center items-center gap-2">

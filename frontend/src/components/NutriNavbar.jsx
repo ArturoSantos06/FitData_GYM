@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut, MessageCircle } from 'lucide-react';
+import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut, MessageCircle, UserCircle2 } from 'lucide-react';
 
 const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
@@ -13,6 +13,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
         // NUEVA INTEGRACIÓN: MÓDULO DE MENSAJES (ESTRATEGIA CONTEXT API)
         // ==========================================
         { id: 'mensajes', label: 'Mensajes', icon: MessageCircle },
+        { id: 'perfil', label: 'Perfil', icon: UserCircle2 },
     ];
 
     return (
@@ -54,7 +55,10 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
           </header>
 
           <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 pb-safe z-50 h-16">
-          <div className="flex justify-between items-center h-full px-2">
+          <div
+            className="grid h-full"
+            style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}
+          >
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;

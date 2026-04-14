@@ -1,10 +1,12 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
-const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children }) => {
+const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children, overlayClassName = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in' }) => {
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+  return createPortal(
+    <div className={overlayClassName}>
       <div className="bg-slate-900 border border-green-500/50 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center transform scale-100 transition-transform">
         
         <div className="mb-4 flex justify-center">
@@ -41,7 +43,8 @@ const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children })
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

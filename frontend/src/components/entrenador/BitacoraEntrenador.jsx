@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import { 
   getAllMembers, 
   createTrainerNote, 
@@ -6,8 +8,13 @@ import {
   getAllTrainerNotes,
   updateTrainerNote, 
   deleteTrainerNote,
-  getCurrentUser 
+  getCurrentUser,
+  getUser,
+  getUserByAuthUid,
+  getUserByEmail,
 } from '../../firebase';
+
+const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
 
 function BitacoraEntrenador({ embedded = false }) {
   const [members, setMembers] = useState([]);
@@ -37,12 +44,73 @@ function BitacoraEntrenador({ embedded = false }) {
   }, []);
 
   const loadMembers = useCallback(async () => {
-    const result = await getAllMembers();
-    if (result.success) {
-      setMembers(result.data);
-    } else {
-      showMessage('error', 'Error al cargar miembros');
+    const authUser = getCurrentUser();
+    if (!authUser) {
+      setMembers([]);
+      showMessage('error', 'No hay sesión activa de entrenador');
+      return;
     }
+
+    const [membersResult, assignmentsSnapshot, byAuthUid, byDocId, byEmail] = await Promise.all([
+      getAllMembers(),
+      getDocs(collection(db, 'client_trainer_assignments')),
+      getUserByAuthUid(authUser.uid),
+      getUser(authUser.uid),
+      authUser.email ? getUserByEmail(authUser.email, authUser.uid) : Promise.resolve({ success: false }),
+    ]);
+
+    if (!membersResult.success) {
+      showMessage('error', 'Error al cargar miembros');
+      setMembers([]);
+      return;
+    }
+
+    const trainerKeys = new Set([
+      authUser.uid,
+      authUser.email,
+    ].map(normalizeLookupKey).filter(Boolean));
+
+    [byAuthUid, byDocId, byEmail]
+      .filter((result) => result?.success && result?.data)
+      .forEach((result) => {
+        const data = result.data;
+        [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
+          if (normalized) {
+            trainerKeys.add(normalized);
+          }
+        });
+      });
+
+    const assignedClientKeys = new Set();
+    assignmentsSnapshot.docs.forEach((docSnap) => {
+      const assignment = docSnap.data() || {};
+      const status = String(assignment.status || assignment.trainerStatus || 'active').toLowerCase();
+      const assignmentTrainerId = normalizeLookupKey(assignment.trainerId || assignment.trainer_id);
+      const assignmentTrainerEmail = normalizeLookupKey(assignment.trainerEmail || assignment.trainer_email);
+      const matchesTrainer = trainerKeys.has(assignmentTrainerId) || trainerKeys.has(assignmentTrainerEmail);
+
+      if (!matchesTrainer || status !== 'active') {
+        return;
+      }
+
+      [assignment.clientId, assignment.memberId, docSnap.id].forEach((key) => {
+        const normalized = normalizeLookupKey(key);
+        if (normalized) {
+          assignedClientKeys.add(normalized);
+        }
+      });
+    });
+
+    const allMembers = Array.isArray(membersResult.data) ? membersResult.data : [];
+    const assignedMembers = allMembers.filter((member) => {
+      const memberKeys = [member.id, member.userId, member.authUid, member.email]
+        .map(normalizeLookupKey)
+        .filter(Boolean);
+      return memberKeys.some((key) => assignedClientKeys.has(key));
+    });
+
+    setMembers(assignedMembers);
   }, [showMessage]);
 
   const loadNoteCounts = useCallback(async () => {
@@ -69,6 +137,17 @@ function BitacoraEntrenador({ embedded = false }) {
       loadCurrentTrainer();
     }, 0);
   }, [loadMembers, loadNoteCounts, loadCurrentTrainer]);
+
+  useEffect(() => {
+    if (!selectedMember) return;
+    const stillAssigned = members.some((member) => String(member.id) === String(selectedMember.id));
+    if (!stillAssigned) {
+      setSelectedMember(null);
+      setNotes([]);
+      setNoteText('');
+      setEditingNote(null);
+    }
+  }, [members, selectedMember]);
 
   const loadNotes = async (memberId) => {
     setLoading(true);

@@ -89,6 +89,7 @@ export {
   createTrainerNote,
   getTrainerNotesByMember,
   getAllTrainerNotes,
+  getAllClientTrainerAssignments,
   updateTrainerNote,
   deleteTrainerNote
 } from './firestore';
@@ -116,9 +117,13 @@ export {
 
 // Export Trainer Assignment services
 export {
+  createTrainerServiceSale,
+  getTrainerServiceSales,
+  completeTrainerServicePayment,
   assignTrainerToClient,
   getClientTrainerAssignment,
-  removeTrainerFromClient
+  removeTrainerFromClient,
+  hasClientPaidTrainerService
 } from './firestore';
 
 // Export Trainer Review services

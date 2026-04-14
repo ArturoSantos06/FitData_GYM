@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
 import {
+  db,
   getAllMembers,
   getAllDietFiles,
   createDietFileRecord,
@@ -41,9 +43,26 @@ const normalizeSearchText = (value = '') => {
 
 const normalizeRole = (roleValue) => String(roleValue || '').toLowerCase().trim();
 
+const normalizeLookupKey = (value) => String(value || '').toLowerCase().trim();
+
+const isNutritionistRole = (roleValue) => {
+  const role = normalizeRole(roleValue);
+  return ['nutritionist', 'nutriologo', 'nutriologa', 'nutriologo/a', 'nutricionista', 'nutri'].includes(role);
+};
+
 const hasPrivilegedRole = (userData) => {
   const role = normalizeRole(userData?.role);
-  return ['admin', 'entrenador', 'trainer', 'nutriologo', 'nutri'].includes(role);
+  return [
+    'admin',
+    'entrenador',
+    'trainer',
+    'nutritionist',
+    'nutriologo',
+    'nutriologa',
+    'nutriologo/a',
+    'nutricionista',
+    'nutri'
+  ].includes(role);
 };
 
 const ensureFirebaseTokenReady = async (user) => {
@@ -162,12 +181,15 @@ function DietRepositoryAdmin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const [sessionRole, setSessionRole] = useState('');
   const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
   const [errorModal, setErrorModal] = useState({ open: false, message: '' });
   const [pendingDeleteFile, setPendingDeleteFile] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
+    setMembers([]);
+    setFiles([]);
 
     const accessResult = await ensureStaffMirrorUser();
     if (!accessResult.success) {
@@ -175,6 +197,8 @@ function DietRepositoryAdmin() {
       setLoading(false);
       return;
     }
+
+    setSessionRole(normalizeRole(accessResult.role));
 
     // Asegurar que el token de Firebase está listo
     const currentUser = await waitForFirebaseUser();
@@ -209,6 +233,99 @@ function DietRepositoryAdmin() {
       setErrorModal({ open: true, message: filesResult.error || 'No se pudieron cargar los archivos' });
     } else {
       setFiles(filesResult.data || []);
+    }
+
+    const shouldRestrictToAssignments = isNutritionistRole(accessResult.role);
+    if (shouldRestrictToAssignments && membersResult.success && filesResult.success) {
+      let assignmentsSnap;
+      try {
+        assignmentsSnap = await getDocs(collection(db, 'client_nutritionist_assignments'));
+      } catch (assignmentError) {
+        setMembers([]);
+        setFiles([]);
+        setErrorModal({
+          open: true,
+          message: assignmentError?.message || 'No se pudieron validar los pacientes asignados al nutriólogo.'
+        });
+        setLoading(false);
+        return;
+      }
+
+      const currentUser = await waitForFirebaseUser();
+      const userCandidates = [
+        await getUserByAuthUid(currentUser?.uid || ''),
+        await getUser(currentUser?.uid || ''),
+        currentUser?.email ? await getUserByEmail(currentUser.email, currentUser.uid) : { success: false }
+      ];
+
+      const nutritionistKeys = new Set([
+        currentUser?.uid,
+        currentUser?.email
+      ].map(normalizeLookupKey).filter(Boolean));
+
+      userCandidates
+        .filter((item) => item?.success && item?.data)
+        .forEach((item) => {
+          const data = item.data;
+          [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+            const normalized = normalizeLookupKey(key);
+            if (normalized) {
+              nutritionistKeys.add(normalized);
+            }
+          });
+        });
+
+      const assignedClientKeys = new Set();
+      assignmentsSnap.docs.forEach((docSnap) => {
+        const assignment = docSnap.data() || {};
+        const status = String(assignment.status || 'active').toLowerCase();
+        const nutritionistId = normalizeLookupKey(assignment.nutritionistId);
+        const nutritionistEmail = normalizeLookupKey(assignment.nutritionistEmail);
+        const matchesNutritionist = nutritionistKeys.has(nutritionistId) || nutritionistKeys.has(nutritionistEmail);
+
+        if (!matchesNutritionist || status !== 'active') {
+          return;
+        }
+
+        [assignment.clientId, assignment.memberId, docSnap.id].forEach((clientKey) => {
+          const normalized = normalizeLookupKey(clientKey);
+          if (normalized) {
+            assignedClientKeys.add(normalized);
+          }
+        });
+      });
+
+      const allMembers = Array.isArray(membersResult.data) ? membersResult.data : [];
+      const assignedMembers = allMembers.filter((member) => {
+        const memberKeys = [member.id, member.userId, member.authUid, member.email]
+          .map(normalizeLookupKey)
+          .filter(Boolean);
+        return memberKeys.some((key) => assignedClientKeys.has(key));
+      });
+
+      const allowedMemberKeys = new Set();
+      assignedMembers.forEach((member) => {
+        [member.id, member.userId, member.authUid, member.email].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
+          if (normalized) {
+            allowedMemberKeys.add(normalized);
+          }
+        });
+      });
+
+      const allFiles = Array.isArray(filesResult.data) ? filesResult.data : [];
+      const assignedFiles = allFiles.filter((fileItem) => {
+        const fileKeys = [
+          fileItem.memberId,
+          fileItem.memberUserId,
+          fileItem.memberAuthUid,
+          fileItem.memberEmail,
+        ].map(normalizeLookupKey).filter(Boolean);
+        return fileKeys.some((key) => allowedMemberKeys.has(key));
+      });
+
+      setMembers(assignedMembers);
+      setFiles(assignedFiles);
     }
 
     setLoading(false);
@@ -475,7 +592,13 @@ function DietRepositoryAdmin() {
             />
 
             <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
-              {filteredMembers.map((member) => {
+              {loading && (
+                <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-400">
+                  Cargando pacientes asignados...
+                </p>
+              )}
+
+              {!loading && filteredMembers.map((member) => {
                 const isSelected = String(selectedMemberId) === String(member.id);
                 const memberFileCount = files.filter((file) => String(file.memberId) === String(member.id)).length;
 
@@ -564,7 +687,11 @@ function DietRepositoryAdmin() {
             <div>
               <h2 className="text-lg font-semibold text-white">Archivos Registrados</h2>
               <p className="text-sm text-slate-400">
-                {showAllRecent ? 'Archivos más recientes de todos los pacientes.' : 'Consulta y descarga los archivos del expediente digital.'}
+                {showAllRecent
+                  ? (isNutritionistRole(sessionRole)
+                    ? 'Archivos más recientes de tus pacientes asignados.'
+                    : 'Archivos más recientes de todos los pacientes.')
+                  : 'Consulta y descarga los archivos del expediente digital.'}
               </p>
             </div>
             <div className="flex gap-2 lg:items-center">

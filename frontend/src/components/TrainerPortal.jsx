@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../firebase';
 import TrainerNavbar from './TrainerNavbar';
-import TrainerManagement from './TrainerManagement';
+import TrainerManagement from './entrenador/TrainerManagement';
 import HomeTrainer from './entrenador/HomeTrainer';
 import CitasTrainer from './CitasTrainer';
 import PerfilEntrenador from './entrenador/PerfilEntrenador';

@@ -23,6 +23,59 @@ service cloud.firestore {
       );
     }
 
+    function isNutritionist() {
+      return isAuthenticated() && (
+        request.auth.token.nutriologo == true ||
+        request.auth.token.nutritionist == true ||
+        request.auth.token.role == 'NUTRIOLOGO' ||
+        request.auth.token.role == 'nutriologo' ||
+        request.auth.token.role == 'NUTRITIONIST' ||
+        request.auth.token.role == 'nutritionist' ||
+        request.auth.token.role == 'NUTRI' ||
+        request.auth.token.role == 'nutri' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'nutriologo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'nutriologa' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'nutricionista' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'nutritionist' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'nutri'
+      );
+    }
+
+    function isTrainer() {
+      return isAuthenticated() && (
+        request.auth.token.trainer == true ||
+        request.auth.token.role == 'ENTRENADOR' ||
+        request.auth.token.role == 'entrenador' ||
+        request.auth.token.role == 'TRAINER' ||
+        request.auth.token.role == 'trainer' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'entrenador' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer'
+      );
+    }
+
+    function trainerMatchesAssignment(clientId) {
+      return isTrainer() &&
+             clientId != null &&
+             exists(/databases/$(database)/documents/client_trainer_assignments/$(clientId)) &&
+             (
+               get(/databases/$(database)/documents/client_trainer_assignments/$(clientId)).data.trainerId == request.auth.uid ||
+               get(/databases/$(database)/documents/client_trainer_assignments/$(clientId)).data.trainer_id == request.auth.uid ||
+               get(/databases/$(database)/documents/client_trainer_assignments/$(clientId)).data.trainerEmail == request.auth.token.email ||
+               get(/databases/$(database)/documents/client_trainer_assignments/$(clientId)).data.trainer_email == request.auth.token.email
+             );
+    }
+
+    function isAssignedTrainerForMember(memberId) {
+      return isTrainer() &&
+             memberId != null &&
+             exists(/databases/$(database)/documents/miembros/$(memberId)) &&
+             (
+               trainerMatchesAssignment(memberId) ||
+               trainerMatchesAssignment(get(/databases/$(database)/documents/miembros/$(memberId)).data.userId) ||
+               trainerMatchesAssignment(get(/databases/$(database)/documents/miembros/$(memberId)).data.authUid)
+             );
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -76,12 +129,9 @@ service cloud.firestore {
                       resource.data.email == request.auth.token.email
                     )) ||
                     (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['selectedEntrenador'])) ||
-                    // Permitir actualizaciones de gymPoints desde transacciones autenticadas
-                    // (admin procesando venta actualiza puntos del cliente)
-                    (isAuthenticated() &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gymPoints']));
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gymPoints']));
       allow delete: if isAdmin();
-      
+
       // Notificaciones de usuario
       match /notifications/{notificationId} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
@@ -94,7 +144,9 @@ service cloud.firestore {
       allow create: if isAdmin() || isAuthenticated();
       allow update: if isAdmin() ||
                     belongsToUser(resource.data.userId) ||
-                    (isAuthenticated() && resource.data.authUid == request.auth.uid);
+                    (isAuthenticated() && resource.data.authUid == request.auth.uid) ||
+                    (isAssignedTrainerForMember(memberId) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['archivado', 'eliminado']));
       allow delete: if isAdmin();
     }
 
@@ -155,6 +207,10 @@ service cloud.firestore {
         request.auth.token.email == resource.data.cliente_email ||
         request.auth.token.email == resource.data.clienteEmail ||
         request.auth.token.email == resource.data.email ||
+        (
+          isTrainer() &&
+          (resource.data.tipo_venta == 'SERVICIO_ENTRENAMIENTO' || resource.data.tipoVenta == 'SERVICIO_ENTRENAMIENTO')
+        ) ||
         isAdmin()
       );
       allow create: if isAdmin() || isAuthenticated();
@@ -310,27 +366,30 @@ service cloud.firestore {
     // Asignaciones de nutriólogos a clientes
     match /client_nutritionist_assignments/{clientId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
     // Asignaciones de entrenadores a clientes
     match /client_trainer_assignments/{clientId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
-    // Permite al profesional leer la lista de vinculaciones
-    match /client_nutritionist_assignments/{document} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /client_trainer_assignments/{document} {
-      allow read, write: if request.auth != null;
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == resource.data.uid);
+      allow write: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == request.resource.data.uid);
     }
 
-    // Permite leer los perfiles públicos para obtener el displayName y la foto
-    match /users/{userId} {
-      allow read: if request.auth != null;
+    // Chat y Mensajes
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
+      }
     }
 
     // Reseñas de nutriólogos

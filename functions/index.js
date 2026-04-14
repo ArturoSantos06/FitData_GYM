@@ -13,6 +13,91 @@ const {
   saveAiRoutineHistory,
 } = require("./aiRutinas/geminiRoutineService");
 
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const moment = require("moment");
+const { sendMarketingEmail } = require("./emailService");
+
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+
+// configuración con los secretos
+exports.motorDeMarketingAutomizado = onSchedule({
+    schedule: "every day 08:00",
+    secrets: ["GYM_EMAIL_PASS"] 
+}, async (event) => {
+    console.log("Iniciando Motor de Marketing FitData (Nivel Avanzado)...");
+        
+    const ayerStr = moment().subtract(1, 'days').format('YYYY-MM-DD');
+    const hoyStr = moment().format('YYYY-MM-DD'); 
+    const enCincoDiasStr = moment().add(5, 'days').format('YYYY-MM-DD');
+    const enTreintaDiasStr = moment().add(30, 'days').format('YYYY-MM-DD');
+
+    try {
+        const db = admin.firestore();
+        const membershipsRef = db.collection("memberships");
+        const todasSnap = await membershipsRef.get();
+        const correosPromesas = [];
+
+        // USAMOS FOR...OF PARA PODER HACER 'AWAIT' ADENTRO
+        for (const doc of todasSnap.docs) {
+            const plan = doc.data();
+            
+            if (plan.userEmail && plan.active === true) {
+                
+                // --- ESTRATEGIAS BASADAS EN LA MEMBRESÍA ---
+                if (plan.endDate === hoyStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VENCIMIENTO_HOY'));
+                } 
+                else if (plan.endDate === enCincoDiasStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'RECORDATORIO_5_DIAS'));
+                }
+                else if (plan.durationDays >= 360 && plan.endDate === enTreintaDiasStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VIP_RENEWAL'));
+                }
+                else if (plan.durationDays === 1 && plan.endDate === ayerStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'DAY_PASS_UPGRADE'));
+                }
+
+                // --- ESTRATEGIA DE RETENCIÓN (ABANDONO) ---
+                if (plan.userId) {
+                    // Buscamos SOLO la asistencia más reciente de este usuario específico
+                    const asistenciasRef = db.collection("asistencias");
+                    const ultimaAsistenciaSnap = await asistenciasRef
+                        .where("userId", "==", plan.userId)
+                        .orderBy("checkInTime", "desc")
+                        .limit(1)
+                        .get();
+
+                    if (!ultimaAsistenciaSnap.empty) {
+                        const ultimaVisita = ultimaAsistenciaSnap.docs[0].data();
+                        
+                        // Calculamos hace cuántos días fue esa entrada
+                        const fechaVisita = moment(ultimaVisita.fecha_hora_entrada);
+                        const diasAusente = moment().diff(fechaVisita, 'days');
+
+                        // Si faltó EXACTAMENTE 14 días (Enviamos solo hoy para no hacer spam diario)
+                        if (diasAusente === 14) {
+                            console.log(`⚠️ Alerta de abandono: ${plan.userName} lleva 14 días sin venir.`);
+                            correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'PREVENCION_ABANDONO'));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (correosPromesas.length > 0) {
+            await Promise.all(correosPromesas);
+            console.log(`🚀 Marketing completado: ${correosPromesas.length} campañas enviadas.`);
+        } else {
+            console.log("💤 No hubo campañas de marketing para disparar hoy.");
+        }
+
+    } catch (error) {
+        console.error("❌ Error en el motor de marketing:", error);
+    }
+});
+
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
@@ -1132,7 +1217,7 @@ exports.generateClientAiRoutine = onCall(
 );
 
 exports.generateClientAiRoutineHttp = onRequest(
-  { cors: true, invoker: "public", secrets: [GEMINI_API_KEY] },
+  { cors: true, invoker: "public", secrets: ["GEMINI_API_KEY"] },  
   async (req, res) => {
     applyRoutineCorsHeaders(req, res);
 
@@ -3028,6 +3113,110 @@ try {
   logger.warn("No se pudo cargar react-email, se usara HTML crudo", e);
 }
 const { Resend } = require("resend");
+
+exports.onMessageCreated = onDocumentCreated(
+  {
+    document: "chats/{chatId}/messages/{messageId}",
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const messageData = snap.data();
+    const senderId = messageData.senderId;
+    const chatId = event.params.chatId;
+
+    if (!senderId) return;
+
+    try {
+      const db = admin.firestore();
+      
+      const ids = chatId.split("_");
+      const recipientId = ids.find(id => id !== senderId);
+
+      if (!recipientId) return;
+
+      const [senderSnap, recipientSnap] = await Promise.all([
+        db.collection("users").doc(senderId).get(),
+        db.collection("users").doc(recipientId).get()
+      ]);
+
+      const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
+      const recipientEmail = recipientSnap.data()?.email;
+
+      // 1. Guardar notificacion
+      await db.collection(`users/${recipientId}/notifications`).add({
+        title: `Nuevo mensaje de ${senderName}`,
+        body: messageData.text || "Archivo adjunto",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "chat_message",
+        chatId: chatId,
+        senderId: senderId
+      });
+
+      // 2. Enviar correo via Resend
+      if (recipientEmail) {
+        let resendApiKey;
+        try {
+           resendApiKey = RESEND_API_KEY.value();
+        } catch(e) {
+           resendApiKey = process.env.RESEND_API_KEY;
+        }
+        
+        if (resendApiKey) {
+          const resend = new Resend(resendApiKey);
+          
+          let htmlContent = `<h2>Tienes un nuevo mensaje de ${senderName}</h2><p>${messageData.text || "Te han enviado un archivo adjunto."}</p><br><small>FitData GYM</small>`;
+          
+          if (renderEmail && Html) {
+            try {
+              const emailElement = React.createElement(Html, null,
+                React.createElement(Head, null),
+                React.createElement(Body, { style: { fontFamily: "sans-serif", padding: "20px" } },
+                  React.createElement(Container, null,
+                    React.createElement(Heading, null, `Tienes un nuevo mensaje de ${senderName}`),
+                    React.createElement(Text, null, messageData.text || "Te han enviado un archivo adjunto."),
+                    React.createElement(Text, { style: { color: "#888", fontSize: "12px", marginTop: "20px" } }, "FitData GYM")
+                  )
+                )
+              );
+              htmlContent = renderEmail(emailElement);
+            } catch(e) {
+              logger.warn("Fallo el render de react-email, usando por defecto", e);
+            }
+          }
+
+          await resend.emails.send({
+            from: "FitData GYM <onboarding@resend.dev>",
+            to: recipientEmail,
+            subject: `Nuevo mensaje de ${senderName}`,
+            html: htmlContent
+          });
+        } else {
+             logger.warn("No se encontro API Key de Resend");
+        }
+      }
+    } catch (error) {
+      logger.error("Error en onMessageCreated", error);
+    }
+  }
+);
+
+// FUNCIÓN SOLO PARA PRUEBAS: Borrar después de testear
+//exports.testEnvioCorreoManual = onRequest(async (req, res) => {
+  //  try {
+    //    const { sendMarketingEmail } = require("./emailService");
+        
+      //  await sendMarketingEmail("abecedario0304@gmail.com", "Prueba FitData", "DAY_PASS_UPGRADE");
+        
+        //res.json({ mensaje: "Intento de envío procesado exitosamente" });
+    //} catch (e) {
+      //  res.status(500).send("❌ Error: " + e.message);
+   // }
+//});
+
 
 exports.onMessageCreated = onDocumentCreated(
   {
