@@ -13,6 +13,91 @@ const {
   saveAiRoutineHistory,
 } = require("./aiRutinas/geminiRoutineService");
 
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const moment = require("moment");
+const { sendMarketingEmail } = require("./emailService");
+
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+
+// configuración con los secretos
+exports.motorDeMarketingAutomizado = onSchedule({
+    schedule: "every day 08:00",
+    secrets: ["GYM_EMAIL_PASS"] 
+}, async (event) => {
+    console.log("Iniciando Motor de Marketing FitData (Nivel Avanzado)...");
+        
+    const ayerStr = moment().subtract(1, 'days').format('YYYY-MM-DD');
+    const hoyStr = moment().format('YYYY-MM-DD'); 
+    const enCincoDiasStr = moment().add(5, 'days').format('YYYY-MM-DD');
+    const enTreintaDiasStr = moment().add(30, 'days').format('YYYY-MM-DD');
+
+    try {
+        const db = admin.firestore();
+        const membershipsRef = db.collection("memberships");
+        const todasSnap = await membershipsRef.get();
+        const correosPromesas = [];
+
+        // USAMOS FOR...OF PARA PODER HACER 'AWAIT' ADENTRO
+        for (const doc of todasSnap.docs) {
+            const plan = doc.data();
+            
+            if (plan.userEmail && plan.active === true) {
+                
+                // --- ESTRATEGIAS BASADAS EN LA MEMBRESÍA ---
+                if (plan.endDate === hoyStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VENCIMIENTO_HOY'));
+                } 
+                else if (plan.endDate === enCincoDiasStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'RECORDATORIO_5_DIAS'));
+                }
+                else if (plan.durationDays >= 360 && plan.endDate === enTreintaDiasStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VIP_RENEWAL'));
+                }
+                else if (plan.durationDays === 1 && plan.endDate === ayerStr) {
+                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'DAY_PASS_UPGRADE'));
+                }
+
+                // --- ESTRATEGIA DE RETENCIÓN (ABANDONO) ---
+                if (plan.userId) {
+                    // Buscamos SOLO la asistencia más reciente de este usuario específico
+                    const asistenciasRef = db.collection("asistencias");
+                    const ultimaAsistenciaSnap = await asistenciasRef
+                        .where("userId", "==", plan.userId)
+                        .orderBy("checkInTime", "desc")
+                        .limit(1)
+                        .get();
+
+                    if (!ultimaAsistenciaSnap.empty) {
+                        const ultimaVisita = ultimaAsistenciaSnap.docs[0].data();
+                        
+                        // Calculamos hace cuántos días fue esa entrada
+                        const fechaVisita = moment(ultimaVisita.fecha_hora_entrada);
+                        const diasAusente = moment().diff(fechaVisita, 'days');
+
+                        // Si faltó EXACTAMENTE 14 días (Enviamos solo hoy para no hacer spam diario)
+                        if (diasAusente === 14) {
+                            console.log(`⚠️ Alerta de abandono: ${plan.userName} lleva 14 días sin venir.`);
+                            correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'PREVENCION_ABANDONO'));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (correosPromesas.length > 0) {
+            await Promise.all(correosPromesas);
+            console.log(`🚀 Marketing completado: ${correosPromesas.length} campañas enviadas.`);
+        } else {
+            console.log("💤 No hubo campañas de marketing para disparar hoy.");
+        }
+
+    } catch (error) {
+        console.error("❌ Error en el motor de marketing:", error);
+    }
+});
+
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
@@ -1132,7 +1217,7 @@ exports.generateClientAiRoutine = onCall(
 );
 
 exports.generateClientAiRoutineHttp = onRequest(
-  { cors: true, invoker: "public", secrets: [GEMINI_API_KEY] },
+  { cors: true, invoker: "public", secrets: ["GEMINI_API_KEY"] },  
   async (req, res) => {
     applyRoutineCorsHeaders(req, res);
 
@@ -3010,3 +3095,16 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
   }
 });
 
+
+// FUNCIÓN SOLO PARA PRUEBAS: Borrar después de testear
+//exports.testEnvioCorreoManual = onRequest(async (req, res) => {
+  //  try {
+    //    const { sendMarketingEmail } = require("./emailService");
+        
+      //  await sendMarketingEmail("abecedario0304@gmail.com", "Prueba FitData", "DAY_PASS_UPGRADE");
+        
+        //res.json({ mensaje: "Intento de envío procesado exitosamente" });
+    //} catch (e) {
+      //  res.status(500).send("❌ Error: " + e.message);
+   // }
+//});

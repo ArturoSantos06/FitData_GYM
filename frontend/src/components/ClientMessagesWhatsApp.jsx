@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
+import VideoYouTube from './iaRutinas/VideoYouTube';
+
 
 import { useAssistant } from './asistente/ContextoAsistente';
 import { auth } from '../firebase/config';
@@ -34,6 +36,72 @@ const TIME_OPTIONS = [
 ];
 
 const DAYS_PER_WEEK_OPTIONS = ['1', '2', '3', '4', '5', '6'];
+
+function parsearRutinaIA(texto) {
+    if (!texto || typeof texto !== 'string') return null;
+    
+    const lineas = texto.split('\n');
+    const ejerciciosExtraidos = [];
+    let diaActual = "Ejercicios Generales"; 
+    
+    const regexEjercicio = /^\d+\.\s*(.*?)\s*-\s*(.*)$/; 
+
+    lineas.forEach(linea => {
+        const lineaLimpia = linea.trim();
+        
+        if (lineaLimpia && 
+            !lineaLimpia.match(/^\d+\./) && 
+            lineaLimpia.includes(':') && 
+            !lineaLimpia.toLowerCase().includes('objetivo') && 
+            !lineaLimpia.toLowerCase().includes('nivel') &&
+            !lineaLimpia.toLowerCase().includes('frecuencia') &&
+            !lineaLimpia.toLowerCase().includes('duracion') &&
+            !lineaLimpia.toLowerCase().includes('solicitud') &&
+            !lineaLimpia.toLowerCase().includes('enfoque') &&
+            !lineaLimpia.toLowerCase().includes('calentamiento')) {
+            diaActual = lineaLimpia;
+        }
+
+        const match = lineaLimpia.match(regexEjercicio); 
+        if (match) {
+            let nombre = match[1].trim(); 
+            let descripcion = match[2].trim(); 
+            let videoIdExtraido = null;
+
+            const videoMatch = descripcion.match(/\[YT:(.*?)\]/);
+            if (videoMatch) {
+                videoIdExtraido = videoMatch[1]; // Guardamos el ID
+                descripcion = descripcion.replace(videoMatch[0], '').trim(); 
+            }
+
+            ejerciciosExtraidos.push({
+                dia: diaActual,
+                nombre: nombre,
+                descripcion: descripcion,
+                videoId: videoIdExtraido 
+            });
+        } 
+    }); 
+
+    if (ejerciciosExtraidos.length > 0) {
+        const diasAgrupados = [];
+        const gruposPorDia = {};
+
+        ejerciciosExtraidos.forEach(ej => {
+            if (!gruposPorDia[ej.dia]) {
+                gruposPorDia[ej.dia] = [];
+            }
+            gruposPorDia[ej.dia].push(ej);
+        });
+
+        for (const [tituloDia, ejerciciosDelDia] of Object.entries(gruposPorDia)) {
+            diasAgrupados.push({ titulo: tituloDia, ejercicios: ejerciciosDelDia });
+        }
+        return { objetivo: "Rutina Adaptada", dias: diasAgrupados };
+    }
+    
+    return null; 
+}
 
 function formatBubbleTime(value) {
     try {
@@ -739,15 +807,69 @@ function ClientMessagesWhatsApp() {
                                 </div>
                             )}
 
-                            {displayedMessages.map((message) => (
-                                <ChatBubble
-                                    key={message.id}
-                                    role={message.role}
-                                    text={message.text}
-                                    time={formatBubbleTime(message.createdAt)}
-                                    pending={message.pending}
-                                />
-                            ))}
+                            {displayedMessages.map((message) => {
+                                // 1. Verificamos si este mensaje es de la IA y parece una rutina
+                                const esMensajeIA = message.role === 'assistant';
+                                const esRutina = message.text && (message.text.includes('Objetivo:') || message.text.includes('Rutina temporal'));
+                                
+                                let rutinaMapeada = null;
+                                if (esMensajeIA && esRutina) {
+                                    rutinaMapeada = parsearRutinaIA(message.text);
+                                }
+
+                                // 2. Si logramos parsear la rutina, dibujamos las tarjetas y los videos
+                                if (rutinaMapeada && rutinaMapeada.dias) {
+                                    return (
+                                        <div key={message.id} className="mb-4 ml-2 mr-12 sm:mr-24 self-start animate-fade-in">
+                                            <div className="rounded-2xl rounded-tl-sm border border-slate-700 bg-slate-100 p-4 shadow-sm">
+                                                <p className="text-xs font-bold text-slate-800 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                                    <Sparkles size={14} className="text-fuchsia-600" />
+                                                    Tu Rutina Personalizada
+                                                </p>
+                                                
+                                                <div className="space-y-6">
+                                                    {rutinaMapeada.dias.map((dia, indexDia) => (
+                                                        <div key={indexDia} className="space-y-3">
+                                                            <h3 className="font-bold text-fuchsia-700 border-b border-slate-200 pb-1">
+                                                                {dia.titulo}
+                                                            </h3>
+                                                            <div className="grid gap-3">
+                                                                {dia.ejercicios.map((ejercicio, indexEj) => (
+                                                                    <div key={indexEj} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                                                                        <h4 className="font-bold text-slate-800 text-sm mb-1">{ejercicio.nombre}</h4>
+                                                                        <p className="text-xs text-slate-500 mb-3">{ejercicio.descripcion}</p>
+                                                                        
+                                                                        {/* Video del ejercicio */}
+                                                                        <div className="overflow-hidden rounded-lg">
+                                                                            <VideoYouTube 
+                                                                                nombreEjercicio={ejercicio.nombre} 
+                                                                                videoId={ejercicio.videoId} 
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <span className="mt-1 block text-[10px] text-slate-500 px-1">
+                                                {formatBubbleTime(message.createdAt)}
+                                            </span>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <ChatBubble
+                                        key={message.id}
+                                        role={message.role}
+                                        text={message.text}
+                                        time={formatBubbleTime(message.createdAt)}
+                                        pending={message.pending}
+                                    />
+                                );
+                            })}
                         </div>
 
                         <footer className="border-t border-slate-700 bg-[#202c33] px-3 py-3 md:px-4">

@@ -20,17 +20,31 @@ const buildAiRoutinePrompt = (payload = {}) => {
     return [
         "Eres un entrenador personal experto en rutinas de gimnasio.",
         "Genera una rutina segura, clara, concreta y personalizada en español.",
-        "Responde con un formato estructurado que incluya: objetivo, frecuencia semanal, calentamiento, rutina por día, ejercicios concretos, series, repeticiones, descanso, recomendaciones de técnica y advertencias de seguridad.",
-        "Usa dias de la semana escritos como Lunes, Martes, Miercoles, Jueves, Viernes, Sabado y Domingo.",
-        `Debes entregar EXACTAMENTE ${daysPerWeek} dias de entrenamiento (ni mas ni menos).`,
+        "IMPORTANTE: Debes responder EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional antes ni después. No uses bloques de código Markdown. Usa esta estructura exacta:",
+        "{",
+        '  "objetivo": "Resumen del objetivo",',
+        '  "frecuencia": "X días a la semana",',
+        '  "recomendaciones": "Recomendaciones generales y seguridad",',
+        '  "dias": [',
+        "    {",
+        '      "titulo": "Lunes: Pierna y Glúteo",',
+        '      "ejercicios": [',
+        "        {",
+        '          "nombre": "Sentadilla libre",',
+        '          "series": "4",',
+        '          "repeticiones": "10-12",',
+        '          "descanso": "90 seg"',
+        "        }",
+        "      ]",
+        "    }",
+        "  ]",
+        "}",
+        `Debes entregar EXACTAMENTE ${daysPerWeek} dias de entrenamiento (ni mas ni menos) dentro del arreglo "dias".`,
         "Los parametros elegidos en la interfaz (objetivo, nivel, dias y tiempo) son reglas fijas.",
         "Si la solicitud libre del usuario entra en conflicto con esos parametros, prioriza SIEMPRE los parametros de la interfaz.",
-        "Para cada dia, empieza con una linea como 'Lunes: Pierna y gluteo' y luego lista los ejercicios debajo con numeracion 1, 2, 3...",
-        "Para cada día, lista entre 4 y 6 ejercicios exactos con nombres claros; no uses placeholders como 'ejercicio principal' o 'trabajo de piernas'.",
-        "Para cada ejercicio indica series y repeticiones. Ejemplo: '1. Sentadilla libre - 4 series x 8 repeticiones'.",
-        "Incluye si es posible un orden recomendado de ejercicios, y especifica si alguno es opcional o sustituto.",
+        "Para cada día, lista entre 4 y 6 ejercicios exactos. El campo 'nombre' del ejercicio debe ser claro y específico para poder buscarlo en video.",
         "Si cambia la solicitud libre del usuario, cambia el enfoque, los ejercicios y la estructura de la rutina; no repitas la misma plantilla.",
-        "Si faltan datos, asume opciones conservadoras y explica tus supuestos.",
+        "Si faltan datos, asume opciones conservadoras y explica tus supuestos en las recomendaciones.",
         "No recomiendes ejercicios inseguros para las limitaciones indicadas.",
         "",
         `Contexto reciente de conversación: ${conversationContext || 'sin contexto previo'}.`,
@@ -59,16 +73,27 @@ const summarizeAiRoutineRequest = (payload = {}) => {
 };
 
 const extractGeminiText = (responseData = {}) => {
-    const candidateText = Array.isArray(responseData?.candidates)
-        ? responseData.candidates
-            .flatMap((candidate) => Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [])
-            .map((part) => String(part?.text || ""))
+    const candidates = responseData.candidates || [];
+    let candidateText = "";
+
+    if (Array.isArray(candidates) && candidates.length > 0) {
+        candidateText = candidates
+            .flatMap((candidate) => 
+                Array.isArray(candidate?.content?.parts) 
+                ? candidate.content.parts.map((part) => String(part?.text || "")) 
+                : []
+            )
             .join("\n")
-            .trim()
-        : "";
+            .trim();
+    }
+
+    const cleanText = candidateText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
 
     return sanitizeAiRoutineText(
-        candidateText ||
+        cleanText ||
         responseData?.text ||
         responseData?.output ||
         responseData?.routineText ||
@@ -367,12 +392,56 @@ const buildFallbackRoutineText = (payload = {}) => {
     ].join("\n");
 };
 
+// --- NUEVO CÓDIGO CON BÚSQUEDA DE YOUTUBE INCLUIDA ---
+
+// 1. Creamos el buscador de YouTube
+async function inyectarVideosYouTube(textoRutina) {
+    if (!textoRutina) return textoRutina;
+    
+    const apiKey = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY; 
+    if (!apiKey) return textoRutina; // Si no hay llave, devolvemos el texto normal
+
+    const lineas = textoRutina.split('\n');
+    const lineasConVideo = [];
+    const regexEjercicio = /^(\d+\.\s*.*?)\s*-\s*(.*)$/; 
+
+    for (let linea of lineas) {
+        const match = linea.match(regexEjercicio);
+        if (match) {
+            const nombreEjercicio = match[1].replace(/^\d+\.\s*/, '').trim();
+            try {
+                // Buscamos en YouTube
+                const query = encodeURIComponent(`${nombreEjercicio} tutorial gym corto`);
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${query}&type=video&key=${apiKey}`;
+                
+                // Node 18+ soporta fetch nativo
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    const videoId = data.items[0].id.videoId;
+                    // Le pegamos el ID oculto al final de la línea: [YT:id_del_video]
+                    linea = `${linea} [YT:${videoId}]`;
+                }
+            } catch (error) {
+                console.error(`Error YT para ${nombreEjercicio}:`, error);
+            }
+        }
+        lineasConVideo.push(linea);
+    }
+    
+    return lineasConVideo.join('\n');
+}
+
 const saveAiRoutineHistory = async ({ admin, uid, payload, prompt, routineText, model, provider }) => {
     const db = admin.firestore();
     const historyRef = db.collection("users").doc(uid).collection(AI_ROUTINE_HISTORY_COLLECTION).doc();
     const requestSummary = summarizeAiRoutineRequest(payload);
     const createdAt = admin.firestore.FieldValue.serverTimestamp();
     const nowIso = new Date().toISOString();
+
+    // --- MAGIA: Inyectamos los videos en el texto antes de guardarlo ---
+    const textoConVideos = await inyectarVideosYouTube(routineText);
 
     const historyEntry = {
         ownerUid: uid,
@@ -381,7 +450,7 @@ const saveAiRoutineHistory = async ({ admin, uid, payload, prompt, routineText, 
         provider,
         model,
         prompt,
-        routineText,
+        routineText: textoConVideos, // <--- GUARDAMOS EL TEXTO CON LOS VIDEOS
         requestSummary,
         goal: payload.goal || null,
         goalLabel: payload.goalLabel || null,
