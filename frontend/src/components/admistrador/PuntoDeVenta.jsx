@@ -331,11 +331,6 @@ function PuntoDeVenta() {
                 <button onClick={() => setMostrarModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-6 rounded-lg font-bold shadow-lg hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-1">
                     + NUEVO PRODUCTO
                 </button>
-                {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
-                <button onClick={runMigration} disabled={isMigrating} className="bg-yellow-600 hover:bg-yellow-500 text-white py-3 px-4 rounded-lg font-bold shadow-lg transition-all text-xs">
-                    {isMigrating ? 'MIGRANDO...' : '⚙️ MIGRAR PUNTOS A BD'}
-                </button>
-                {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
             </div>
 
             <ModalNuevoProducto isOpen={mostrarModal} onClose={() => setMostrarModal(false)} onProductoCreado={cargarDatos} />

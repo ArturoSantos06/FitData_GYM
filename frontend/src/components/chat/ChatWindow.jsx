@@ -125,12 +125,6 @@ function ChatWindow({ chatId, currentUserId, title, subtitle = "En línea", onBa
                         <p className="text-xs text-cyan-400 font-medium">{subtitle}</p>
                     </div>
                 </div>
-                
-                <div className="flex items-center gap-1 md:gap-2 text-slate-300">
-                    <button className="p-2 hover:bg-slate-700 rounded-full transition hidden sm:block"><Video size={20} /></button>
-                    <button className="p-2 hover:bg-slate-700 rounded-full transition hidden sm:block"><Phone size={20} /></button>
-                    <button className="p-2 hover:bg-slate-700 rounded-full transition"><MoreVertical size={20} /></button>
-                </div>
             </header>
 
             {/* Listado de Mensajes */}
