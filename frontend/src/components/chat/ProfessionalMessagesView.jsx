@@ -22,7 +22,6 @@ const MessagesBody = ({ role }) => {
             ? 'client_nutritionist_assignments'
             : 'client_trainer_assignments';
 
-        // CORRECCIÓN 1: Utilizar los identificadores correctos de la BD
         const roleFieldId = role === 'nutritionist' ? 'nutritionistId' : 'trainerId';
 
         const fetchClients = async () => {

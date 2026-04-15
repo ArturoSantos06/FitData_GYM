@@ -1515,8 +1515,11 @@ export const createSale = async (saleData) => {
         } else {
             const puntosGanados = calcularPuntosGanados(total);
             if (puntosGanados > 0) {
-                // Award points without blocking the sale significantly, but wait for it
-                await awardPoints(cliente_id, puntosGanados, 'Compra en tienda');
+                // Award points, but don't block the sale if it fails
+                const ptAwardResult = await awardPoints(cliente_id, puntosGanados, 'Compra en tienda');
+                if (!ptAwardResult.success) {
+                    console.warn(`⚠️ Advertencia: No se pudieron guardar los puntos: ${ptAwardResult.error}`);
+                }
             }
         }
     } else if (metodo_pago === 'PUNTOS') {

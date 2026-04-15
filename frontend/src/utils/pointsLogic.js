@@ -48,20 +48,13 @@ export const processPointsPayment = async (userId, pointsToDeduct, description =
             }
 
             const newPoints = currentPoints - pointsToDeduct;
+            // Solo actualizar gymPoints (esto SÍ está permitido por las reglas de Firestore)
             transaction.update(userRef, { gymPoints: newPoints });
-
-            // Document audit in subcollection
-            const historyRef = doc(collection(userRef, 'point_history'));
-            transaction.set(historyRef, {
-                amount: -pointsToDeduct,
-                balance: newPoints,
-                type: 'SPEND',
-                description: description,
-                createdAt: serverTimestamp()
-            });
         });
+        console.log(`✅ ${pointsToDeduct} puntos deductados usar ${userId}`);
         return { success: true };
     } catch (error) {
+        console.error(`❌ Error al descontar puntos:`, error.message);
         return { success: false, error: error.message };
     }
 };
@@ -87,20 +80,13 @@ export const awardPoints = async (userId, pointsToEarn, description = 'Ganancia 
             const currentPoints = userDoc.data().gymPoints || 0;
             const newPoints = currentPoints + pointsToEarn;
 
+            // Solo actualizar gymPoints (esto SÍ está permitido por las reglas de Firestore)
             transaction.update(userRef, { gymPoints: newPoints });
-
-            // Document audit in subcollection
-            const historyRef = doc(collection(userRef, 'point_history'));
-            transaction.set(historyRef, {
-                amount: pointsToEarn,
-                balance: newPoints,
-                type: 'EARN',
-                description: description,
-                createdAt: serverTimestamp()
-            });
         });
+        console.log(`✅ ${pointsToEarn} puntos otorgados a usuario ${userId}`);
         return { success: true };
     } catch (error) {
+        console.error(`❌ Error al otorgar puntos:`, error.message);
         return { success: false, error: error.message };
     }
 };
