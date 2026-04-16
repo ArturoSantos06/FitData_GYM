@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag } from 'lucide-react';
 
-const ProductCardClient = ({ title, price, stock, image }) => {
+const TarjetaProducto = ({ title, price, stock, image }) => {
   const hasStock = (stock || 0) > 0;
   const displayPrice = typeof price === 'number' ? price.toFixed(2) : parseFloat(price || 0).toFixed(2);
 
@@ -53,4 +53,4 @@ const ProductCardClient = ({ title, price, stock, image }) => {
   );
 };
 
-export default ProductCardClient;
+export default TarjetaProducto;

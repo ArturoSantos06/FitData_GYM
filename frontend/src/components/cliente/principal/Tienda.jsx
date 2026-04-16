@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ProductCardClient from '../../ProductCardClient';
+import TarjetaProducto from './TarjetaProducto';
 import CentroFacturacion from '../../CentroFacturacion';
 import {
   getProducts,
@@ -151,7 +151,7 @@ function Tienda() {
         {activeSection === 'productos' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {products.map((prod, idx) => (
-              <ProductCardClient key={idx} {...prod} />
+              <TarjetaProducto key={idx} {...prod} />
             ))}
             {products.length === 0 && (
               <div className="col-span-full text-slate-400">No hay productos disponibles.</div>
