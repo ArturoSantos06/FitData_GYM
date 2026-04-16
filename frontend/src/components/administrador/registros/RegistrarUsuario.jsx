@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import ErrorModal from "../../ErrorModal";
+import ErrorModal from "../../modales/ErrorModal";
 import ModalExito from "../../modales/ModalExito";
 import AdminHealthForm from "../../AdminHealthForm";
 import RegistrarEntrenador from "./RegistrarEntrenador";
