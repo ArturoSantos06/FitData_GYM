@@ -38,7 +38,7 @@ const ModalDetalleNutri = ({ cita, onClose }) => {
   const fechaFormateada = `${cita.fecha} | ${cita.horaInicio} - ${cita.horaFin}`;
 
   return (
-    <div className="absolute inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-120 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
       {dialogConfig && <DialogoSistemaNutri {...dialogConfig} />}
 
       <div className="bg-[#1e293b] border border-purple-500/40 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md relative overflow-hidden">

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { db } from "../../firebase/config"; 
+import { db } from "../../../firebase/config"; 
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Trash2, Edit3, Save, X, Zap, CalendarClock } from 'lucide-react';
-import DialogoSistemaNutri from '../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../../DialogoSistemaNutri';
 
-const ModalDetalleTrainer = ({ entreno, onClose }) => {
+const ModalDetalleEntrenador = ({ entreno, onClose }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(entreno.rutina || '');
   const [dialogConfig, setDialogConfig] = useState(null);
@@ -37,7 +37,7 @@ const ModalDetalleTrainer = ({ entreno, onClose }) => {
   const fechaFormateada = `${entreno.fecha} | ${entreno.horaInicio} - ${entreno.horaFin}`;
 
   return (
-    <div className="absolute inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-120 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
       {dialogConfig && <DialogoSistemaNutri {...dialogConfig} />}
 
       <div className="bg-[#1e293b] border border-orange-500/40 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md relative overflow-hidden">
@@ -108,4 +108,4 @@ const ModalDetalleTrainer = ({ entreno, onClose }) => {
   );
 };
 
-export default ModalDetalleTrainer;
+export default ModalDetalleEntrenador;

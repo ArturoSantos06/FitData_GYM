@@ -31,8 +31,8 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-[50] p-4">
-      <div className="bg-[#1a2332] w-full max-w-5xl rounded-[2rem] border border-slate-700/80 flex flex-col md:flex-row h-[82vh] overflow-hidden shadow-2xl relative">
+    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a2332] w-full max-w-5xl rounded-4xl border border-slate-700/80 flex flex-col md:flex-row h-[82vh] overflow-hidden shadow-2xl relative">
         
         {/* SIDEBAR */}
         <div className="w-full md:w-72 p-6 bg-[#101827] border-r border-slate-800/50 flex flex-col">
@@ -41,7 +41,7 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
             <button onClick={onClose} className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
 
-          <div className="flex flex-col items-center text-center mb-6 p-5 bg-slate-900/50 rounded-[1.5rem] border border-slate-800 shadow-inner">
+          <div className="flex flex-col items-center text-center mb-6 p-5 bg-slate-900/50 rounded-3xl border border-slate-800 shadow-inner">
              <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white mb-3 shadow-xl" style={{ backgroundColor: miembro.displayColor }}>
                <User size={30}/>
              </div>
@@ -191,7 +191,7 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
         {dialog && <DialogoSistemaNutri {...dialog} />}
 
         {showPastDateModal && (
-          <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-70 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-slate-900 p-6 shadow-2xl">
               <h3 className="text-lg font-black text-red-300 mb-2">No se puede agendar días pasados</h3>
               <p className="text-slate-300 text-sm leading-relaxed">

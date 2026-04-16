@@ -7,7 +7,7 @@ import ClientNutriView from './ClientNutriView';
 import ClientDietViewer from './ClientDietViewer';
 import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
 import NutriologosList from './NutriologosList';
-import EntrenadoresList from './EntrenadoresList';
+import EntrenadoresList from './entrenador/servicios/EntrenadoresList';
 import NutritionAppointments from './NutritionAppointments';
 
 function ClientPlanView() {
