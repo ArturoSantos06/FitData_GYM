@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import TarjetaProducto from './TarjetaProducto';
-import CentroFacturacion from '../../CentroFacturacion';
+import CentroFacturacion from './CentroFacturacion';
 import {
   getProducts,
   getUser,

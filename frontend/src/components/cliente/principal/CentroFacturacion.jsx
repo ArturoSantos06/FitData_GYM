@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Loader, AlertCircle } from 'lucide-react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { getSales, getCurrentUser } from '../firebase';
+import { db } from '../../../firebase/config';
+import { getSales, getCurrentUser } from '../../../firebase';
 
 function CentroFacturacion({ ventasIniciales = [] }) {
   const [ventas, setVentas] = useState(ventasIniciales);
