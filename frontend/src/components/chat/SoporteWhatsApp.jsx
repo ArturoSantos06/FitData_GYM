@@ -9,7 +9,7 @@ import {
     where,
     getDocs
 } from "firebase/firestore";
-import VideoYouTube from '../iaRutinas/VideoYouTube';
+import VideoYouTube from './VideoYouTube';
 
 import { useAssistant } from '../asistente/ContextoAsistente';
 import { auth, db } from '../../firebase/config';
