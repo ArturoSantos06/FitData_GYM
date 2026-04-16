@@ -2,17 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import Login from './components/administrador/Login';
+import IniciarSesion from './components/administrador/IniciarSesion';
 import Navbar from './components/administrador/Navbar';
-import Home from './components/administrador/Home'; // El Dashboard del Admin
+import Inicio from './components/administrador/Inicio'; // El Dashboard del Admin
 import RegistrarUsuario from './components/administrador/registros/RegistrarUsuario';
-import AssignMembership from './components/administrador/AssignMembership';
-import UserMembershipList from './components/administrador/UserMembershipList';
-import MembershipAdmin from './components/administrador/MembershipAdmin';
+import AsignarMembresia from './components/administrador/AsignarMembresia';
+import ListaMembresiasUsuario from './components/administrador/ListaMembresiasUsuario';
+import AdministrarMembresias from './components/administrador/AdministrarMembresias';
 import PuntoDeVenta from './components/administrador/PuntoDeVenta';
 import Inventario from './components/administrador/Inventario';
 import CheckInOut from './components/administrador/CheckInOut';
-import HealthProfilesAdmin from './components/administrador/HealthProfilesAdmin';
+import PerfilesSaludAdmin from './components/administrador/PerfilesSaludAdmin';
 import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/administrador/gestion-entrenadores/GestionEntrenadores';
 import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
@@ -256,7 +256,7 @@ function AdminArea() {
   if (!isAuthenticated) {
     return (
       <div className="bg-gray-900 min-h-screen flex items-center justify-center">
-        <Login onLogin={handleLogin} />
+        <IniciarSesion onLogin={handleLogin} />
       </div>
     );
   }
@@ -268,7 +268,7 @@ function AdminArea() {
         <Routes>
 
           {/* 1. Dashboard Principal */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Inicio />} />
 
           {/* 2. Registrar Clientes Nuevos */}
           <Route path="registrar" element={<RegistrarUsuario onUserRegistered={handleUserRegistered} />} />
@@ -276,14 +276,14 @@ function AdminArea() {
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
             <div className="space-y-8">
-              <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
+              <AsignarMembresia onSuccess={() => setRefreshList(prev => prev + 1)} />
 
-              <UserMembershipList refreshTrigger={refreshList} />
+              <ListaMembresiasUsuario refreshTrigger={refreshList} />
             </div>
           } />
 
           {/* 4. Configuración de Tipos de Membresía */}
-          <Route path="configuracion" element={<MembershipAdmin />} />
+          <Route path="configuracion" element={<AdministrarMembresias />} />
 
           {/* 5. Punto de Venta */}
           <Route path="ventas" element={<PuntoDeVenta />} />
@@ -293,7 +293,7 @@ function AdminArea() {
           <Route path="check-in-out" element={<CheckInOut />} />
 
           {/* 7. Fichas Médicas (Health Profiles) */}
-          <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
+          <Route path="fichas-medicas" element={<PerfilesSaludAdmin refreshTrigger={refreshHealthProfiles} />} />
 
 
           {/* 8. Gestión de Entrenadores (RF-018) */}

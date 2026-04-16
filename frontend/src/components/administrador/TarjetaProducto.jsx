@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
+const TarjetaProducto = ({ producto, onAgregar, onEditar, onEliminar }) => {
     const [cantidad, setCantidad] = useState(1);
 
     const getInitialUrl = (img) => {
@@ -77,4 +77,4 @@ const ProductoCard = ({ producto, onAgregar, onEditar, onEliminar }) => {
     );
 };
 
-export default ProductoCard;
+export default TarjetaProducto;

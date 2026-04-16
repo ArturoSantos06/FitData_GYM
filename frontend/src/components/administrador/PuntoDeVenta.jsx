@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import ProductoCard from './ProductoCard';
+import TarjetaProducto from './TarjetaProducto';
 import ModalNuevoProducto from '../ModalNuevoProducto';
 import ModalEditarProducto from '../ModalEditarProducto';
 import HistorialVentas from './HistorialVentas';
@@ -341,7 +341,7 @@ function PuntoDeVenta() {
                 <div className="lg:col-span-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                         {listaProductos.map(p => (
-                            <ProductoCard 
+                            <TarjetaProducto 
                                 key={p.id} 
                                 producto={p} 
                                 onAgregar={agregarAlCarrito} 

@@ -1,29 +1,16 @@
 import React, { useState } from 'react';
 import ErrorModal from '../../ErrorModal';
 import SuccessModal from '../../SuccessModal';
-import { registerTrainerByAdmin, updateUser, getUserByEmail } from '../../../firebase';
+import { registerNutriologoByAdmin } from '../../../firebase';
 
-function RegisterTrainer({ onUserRegistered }) {
-  const trainerSpecialtyOptions = [
-    'Entrenamiento Funcional',
-    'Fuerza e Hipertrofia',
-    'Pérdida de Grasa',
-    'Rehabilitación y Movilidad',
-    'Alto Rendimiento',
-    'Preparación Física General',
-    'Otro',
-  ];
-
+function RegistrarNutriologo({ onUserRegistered }) {
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
     confirm_password: '',
     first_name: '',
     last_name: '',
-    contract_type: '',
-    trainer_specialty: '',
-    trainer_specialty_other: '',
+    especialidad: 'Nutrición Deportiva',
   });
 
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -38,19 +25,14 @@ function RegisterTrainer({ onUserRegistered }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const onlyLettersRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+$/;
   const lettersWithSpacesRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
   const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const validateTrainerRegistration = () => {
-    const username = formData.username.trim();
+  const validateNutriologo = () => {
     const firstName = formData.first_name.trim();
     const lastName = formData.last_name.trim();
     const email = formData.email.trim();
 
-    if (!onlyLettersRegex.test(username)) {
-      return 'El nombre de usuario debe contener solo letras y sin espacios.';
-    }
     if (!lettersWithSpacesRegex.test(firstName)) {
       return 'El nombre debe contener solo letras y/o espacios.';
     }
@@ -75,23 +57,16 @@ function RegisterTrainer({ onUserRegistered }) {
     if (formData.password !== formData.confirm_password) {
       return 'La contraseña y su confirmación no coinciden.';
     }
-    if (!formData.contract_type) {
-      return 'Selecciona el tipo de contrato del entrenador.';
+    if (!formData.especialidad.trim()) {
+      return 'Ingresa la especialidad.';
     }
-    if (!formData.trainer_specialty) {
-      return 'Selecciona una especialidad del entrenador.';
-    }
-    if (formData.trainer_specialty === 'Otro' && !formData.trainer_specialty_other.trim()) {
-      return 'Especifica la especialidad del entrenador.';
-    }
-
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const validationError = validateTrainerRegistration();
+    const validationError = validateNutriologo();
     if (validationError) {
       setErrorTitle('Validación de Registro');
       setErrorMessage(validationError);
@@ -101,18 +76,12 @@ function RegisterTrainer({ onUserRegistered }) {
 
     setIsLoading(true);
     try {
-      const resolvedTrainerSpecialty = formData.trainer_specialty === 'Otro'
-        ? formData.trainer_specialty_other.trim()
-        : formData.trainer_specialty;
-
-      const registerResult = await registerTrainerByAdmin({
-        username: formData.username,
+      const registerResult = await registerNutriologoByAdmin({
         email: formData.email,
         password: formData.password,
         firstName: formData.first_name,
         lastName: formData.last_name,
-        contractType: formData.contract_type,
-        specialty: resolvedTrainerSpecialty,
+        especialidad: formData.especialidad,
       });
 
       if (!registerResult.success) {
@@ -138,41 +107,17 @@ function RegisterTrainer({ onUserRegistered }) {
         return;
       }
 
-      const trainerId = registerResult?.data?.id || registerResult?.data?.userId || null;
-
-      if (trainerId) {
-        await updateUser(String(trainerId), {
-          contractType: formData.contract_type,
-          tipoContrato: formData.contract_type,
-          specialty: resolvedTrainerSpecialty,
-          especialidad: resolvedTrainerSpecialty,
-        });
-      } else {
-        const trainerUser = await getUserByEmail(formData.email);
-        if (trainerUser.success && trainerUser.data?.id) {
-          await updateUser(String(trainerUser.data.id), {
-            contractType: formData.contract_type,
-            tipoContrato: formData.contract_type,
-            specialty: resolvedTrainerSpecialty,
-            especialidad: resolvedTrainerSpecialty,
-          });
-        }
-      }
-
-      setSuccessMessage('¡Entrenador Registrado Exitosamente!');
-      setSuccessSubMessage('Usuario y contraseña creados correctamente.');
+      setSuccessMessage('¡Nutriólogo Registrado Exitosamente!');
+      setSuccessSubMessage('✅ El especialista ya aparecerá en la lista de los clientes.');
       setShowSuccessModal(true);
 
       setFormData({
-        username: '',
         email: '',
         password: '',
         confirm_password: '',
         first_name: '',
         last_name: '',
-        contract_type: '',
-        trainer_specialty: '',
-        trainer_specialty_other: '',
+        especialidad: 'Nutrición Deportiva',
       });
 
       if (onUserRegistered) onUserRegistered();
@@ -209,21 +154,16 @@ function RegisterTrainer({ onUserRegistered }) {
           <div className="absolute -top-8 left-0 w-96 h-24 bg-linear-to-r from-blue-500/20 via-cyan-500/20 to-blue-500/20 blur-3xl rounded-full" />
           <div className="relative">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-wide text-blue-400">
-              Registro de Entrenador
+              Registro de Nutriólogo
             </h2>
           </div>
-          <p className="text-slate-400 text-sm mt-3 tracking-wide">Crea una nueva cuenta de entrenador en FitData GYM</p>
+          <p className="text-slate-400 text-sm mt-3 tracking-wide">Crea una nueva cuenta de nutriólogo en FitData GYM</p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 md:gap-5">
           <section className={`${cardClass} col-span-12`}>
             <h3 className="text-sm font-bold text-slate-200 mb-3">Datos personales</h3>
             <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-12 md:col-span-6">
-                <label className={labelClass}>Nombre de Usuario</label>
-                <input type="text" name="username" value={formData.username} onChange={handleChange} className={fieldClass} required />
-              </div>
-
               <div className="col-span-12 md:col-span-6">
                 <label className={labelClass}>Correo Electrónico</label>
                 <input type="email" name="email" value={formData.email} onChange={handleChange} className={fieldClass} required />
@@ -240,51 +180,17 @@ function RegisterTrainer({ onUserRegistered }) {
               </div>
 
               <div className="col-span-12 md:col-span-6">
-                <label className={labelClass}>Tipo de Contrato</label>
-                <select
-                  name="contract_type"
-                  value={formData.contract_type}
-                  onChange={handleChange}
-                  className={fieldClass}
-                  required
-                >
-                  <option value="">-- Selecciona --</option>
-                  <option value="Asimilados a Salarios">Asimilados a Salarios</option>
-                  <option value="Honorarios (Persona Fisica)">Honorarios (Persona Fisica)</option>
-                  <option value="Comisiones">Comisiones</option>
-                </select>
-              </div>
-
-              <div className="col-span-12 md:col-span-6">
                 <label className={labelClass}>Especialidad</label>
-                <select
-                  name="trainer_specialty"
-                  value={formData.trainer_specialty}
+                <input
+                  type="text"
+                  name="especialidad"
+                  value={formData.especialidad}
                   onChange={handleChange}
                   className={fieldClass}
+                  placeholder="Ej: Nutrición Deportiva"
                   required
-                >
-                  <option value="">-- Selecciona --</option>
-                  {trainerSpecialtyOptions.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                />
               </div>
-
-              {formData.trainer_specialty === 'Otro' && (
-                <div className="col-span-12">
-                  <label className={labelClass}>Especifica la Especialidad</label>
-                  <input
-                    type="text"
-                    name="trainer_specialty_other"
-                    value={formData.trainer_specialty_other}
-                    onChange={handleChange}
-                    className={fieldClass}
-                    placeholder="Ej: Entrenamiento prenatal"
-                    required
-                  />
-                </div>
-              )}
             </div>
           </section>
 
@@ -317,7 +223,7 @@ function RegisterTrainer({ onUserRegistered }) {
                   <span>Procesando...</span>
                 </>
               ) : (
-                'Registrar Entrenador'
+                'Registrar Nutriólogo'
               )}
             </button>
           </div>
@@ -327,4 +233,4 @@ function RegisterTrainer({ onUserRegistered }) {
   );
 }
 
-export default RegisterTrainer;
+export default RegistrarNutriologo;

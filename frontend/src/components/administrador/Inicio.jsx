@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Home() {
+function Inicio() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 text-gray-100">
       
@@ -34,4 +34,4 @@ function Home() {
   );
 }
 
-export default Home;
+export default Inicio;

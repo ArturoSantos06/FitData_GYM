@@ -54,7 +54,7 @@ const TermsModal = ({ onClose }) => (
   </div>
 );
 
-function MembershipAdmin() {
+function AdministrarMembresias() {
   const [memberships, setMemberships] = useState([]);
   
   const [name, setName] = useState('');
@@ -321,4 +321,4 @@ function MembershipAdmin() {
   );
 }
 
-export default MembershipAdmin;
+export default AdministrarMembresias;

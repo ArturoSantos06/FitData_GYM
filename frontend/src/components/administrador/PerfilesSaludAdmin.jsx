@@ -5,7 +5,7 @@ import { Search, Filter } from 'lucide-react';
 
 const normalizeText = value => String(value || '').trim().toLowerCase();
 
-function HealthProfilesAdmin({ refreshTrigger }) {
+function PerfilesSaludAdmin({ refreshTrigger }) {
   const [profiles, setProfiles] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -393,4 +393,4 @@ function HealthProfilesAdmin({ refreshTrigger }) {
   );
 }
 
-export default HealthProfilesAdmin;
+export default PerfilesSaludAdmin;
