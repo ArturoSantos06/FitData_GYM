@@ -46,7 +46,7 @@ const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
     const hoy = new Date().toISOString().split('T')[0];
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-100 p-4 backdrop-blur-sm animate-fade-in">
             <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-700 shadow-2xl relative">
                 
                 {/* Botón cerrar */}

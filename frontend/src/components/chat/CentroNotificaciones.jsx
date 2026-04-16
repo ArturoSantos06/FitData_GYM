@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase
 import { Bell, CheckCheck } from 'lucide-react';
 import { db } from '../../firebase/config';
 
-function NotificationCenter({ userId }) {
+function CentroNotificaciones({ userId }) {
    const [notifications, setNotifications] = useState([]);
    const [isOpen, setIsOpen] = useState(false);
    const menuRef = useRef(null);
@@ -124,4 +124,4 @@ function NotificationCenter({ userId }) {
    );
 }
 
-export default NotificationCenter;
+export default CentroNotificaciones;

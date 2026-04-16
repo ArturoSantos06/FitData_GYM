@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Send, Paperclip, ImageIcon, FileText, Headphones, X, Loader2 } from 'lucide-react';
 
-function ChatInput({ onSendMessage, isUploading }) {
+function EntradaMensaje({ onSendMessage, isUploading }) {
    const [text, setText] = useState('');
    const [showAttachMenu, setShowAttachMenu] = useState(false);
    const [selectedFile, setSelectedFile] = useState(null);
@@ -32,7 +32,7 @@ function ChatInput({ onSendMessage, isUploading }) {
        }
    };
 
-   // Agrupa todo el payload capturado y lo envía hacia el componente padre `ChatWindow`
+   // Agrupa todo el payload capturado y lo envía hacia el componente padre `VentanaChat`
    const handleSubmit = (e) => {
       e.preventDefault();
       // Solo procede si no está cargando actualmente y si al menos tiene un poco de texto O un archivo adjunto.
@@ -141,4 +141,4 @@ function ChatInput({ onSendMessage, isUploading }) {
    );
 }
 
-export default ChatInput;
+export default EntradaMensaje;

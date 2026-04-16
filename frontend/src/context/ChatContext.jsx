@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 // 1. ChatContext.Provider gestiona el estado de la comunicación profesional-cliente.
 // 2. Lógica de Sincronización: Se implementa ordenamiento alfabético de UIDs para 
 //    generar un activeChatId único, evitando duplicidad de canales en Firestore.
-// 3. Este ID es el que deben usar tanto MessageList (para escuchar) como ChatInput (para enviar).
+// 3. Este ID es el que deben usar tanto ListaMensajes (para escuchar) como EntradaMensaje (para enviar).
 
 const ChatContext = createContext();
 

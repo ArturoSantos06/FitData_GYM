@@ -3,7 +3,7 @@ import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firesto
 import { db } from '../../firebase/config';
 import { getCurrentUser } from '../../firebase';
 import { ChatProvider, useChatContext } from '../../context/ChatContext';
-import ChatWindow from './ChatWindow';
+import VentanaChat from './VentanaChat';
 import { Search, Users, ChevronLeft, Loader2, MessageCircle } from 'lucide-react';
 
 const MessagesBody = ({ role }) => {
@@ -203,7 +203,7 @@ const MessagesBody = ({ role }) => {
                             <Loader2 size={30} className="animate-spin text-cyan-500" />
                         </div>
                     ) : (
-                        <ChatWindow
+                        <VentanaChat
                             chatId={activeChatId}
                             currentUserId={currentUser?.uid}
                             title={selectedClient.name}
@@ -217,7 +217,7 @@ const MessagesBody = ({ role }) => {
     );
 };
 
-export default function ProfessionalMessagesView({ role }) {
+export default function BandejaProfesionales({ role }) {
     return (
         <ChatProvider>
             <MessagesBody role={role} />

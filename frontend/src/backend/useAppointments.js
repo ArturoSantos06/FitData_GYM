@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase/config'; 
+import { db } from '../firebase/config'; 
 
 export const useAppointments = (clienteId) => {
     const [appointments, setAppointments] = useState([]);
