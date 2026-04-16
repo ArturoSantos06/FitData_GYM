@@ -142,6 +142,11 @@ service firebase.storage {
         request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
       allow delete: if isPrivilegedStaff() || ownsMember(memberId);
     }
+    
+    // Archivos de chat (imágenes, documentos, etc.)
+    match /chat_attachments/{chatId}/{fileName} {
+      allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isPrivilegedStaff());
+    }
 
     // Denegar todo lo demas por defecto
     match /{allPaths=**} {

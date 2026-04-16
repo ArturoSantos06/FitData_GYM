@@ -24,10 +24,18 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
         setShowError('');
         
         try {
+            // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+            const precioNormal = parseFloat(nuevoProd.precio);
+            const precioPuntos = precioNormal * 2;
+            // --- FIN CÓDIGO NUEVO GYM-POINTS ---
+
             // 1. Crear producto primero
             const productResult = await createProduct({
                 nombre: nuevoProd.nombre,
-                precio: parseFloat(nuevoProd.precio),
+                precio: precioNormal,
+                // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+                precioPuntos: precioPuntos,
+                // --- FIN CÓDIGO NUEVO GYM-POINTS ---
                 stock: parseInt(nuevoProd.stock),
                 imagen: null 
             });
@@ -119,6 +127,15 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
                     <input type="text" name="nombre" value={nuevoProd.nombre} onChange={handleChange} style={styles.input} required />
                     <label style={styles.label}>Precio ($):</label>
                     <input type="number" name="precio" value={nuevoProd.precio} onChange={handleChange} style={styles.input} required min="0" step="0.01" />
+                    {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
+                    <label style={{...styles.label, color: '#fcd34d'}}>Precio en Puntos (GYM-Points):</label>
+                    <input 
+                        type="number" 
+                        value={nuevoProd.precio ? parseFloat(nuevoProd.precio) * 2 : ''} 
+                        style={{...styles.input, background: '#334155', color: '#fcd34d', cursor: 'not-allowed'}} 
+                        readOnly 
+                    />
+                    {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
                     <label style={styles.label}>Stock:</label>
                     <input type="number" name="stock" value={nuevoProd.stock} onChange={handleChange} style={styles.input} required min="0" />
                     <label style={styles.label}>Imagen:</label>

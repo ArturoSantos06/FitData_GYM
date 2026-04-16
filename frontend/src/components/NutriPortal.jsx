@@ -9,6 +9,7 @@ import NutriFinancialDashboard from './nutriologo/NutriFinancialDashboard';
 import CitasNutri from './nutriologo/CitasNutri';
 import DietaRepositorio from './DietaRepositorio';
 import NutritionAssistant from './NutritionAssistant';
+import ProfessionalMessagesView from './chat/ProfessionalMessagesView';
 import PerfilNutriologo from './nutriologo/PerfilNutriologo';
 
 
@@ -41,6 +42,7 @@ const [activeTab, setActiveTab] = useState('inicio');
                 {activeTab === 'calculadora' && <MacroCalculatorForm />}
                 {activeTab === 'dietas' && <DietaRepositorio />}
                 {activeTab === 'financiero' && <NutriFinancialDashboard />}
+                {activeTab === 'mensajes' && <ProfessionalMessagesView role="nutritionist" />}
                 {activeTab === 'perfil' && <PerfilNutriologo />}
             </div>
 

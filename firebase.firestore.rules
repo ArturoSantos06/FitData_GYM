@@ -120,13 +120,7 @@ service cloud.firestore {
 
     // Users Collection - Restrict access to own data or admins
     match /users/{userId} {
-      allow read: if isSignedIn() ||
-                  isOwner(userId) ||
-                  (isAuthenticated() && (
-                    resource.data.authUid == request.auth.uid ||
-                    resource.data.email == request.auth.token.email
-                  )) ||
-                  isAdmin();
+      allow read: if isSignedIn();
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isOwner(userId) ||
                     isAdmin() ||
@@ -141,6 +135,12 @@ service cloud.firestore {
       // Notificaciones de usuario
       match /notifications/{notificationId} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      }
+
+      // Historial de puntos - solo admins pueden escribir
+      match /point_history/{historyId} {
+        allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow write: if isAdmin();
       }
     }
 
@@ -372,17 +372,17 @@ service cloud.firestore {
     // Asignaciones de nutriólogos a clientes
     match /client_nutritionist_assignments/{clientId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == clientId; // Solo el cliente puede crear su asignación
-      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
-      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+      allow create: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
     // Asignaciones de entrenadores a clientes
     match /client_trainer_assignments/{clientId} {
       allow read: if isAuthenticated();
-      allow create: if (isAuthenticated() && request.auth.uid == clientId) || isAdmin(); // Cliente propietario o admin
-      allow update: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente propietario o admin puede actualizar
-      allow delete: if isAuthenticated() && request.auth.uid == clientId || isAdmin(); // Cliente o admin pueden eliminar
+      allow create: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == clientId || isAdmin());
     }
 
     match /assignments/{assignmentId} {
@@ -412,6 +412,19 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.clientId; // Solo el cliente puede crear su reseña
       allow update: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente propietario o admin pueden actualizar
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.clientId || isAdmin(); // Cliente o admin pueden eliminar
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == resource.data.uid);
+      allow write: if isAuthenticated() && (request.auth.uid == assignmentId || request.auth.uid == request.resource.data.uid);
+    }
+    
+    // Chat y Mensajes
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isAdmin());
+      }
     }
 
     // Default deny all other collections

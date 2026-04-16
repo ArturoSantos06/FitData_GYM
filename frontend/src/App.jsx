@@ -17,8 +17,6 @@ import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
 import GestionEntrenadores from './components/administrador/gestion-entrenadores/GestionEntrenadores';
 import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
 import CitasTrainer from './components/CitasTrainer';
-import FeedbackClie from './components/FeedbackClie';
-
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import ClientPortal from './components/ClientPortal';
@@ -303,12 +301,8 @@ function AdminArea() {
           <Route path="gestion-nutriologos" element={<GestionNutriologos />} />
           <Route path="reportes-facturas" element={<ReportesFacturacion />} />
 
-          {/* 9. Feedback y comunicación */}
-          <Route path="feedback" element={<FeedbackClie />} />
-
           {/* 10. Mantenimiento de maquinas */}
           <Route path="mantenimiento" element={<PortalMantenimiento modoSoloAdmin vistaInicial="admin" />} />
-
           {/* 12. Configuración Chatbot NLP */}
           <Route path="chatbot" element={<AssistantAdminConfig />} />
 
@@ -405,15 +399,15 @@ function App() {
           <Route path="/cliente/login" element={<ClientLogin />} />
           <Route path="/cliente" element={<ClientPortal />} />
           <Route path="/nutriologo/login" element={<NutriologoLogin />} />
-          
+
           {/* Ruta protegida del Nutriólogo */}
-          <Route 
-            path="/nutriologo/*" 
+          <Route
+            path="/nutriologo/*"
             element={
               <RequireNutritionistAuth>
                 <NutriPortal />
               </RequireNutritionistAuth>
-            } 
+            }
           />
 
           <Route path="/entrenador/login" element={<EntrenadorLogin />} />
@@ -448,8 +442,8 @@ function App() {
                 <BitacoraEntrenador />
               </RequireTrainerAuth>
             }
-          />          
-         
+          />
+
 
           <Route path="/mantenimiento" element={<PortalMantenimiento vistaInicial="usuario" />} />
 

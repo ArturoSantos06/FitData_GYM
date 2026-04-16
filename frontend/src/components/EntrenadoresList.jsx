@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebase/config'; 
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../firebase/config';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
 import { getCurrentUser, waitForAuthReady, createTrainerServiceSale, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
 import ConfirmModal from './ConfirmModal';
@@ -185,7 +185,7 @@ const EntrenadoresList = () => {
       });
       return;
     }
-    
+
     if (assignedTrainerId) {
       setErrorModal({
         isOpen: true,
@@ -196,44 +196,6 @@ const EntrenadoresList = () => {
     }
 
     setPendingTrainerSelection(entrenador);
-  };
-
-  const confirmSelectEntrenador = async () => {
-    const entrenador = pendingTrainerSelection;
-    if (!entrenador || !currentClientId) return;
-
-    const serviceSettings = getTrainerServiceSettings(entrenador);
-    const serviceTypeOptions = [];
-    if (serviceSettings.offersPersonal) serviceTypeOptions.push('PERSONAL');
-    if (serviceSettings.offersGroup) serviceTypeOptions.push('GRUPAL');
-
-    if (serviceTypeOptions.length === 0) {
-      setPendingTrainerSelection(null);
-      setErrorModal({
-        isOpen: true,
-        title: 'Servicios no configurados',
-        message: 'Este entrenador aún no tiene servicios configurados. Contacta a recepción.',
-      });
-      return;
-    }
-
-    const defaultServiceType = serviceTypeOptions[0];
-    setPendingTrainerSelection(null);
-    setPendingPaymentTrainer({
-      ...entrenador,
-      serviceTypeOptions,
-    });
-    setSelectedServiceType(defaultServiceType);
-    setPaymentAmount(String(getTrainerServicePriceByType(entrenador, defaultServiceType)));
-    setPaymentMethod('EFECTIVO');
-  };
-
-  const handleServiceTypeChange = (serviceType) => {
-    const normalizedType = normalizeServiceType(serviceType) || 'PERSONAL';
-    setSelectedServiceType(normalizedType);
-    if (pendingPaymentTrainer) {
-      setPaymentAmount(String(getTrainerServicePriceByType(pendingPaymentTrainer, normalizedType)));
-    }
   };
 
   const confirmPayAndAssignTrainer = async () => {
@@ -303,6 +265,44 @@ const EntrenadoresList = () => {
     }
   };
 
+  const confirmSelectEntrenador = async () => {
+    const entrenador = pendingTrainerSelection;
+    if (!entrenador || !currentClientId) return;
+
+    const serviceSettings = getTrainerServiceSettings(entrenador);
+    const serviceTypeOptions = [];
+    if (serviceSettings.offersPersonal) serviceTypeOptions.push('PERSONAL');
+    if (serviceSettings.offersGroup) serviceTypeOptions.push('GRUPAL');
+
+    if (serviceTypeOptions.length === 0) {
+      setPendingTrainerSelection(null);
+      setErrorModal({
+        isOpen: true,
+        title: 'Servicios no configurados',
+        message: 'Este entrenador aún no tiene servicios configurados. Contacta a recepción.',
+      });
+      return;
+    }
+
+    const defaultServiceType = serviceTypeOptions[0];
+    setPendingTrainerSelection(null);
+    setPendingPaymentTrainer({
+      ...entrenador,
+      serviceTypeOptions,
+    });
+    setSelectedServiceType(defaultServiceType);
+    setPaymentAmount(String(getTrainerServicePriceByType(entrenador, defaultServiceType)));
+    setPaymentMethod('EFECTIVO');
+  };
+
+  const handleServiceTypeChange = (serviceType) => {
+    const normalizedType = normalizeServiceType(serviceType) || 'PERSONAL';
+    setSelectedServiceType(normalizedType);
+    if (pendingPaymentTrainer) {
+      setPaymentAmount(String(getTrainerServicePriceByType(pendingPaymentTrainer, normalizedType)));
+    }
+  };
+
   const handleRateTrainer = async (trainerId, rating) => {
     if (!currentClientId) {
       setErrorModal({
@@ -312,7 +312,7 @@ const EntrenadoresList = () => {
       });
       return;
     }
-    
+
     if (assignedTrainerId !== trainerId) {
       setErrorModal({
         isOpen: true,
@@ -398,7 +398,7 @@ const EntrenadoresList = () => {
           <p className="text-sm mt-1">Si deseas cambiar de especialista, contacta a recepción del gimnasio.</p>
         </div>
       )}
-      
+
       {entrenadores.length > 0 ? (
         <div
           className="grid gap-6 justify-center"
@@ -411,7 +411,7 @@ const EntrenadoresList = () => {
                 selectedEntrenador?.id === e.id
                   ? 'border-blue-500 bg-blue-900/20 shadow-lg shadow-blue-500/20'
                   : 'border-slate-700'
-              }`}
+                }`}
             >
               {selectedEntrenador?.id === e.id && (
                 <div className="absolute top-3 right-3">
@@ -453,7 +453,7 @@ const EntrenadoresList = () => {
                         const myRating = myReview ? myReview.rating : 0;
                         const displayRating = hoveredStars[e.id] || myRating;
                         const isFilled = star <= displayRating;
-                        
+
                         return (
                           <button
                             key={star}
@@ -462,8 +462,8 @@ const EntrenadoresList = () => {
                             onMouseLeave={() => setHoveredStars(prev => ({ ...prev, [e.id]: 0 }))}
                             className="focus:outline-none"
                           >
-                            <Star 
-                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                            <Star
+                              className={`w-4 h-4 transition-colors ${isFilled ? 'text-amber-400 fill-current' : 'text-slate-600'}`}
                             />
                           </button>
                         );
@@ -480,9 +480,9 @@ const EntrenadoresList = () => {
                         const avg = avgStr ? parseFloat(avgStr) : null;
                         const filled = avg ? star <= Math.round(avg) : false;
                         return (
-                          <Star 
-                            key={star} 
-                            className={`w-4 h-4 ${filled ? 'text-amber-400 fill-current' : 'text-slate-600'}`} 
+                          <Star
+                            key={star}
+                            className={`w-4 h-4 ${filled ? 'text-amber-400 fill-current' : 'text-slate-600'}`}
                           />
                         );
                       })}
@@ -501,13 +501,12 @@ const EntrenadoresList = () => {
                 <button
                   onClick={() => handleSelectEntrenador(e)}
                   disabled={assigning || assignedTrainerId === e.id}
-                  className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
-                    assignedTrainerId === e.id
+                  className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${assignedTrainerId === e.id
                       ? 'bg-green-600 hover:bg-green-500 text-white cursor-not-allowed'
                       : selectedEntrenador?.id === e.id
-                      ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50'
-                  }`}
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                        : 'bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50'
+                    }`}
                 >
                   {assigning && selectedEntrenador?.id === e.id ? (
                     <>

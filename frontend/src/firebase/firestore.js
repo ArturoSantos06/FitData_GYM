@@ -18,6 +18,10 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "./config";
 
+// --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+import { processPointsPayment, awardPoints, calcularPuntosGanados, calcularPrecioPuntos } from "../utils/pointsLogic";
+// --- FIN CÓDIGO NUEVO GYM-POINTS ---
+
 const getLocalMXDate = () => {
   // Store absolute current timestamp; presentation layer applies Mexico timezone.
   return Timestamp.now();
@@ -983,6 +987,21 @@ export const assignMembership = async (assignmentData) => {
         createdAt: getLocalMXDate(),
         fecha: getLocalMXDateISO()
       });
+
+      // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+      if (payMethod === 'PUNTOS') {
+        const pointsCost = calcularPrecioPuntos(membershipPrice);
+        const ptResult = await processPointsPayment(userId, pointsCost, `Membresía: ${membershipType.name}`);
+        if (!ptResult.success) {
+          throw new Error(`Error en pago con puntos: ${ptResult.error}`);
+        }
+      } else {
+        const pointsEarned = calcularPuntosGanados(membershipPrice);
+        if (pointsEarned > 0) {
+          await awardPoints(userId, pointsEarned, `Compra de membresía: ${membershipType.name}`);
+        }
+      }
+      // --- FIN CÓDIGO NUEVO GYM-POINTS ---
     }
 
     return { 
@@ -1485,6 +1504,29 @@ export const createSale = async (saleData) => {
       });
     }
     
+    // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+    if (cliente_id) {
+        if (metodo_pago === 'PUNTOS') {
+            const costoPuntos = calcularPrecioPuntos(total);
+            const ptResult = await processPointsPayment(cliente_id, costoPuntos, 'Compra en tienda');
+            if (!ptResult.success) {
+                return { success: false, error: `Error en cobro de GYM-Points: ${ptResult.error}` };
+            }
+        } else {
+            const puntosGanados = calcularPuntosGanados(total);
+            if (puntosGanados > 0) {
+                // Award points, but don't block the sale if it fails
+                const ptAwardResult = await awardPoints(cliente_id, puntosGanados, 'Compra en tienda');
+                if (!ptAwardResult.success) {
+                    console.warn(`⚠️ Advertencia: No se pudieron guardar los puntos: ${ptAwardResult.error}`);
+                }
+            }
+        }
+    } else if (metodo_pago === 'PUNTOS') {
+        return { success: false, error: 'No se puede pagar con puntos sin seleccionar a un cliente.' };
+    }
+    // --- FIN CÓDIGO NUEVO GYM-POINTS ---
+
     // 2. Generar folio único (timestamp + random)
     const folio = generateSaleFolio();
     
@@ -1961,6 +2003,23 @@ export const createMembershipSale = async (saleData) => {
       createdAt: getLocalMXDate(),
       fecha: getLocalMXDateISO()
     }));
+
+    // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+    if (cliente_id) {
+      if (payMethod === 'PUNTOS') {
+          const costoPts = calcularPrecioPuntos(totalNumber);
+          const ptResult = await processPointsPayment(cliente_id, costoPts, `Membresía: ${membership_name}`);
+          if(!ptResult.success) {
+              return { success: false, error: `Error GYM-Points: ${ptResult.error}` };
+          }
+      } else {
+          const earned = calcularPuntosGanados(totalNumber);
+          if (earned > 0) {
+              await awardPoints(cliente_id, earned, `Membresía: ${membership_name}`);
+          }
+      }
+    }
+    // --- FIN CÓDIGO NUEVO GYM-POINTS ---
 
     return { success: true, folio };
   } catch (error) {

@@ -1,11 +1,17 @@
 import React from 'react';
-import { Home, Calendar, Users, User, LogOut } from 'lucide-react';
+import { Home, Calendar, Users, User, LogOut, MessageCircle } from 'lucide-react';
 
 const TrainerNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
         { id: 'inicio', label: 'Inicio', icon: Home },
         { id: 'agenda', label: 'Agenda', icon: Calendar },
         { id: 'gestion', label: 'Gestión', icon: Users },
+        
+        // ==========================================
+        // NUEVA INTEGRACIÓN: MÓDULO DE MENSAJES (ESTRATEGIA CONTEXT API)
+        // ==========================================
+        { id: 'mensajes', label: 'Mensajes', icon: MessageCircle },
+        
         { id: 'perfil', label: 'Perfil', icon: User },
     ];
 

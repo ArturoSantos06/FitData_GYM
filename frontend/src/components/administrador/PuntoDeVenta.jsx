@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import ProductoCard from './ProductoCard';
 import ModalNuevoProducto from '../ModalNuevoProducto';
 import ModalEditarProducto from '../ModalEditarProducto';
@@ -198,6 +200,11 @@ function PuntoDeVenta() {
                 return;
             }
         }
+        
+        // --- INICIO CÓDIGO NUEVO GYM-POINTS ---
+        // Si el metodo es PUNTOS, validamos que no pase dinero real
+        const montoEnviar = metodoPago === 'EFECTIVO' ? parseFloat(montoRecibido) : (metodoPago === 'PUNTOS' ? 0 : total);
+        // --- FIN CÓDIGO NUEVO GYM-POINTS ---
 
         setIsLoading(true);
         const data = {
@@ -205,7 +212,7 @@ function PuntoDeVenta() {
             metodo_pago: metodoPago,
             total: total,
             productos: carrito.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre, precio: i.precio })),
-            monto_recibido: metodoPago === 'EFECTIVO' ? parseFloat(montoRecibido) : total 
+            monto_recibido: montoEnviar 
         };
 
         try {
@@ -242,6 +249,34 @@ function PuntoDeVenta() {
             setIsLoading(false);
         }
     };
+
+    // --- INICIO CÓDIGO NUEVO GYM-POINTS (SCRIPT MIGRACION) ---
+    const [isMigrating, setIsMigrating] = useState(false);
+    const runMigration = async () => {
+        if (!window.confirm('¿Seguro que deseas iniciar la migración de precios de productos a GYM-Points?')) return;
+        setIsMigrating(true);
+        let successCount = 0;
+        let failCount = 0;
+        try {
+            const querySnapshot = await getDocs(collection(db, 'productos'));
+            for (const document of querySnapshot.docs) {
+                try {
+                    const data = document.data();
+                    const precioBase = parseFloat(data.precio) || 0;
+                    const precioPuntos = precioBase * 2;
+                    await updateDoc(doc(db, 'productos', document.id), { precioPuntos });
+                    successCount++;
+                } catch (err) { failCount++; }
+            }
+            alert(`Migración completada.\nÉxito: ${successCount}\nFallos: ${failCount}`);
+            cargarDatos();
+        } catch (error) {
+            alert('Error general durante la migración.');
+        } finally {
+            setIsMigrating(false);
+        }
+    };
+    // --- FIN CÓDIGO NUEVO GYM-POINTS ---
 
     // Estilos
     const s = {
@@ -292,8 +327,7 @@ function PuntoDeVenta() {
             <h1 className="text-3xl md:text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-500 uppercase">
                 Punto de Venta
             </h1>
-            
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 flex justify-center gap-4">
                 <button onClick={() => setMostrarModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-6 rounded-lg font-bold shadow-lg hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-1">
                     + NUEVO PRODUCTO
                 </button>
@@ -358,6 +392,9 @@ function PuntoDeVenta() {
                             <option value="EFECTIVO">Efectivo</option>
                             <option value="TARJETA">Tarjeta</option>
                             <option value="TRANSFERENCIA">Transferencia</option>
+                            {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
+                            <option value="PUNTOS">GYM-Points</option>
+                            {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
                         </select>
 
                         {metodoPago === 'EFECTIVO' && (
@@ -393,6 +430,19 @@ function PuntoDeVenta() {
                         </div>
 
                         <div style={s.total}>Total: ${calcularTotal().toFixed(2)}</div>
+                        
+                        {/* --- INICIO CÓDIGO NUEVO GYM-POINTS --- */}
+                        {metodoPago === 'PUNTOS' && (
+                            <div className="text-right text-yellow-400 font-bold mb-2 text-lg">
+                                Costo en GYM-Points: {calcularTotal() * 2} Pts
+                            </div>
+                        )}
+                        {metodoPago !== 'PUNTOS' && clienteSeleccionado && (
+                            <div className="text-right text-emerald-400 text-sm mb-2 font-semibold">
+                                + Ganará {Math.floor(calcularTotal() * 0.1)} GYM-Points
+                            </div>
+                        )}
+                        {/* --- FIN CÓDIGO NUEVO GYM-POINTS --- */}
                         
                         <p className="text-right text-slate-400 text-xs mb-4">(IVA Incluido)</p>
                         

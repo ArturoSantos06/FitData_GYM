@@ -1,11 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench } from 'lucide-react';
+import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench, User, Stethoscope } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
+import {
+    doc,
+    getDoc,
+    collection,
+    query,
+    where,
+    getDocs
+} from "firebase/firestore";
 import VideoYouTube from './iaRutinas/VideoYouTube';
 
-
 import { useAssistant } from './asistente/ContextoAsistente';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
+import ChatWindow from './chat/ChatWindow';
+import NotificationCenter from './chat/NotificationCenter';
 import { generateAiRoutine, subscribeAiRoutineHistory } from '../firebase/aiRoutineService';
 import { suscribirCatalogoMaquinas } from '../firebase/mantenimiento';
 import FormularioReporteEnChat from './mantenimiento/FormularioReporteEnChat';
@@ -70,7 +79,7 @@ function parsearRutinaIA(texto) {
 
             const videoMatch = descripcion.match(/\[YT:(.*?)\]/);
             if (videoMatch) {
-                videoIdExtraido = videoMatch[1]; // Guardamos el ID
+                videoIdExtraido = videoMatch[1];
                 descripcion = descripcion.replace(videoMatch[0], '').trim(); 
             }
 
@@ -337,10 +346,24 @@ function ClientMessagesWhatsApp() {
 
     const chatBodyRef = useRef(null);
 
+    // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO ---
+    const [currentUser, setCurrentUser] = useState(null);
+    const [trainerId, setTrainerId] = useState(null);
+    const [trainerName, setTrainerName] = useState('Entrenador Asignado');
+    const [nutritionistId, setNutritionistId] = useState(null);
+    const [nutritionistName, setNutritionistName] = useState('Nutriólogo Asignado');
+    const [showSidebarMobile, setShowSidebarMobile] = useState(true);
+    const getUnifiedChatId = (uid1, uid2) => {
+        if (!uid1 || !uid2) return null;
+        return [uid1, uid2].sort().join('_');
+    };
+    // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN ---
+
     useEffect(() => {
         let unsubscribeHistory = null;
 
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+            setCurrentUser(user);
             if (unsubscribeHistory) {
                 unsubscribeHistory();
                 unsubscribeHistory = null;
@@ -375,6 +398,49 @@ function ClientMessagesWhatsApp() {
             }
         };
     }, []);
+    // --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START ---
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+
+        const fetchAssignments = async () => {
+            console.log("--- Iniciando búsqueda de vinculaciones ---");
+            console.log("Mi UID (Cliente):", currentUser.uid);
+            console.log("Email del usuario actual:", currentUser.email);
+
+            try {
+                // Auditoría Nutriólogo
+                const nutriQuery = query(
+                    collection(db, 'client_nutritionist_assignments'), // <-- REVISA ESTA ORTOGRAFÍA
+                    where('clientId', '==', currentUser.uid)
+                );
+                const nutriSnap = await getDocs(nutriQuery);
+
+                console.log("¿Se encontró documento de Nutriólogo?:", !nutriSnap.empty);
+
+                if (!nutriSnap.empty) {
+                    const nutriData = nutriSnap.docs[0].data();
+                    console.log("Datos de la vinculación hallada:", nutriData);
+
+                    const nId = nutriData.nutritionistId; // <-- ¿SE LLAMA ASÍ EL CAMPO EN FIREBASE?
+                    console.log("ID del nutriólogo obtenido:", nId);
+
+                    const userDoc = await getDoc(doc(db, 'users', nId));
+                    if (userDoc.exists()) {
+                        console.log("Perfil del nutriólogo encontrado:", userDoc.data().displayName);
+                        setNutritionistName(userDoc.data().displayName);
+                        setNutritionistId(nId);
+                    } else {
+                        console.error("ALERTA: El ID del nutriólogo no existe en la colección 'users'");
+                    }
+                }
+            } catch (error) {
+                console.error("Error en auditoría:", error);
+            }
+        };
+
+        fetchAssignments();
+    }, [currentUser]);
+
 
     useEffect(() => {
         const unsubscribeCatalogo = suscribirCatalogoMaquinas(
@@ -654,13 +720,58 @@ function ClientMessagesWhatsApp() {
         <div className="w-full animate-fade-in">
             <div className="mx-auto h-[calc(100vh-12rem)] min-h-[560px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0b141a] shadow-2xl">
                 <div className="flex h-full flex-col md:flex-row">
-                    <aside className="w-full border-b border-slate-700 bg-[#111b21] md:w-[340px] md:border-b-0 md:border-r">
-                        <div className="border-b border-slate-700 px-4 py-3">
-                            <h2 className="text-base font-bold text-slate-100">Mensajes</h2>
-                            <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
+                    <aside className={`w-full border-b border-slate-700 bg-[#111b21] md:w-[340px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
+                        <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-base font-bold text-slate-100">Mensajes</h2>
+                                <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
+                            </div>
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO --- */}
+                            {currentUser && <NotificationCenter userId={currentUser.uid} />}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN --- */}
                         </div>
 
-                        <div className="p-2">
+                        <div className="p-2 overflow-y-auto">
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO --- */}
+                            {trainerId && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setActiveChat('entrenador'); setShowSidebarMobile(false); }}
+                                    className={`mb-2 w-full rounded-xl px-3 py-3 text-left transition ${activeChat === 'entrenador' ? 'bg-[#202c33] border border-cyan-500/40' : 'hover:bg-[#1f2c33] border border-transparent'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
+                                            <User size={18} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-100">Entrenador</p>
+                                            <p className="truncate text-xs text-slate-400">{trainerName}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+
+                            {nutritionistId && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setActiveChat('nutriologo'); setShowSidebarMobile(false); }}
+                                    className={`mb-2 w-full rounded-xl px-3 py-3 text-left transition ${activeChat === 'nutriologo' ? 'bg-[#202c33] border border-cyan-500/40' : 'hover:bg-[#1f2c33] border border-transparent'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-400">
+                                            <Stethoscope size={18} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-100">Nutriólogo</p>
+                                            <p className="truncate text-xs text-slate-400">{nutritionistName}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+                            {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN --- */}
+
                             <button
                                 type="button"
                                 onClick={() => setActiveChat('ia')}
@@ -714,233 +825,250 @@ function ClientMessagesWhatsApp() {
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 flex-1 flex-col">
-                        <header className="border-b border-slate-700 bg-[#202c33] px-4 py-3">
-                            <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-200' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
-                                    {activeChat === 'ia' ? <Bot size={18} /> : activeChat === 'mantenimiento' ? <Wrench size={18} /> : <MessageCircle size={18} />}
+                    {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
+                    {activeChat === 'entrenador' ? (
+                        <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                            <ChatWindow
+                                // Reemplazamos la concatenación manual por nuestra función de ordenamiento
+                                chatId={getUnifiedChatId(currentUser?.uid, trainerId)}
+                                currentUserId={currentUser?.uid}
+                                title={trainerName}
+                                subtitle="Entrenador Asignado"
+                                onBack={() => setShowSidebarMobile(true)}
+                            />
+                        </div>
+                    ) : activeChat === 'nutriologo' ? (
+                        <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                            <ChatWindow
+                                // Aplicamos exactamente la misma función para el nutriólogo
+                                chatId={getUnifiedChatId(currentUser?.uid, nutritionistId)}
+                                currentUserId={currentUser?.uid}
+                                title={nutritionistName}
+                                subtitle="Nutriólogo Asignado"
+                                onBack={() => setShowSidebarMobile(true)}
+                            />
+                        </div>
+                    ) : (
+                        <section className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                            <header className="border-b border-slate-700 bg-[#202c33] px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-200' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
+                                        {activeChat === 'ia' ? <Bot size={18} /> : activeChat === 'mantenimiento' ? <Wrench size={18} /> : <MessageCircle size={18} />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-100">{activeChat === 'ia' ? 'Entrenador IA' : activeChat === 'mantenimiento' ? 'Reporte de Máquinas' : 'Ayuda y Soporte'}</p>
+                                        <p className="text-xs text-slate-400">{activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : activeChat === 'mantenimiento' ? 'Reporta maquinas dañadas con foto' : 'Preguntas frecuentes del gimnasio'}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-100">{activeChat === 'ia' ? 'Entrenador IA' : activeChat === 'mantenimiento' ? 'Reporte de Máquinas' : 'Ayuda y Soporte'}</p>
-                                    <p className="text-xs text-slate-400">{activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : activeChat === 'mantenimiento' ? 'Reporta maquinas dañadas con foto' : 'Preguntas frecuentes del gimnasio'}</p>
-                                </div>
+
+                                {activeChat === 'ia' && (
+                                    <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                                        <label className="space-y-1">
+                                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Objetivo</span>
+                                            <select
+                                                value={aiSettings.goal}
+                                                onChange={(event) => setAiSettings((prev) => ({ ...prev, goal: event.target.value }))}
+                                                className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
+                                            >
+                                                {GOAL_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+
+                                        <label className="space-y-1">
+                                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Nivel</span>
+                                            <select
+                                                value={aiSettings.level}
+                                                onChange={(event) => setAiSettings((prev) => ({ ...prev, level: event.target.value }))}
+                                                className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
+                                            >
+                                                {LEVEL_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+
+                                        <label className="space-y-1">
+                                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Dias</span>
+                                            <select
+                                                value={aiSettings.daysPerWeek}
+                                                onChange={(event) => setAiSettings((prev) => ({ ...prev, daysPerWeek: sanitizeDaysPerWeekInput(event.target.value) }))}
+                                                className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
+                                            >
+                                                {DAYS_PER_WEEK_OPTIONS.map((value) => (
+                                                    <option key={value} value={value}>
+                                                        {value}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+
+                                        <label className="space-y-1">
+                                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Tiempo</span>
+                                            <select
+                                                value={aiSettings.sessionLength}
+                                                onChange={(event) => setAiSettings((prev) => ({ ...prev, sessionLength: event.target.value }))}
+                                                className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
+                                            >
+                                                {TIME_OPTIONS.map((option) => (
+                                                    <option key={option.value || 'optional'} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+                                )}
+                            </header>
+
+                            <div
+                                ref={chatBodyRef}
+                                className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),linear-gradient(180deg,#0b141a_0%,#0f1a20_100%)] px-3 py-4 md:px-6"
+                            >
+                                {activeChat === 'ia' && aiHistoryLoading && aiMessages.length === 0 && (
+                                    <div className="mx-auto mt-10 flex max-w-sm items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-300">
+                                        <Loader2 size={15} className="animate-spin" /> Cargando historial de rutinas...
+                                    </div>
+                                )}
+
+                                {displayedMessages.length === 0 && !aiHistoryLoading && (
+                                    <div className="mx-auto mt-10 max-w-md rounded-xl border border-dashed border-slate-600 bg-slate-900/70 px-4 py-6 text-center text-sm text-slate-300">
+                                        Todavia no hay mensajes en esta conversacion.
+                                    </div>
+                                )}
+
+                                {displayedMessages.map((message) => {
+                                    // Verificamos si este mensaje es de la IA y parece una rutina
+                                    const esMensajeIA = message.role === 'assistant';
+                                    const esRutina = message.text && (message.text.includes('Objetivo:') || message.text.includes('Rutina temporal'));
+                                    
+                                    let rutinaMapeada = null;
+                                    if (esMensajeIA && esRutina) {
+                                        rutinaMapeada = parsearRutinaIA(message.text);
+                                    }
+
+                                    // Si logramos parsear la rutina, dibujamos las tarjetas con videos
+                                    if (rutinaMapeada && rutinaMapeada.dias) {
+                                        return (
+                                            <div key={message.id} className="mb-4 ml-2 mr-12 sm:mr-24 self-start animate-fade-in">
+                                                <div className="rounded-2xl rounded-tl-sm border border-slate-700 bg-slate-100 p-4 shadow-sm">
+                                                    <p className="text-xs font-bold text-slate-800 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                                        <Sparkles size={14} className="text-fuchsia-600" />
+                                                        Tu Rutina Personalizada
+                                                    </p>
+                                                    <div className="space-y-6">
+                                                        {rutinaMapeada.dias.map((dia, indexDia) => (
+                                                            <div key={indexDia} className="space-y-3">
+                                                                <h3 className="font-bold text-fuchsia-700 border-b border-slate-200 pb-1">{dia.titulo}</h3>
+                                                                <div className="grid gap-3">
+                                                                    {dia.ejercicios.map((ejercicio, indexEj) => (
+                                                                        <div key={indexEj} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                                                                            <h4 className="font-bold text-slate-800 text-sm mb-1">{ejercicio.nombre}</h4>
+                                                                            <p className="text-xs text-slate-500 mb-3">{ejercicio.descripcion}</p>
+                                                                            <div className="overflow-hidden rounded-lg">
+                                                                                <VideoYouTube nombreEjercicio={ejercicio.nombre} videoId={ejercicio.videoId} />
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <span className="mt-1 block text-[10px] text-slate-500 px-1">{formatBubbleTime(message.createdAt)}</span>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <ChatBubble
+                                            key={message.id}
+                                            role={message.role}
+                                            text={message.text}
+                                            time={formatBubbleTime(message.createdAt)}
+                                            pending={message.pending}
+                                        />
+                                    );
+                                })}
+
                             </div>
 
-                            {activeChat === 'ia' && (
-                                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-                                    <label className="space-y-1">
-                                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Objetivo</span>
-                                        <select
-                                            value={aiSettings.goal}
-                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, goal: event.target.value }))}
-                                            className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
-                                        >
-                                            {GOAL_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="space-y-1">
-                                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Nivel</span>
-                                        <select
-                                            value={aiSettings.level}
-                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, level: event.target.value }))}
-                                            className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
-                                        >
-                                            {LEVEL_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="space-y-1">
-                                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Dias</span>
-                                        <select
-                                            value={aiSettings.daysPerWeek}
-                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, daysPerWeek: sanitizeDaysPerWeekInput(event.target.value) }))}
-                                            className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
-                                        >
-                                            {DAYS_PER_WEEK_OPTIONS.map((value) => (
-                                                <option key={value} value={value}>
-                                                    {value}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="space-y-1">
-                                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Tiempo</span>
-                                        <select
-                                            value={aiSettings.sessionLength}
-                                            onChange={(event) => setAiSettings((prev) => ({ ...prev, sessionLength: event.target.value }))}
-                                            className="w-full rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 outline-none"
-                                        >
-                                            {TIME_OPTIONS.map((option) => (
-                                                <option key={option.value || 'optional'} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                </div>
-                            )}
-                        </header>
-
-                        <div
-                            ref={chatBodyRef}
-                            className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),linear-gradient(180deg,#0b141a_0%,#0f1a20_100%)] px-3 py-4 md:px-6"
-                        >
-                            {activeChat === 'ia' && aiHistoryLoading && aiMessages.length === 0 && (
-                                <div className="mx-auto mt-10 flex max-w-sm items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-300">
-                                    <Loader2 size={15} className="animate-spin" /> Cargando historial de rutinas...
-                                </div>
-                            )}
-
-                            {displayedMessages.length === 0 && !aiHistoryLoading && (
-                                <div className="mx-auto mt-10 max-w-md rounded-xl border border-dashed border-slate-600 bg-slate-900/70 px-4 py-6 text-center text-sm text-slate-300">
-                                    Todavia no hay mensajes en esta conversacion.
-                                </div>
-                            )}
-
-                            {displayedMessages.map((message) => {
-                                // 1. Verificamos si este mensaje es de la IA y parece una rutina
-                                const esMensajeIA = message.role === 'assistant';
-                                const esRutina = message.text && (message.text.includes('Objetivo:') || message.text.includes('Rutina temporal'));
-                                
-                                let rutinaMapeada = null;
-                                if (esMensajeIA && esRutina) {
-                                    rutinaMapeada = parsearRutinaIA(message.text);
-                                }
-
-                                // 2. Si logramos parsear la rutina, dibujamos las tarjetas y los videos
-                                if (rutinaMapeada && rutinaMapeada.dias) {
-                                    return (
-                                        <div key={message.id} className="mb-4 ml-2 mr-12 sm:mr-24 self-start animate-fade-in">
-                                            <div className="rounded-2xl rounded-tl-sm border border-slate-700 bg-slate-100 p-4 shadow-sm">
-                                                <p className="text-xs font-bold text-slate-800 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                                    <Sparkles size={14} className="text-fuchsia-600" />
-                                                    Tu Rutina Personalizada
-                                                </p>
-                                                
-                                                <div className="space-y-6">
-                                                    {rutinaMapeada.dias.map((dia, indexDia) => (
-                                                        <div key={indexDia} className="space-y-3">
-                                                            <h3 className="font-bold text-fuchsia-700 border-b border-slate-200 pb-1">
-                                                                {dia.titulo}
-                                                            </h3>
-                                                            <div className="grid gap-3">
-                                                                {dia.ejercicios.map((ejercicio, indexEj) => (
-                                                                    <div key={indexEj} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                                                                        <h4 className="font-bold text-slate-800 text-sm mb-1">{ejercicio.nombre}</h4>
-                                                                        <p className="text-xs text-slate-500 mb-3">{ejercicio.descripcion}</p>
-                                                                        
-                                                                        {/* Video del ejercicio */}
-                                                                        <div className="overflow-hidden rounded-lg">
-                                                                            <VideoYouTube 
-                                                                                nombreEjercicio={ejercicio.nombre} 
-                                                                                videoId={ejercicio.videoId} 
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <span className="mt-1 block text-[10px] text-slate-500 px-1">
-                                                {formatBubbleTime(message.createdAt)}
-                                            </span>
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <ChatBubble
-                                        key={message.id}
-                                        role={message.role}
-                                        text={message.text}
-                                        time={formatBubbleTime(message.createdAt)}
-                                        pending={message.pending}
-                                    />
-                                );
-                            })}
-                        </div>
-
-                        <footer className="border-t border-slate-700 bg-[#202c33] px-3 py-3 md:px-4">
-                            {activeChat === 'soporte' && (
-                                <div className="mb-2 flex flex-wrap gap-2">
-                                    {quickQuestions.slice(0, 4).map((question) => (
-                                        <button
-                                            key={question}
-                                            type="button"
-                                            onClick={() => handleSupportQuickQuestion(question)}
-                                            className="rounded-full border border-slate-600 bg-slate-800/60 px-3 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
-                                        >
-                                            {question}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {activeChat === 'mantenimiento' && (
-                                <div className="mb-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                                    Este chat queda fijo para reportar maquinas echadas a perder. Usa el formulario de abajo para elegir la maquina y adjuntar foto.
-                                </div>
-                            )}
-
-                            {activeChat === 'mantenimiento' && catalogoError && (
-                                <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                                    {catalogoError}
-                                </div>
-                            )}
-
-                            {activeChat === 'ia' && aiHistoryError && (
-                                <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                                    No se pudo leer el historial de rutinas con esta sesion. Aun puedes generar nuevas rutinas en este chat.
-                                </div>
-                            )}
-
-                            {activeChat === 'ia' && aiSendError && (
-                                <div className="mb-2 rounded-lg border border-red-400/30 bg-red-500/15 px-3 py-2 text-xs text-red-200">
-                                    {aiSendError}
-                                </div>
-                            )}
-
-                            {activeChat === 'mantenimiento' ? (
-                                <FormularioReporteEnChat
-                                    maquinas={catalogoMaquinas}
-                                    onSuccess={handleReportCreated}
-                                />
-                            ) : (
-                                <form onSubmit={handleSend} className="flex items-center gap-2">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">
-                                        {activeChat === 'ia' ? <Dumbbell size={16} /> : <MessageCircle size={16} />}
+                            <footer className="border-t border-slate-700 bg-[#202c33] px-3 py-3 md:px-4">
+                                {activeChat === 'soporte' && (
+                                    <div className="mb-2 flex flex-wrap gap-2">
+                                        {quickQuestions.slice(0, 4).map((question) => (
+                                            <button
+                                                key={question}
+                                                type="button"
+                                                onClick={() => handleSupportQuickQuestion(question)}
+                                                className="rounded-full border border-slate-600 bg-slate-800/60 px-3 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
+                                            >
+                                                {question}
+                                            </button>
+                                        ))}
                                     </div>
+                                )}
 
-                                    <input
-                                        value={chatInput}
-                                        onChange={(event) => setChatInput(event.target.value)}
-                                        placeholder={activeChat === 'ia' ? 'Describe tu objetivo y te genero una rutina...' : 'Escribe tu duda...'}
-                                        className="h-11 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                                {activeChat === 'mantenimiento' && (
+                                    <div className="mb-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                                        Este chat queda fijo para reportar maquinas echadas a perder. Usa el formulario de abajo para elegir la maquina y adjuntar foto.
+                                    </div>
+                                )}
+
+                                {activeChat === 'mantenimiento' && catalogoError && (
+                                    <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                        {catalogoError}
+                                    </div>
+                                )}
+
+                                {activeChat === 'ia' && aiHistoryError && (
+                                    <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                        No se pudo leer el historial de rutinas con esta sesion. Aun puedes generar nuevas rutinas en este chat.
+                                    </div>
+                                )}
+
+                                {activeChat === 'ia' && aiSendError && (
+                                    <div className="mb-2 rounded-lg border border-red-400/30 bg-red-500/15 px-3 py-2 text-xs text-red-200">
+                                        {aiSendError}
+                                    </div>
+                                )}
+
+                                {activeChat === 'mantenimiento' ? (
+                                    <FormularioReporteEnChat
+                                        maquinas={catalogoMaquinas}
+                                        onSuccess={handleReportCreated}
                                     />
+                                ) : (
+                                    <form onSubmit={handleSend} className="flex items-center gap-2">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">
+                                            {activeChat === 'ia' ? <Dumbbell size={16} /> : <MessageCircle size={16} />}
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={isGenerating && activeChat === 'ia'}
-                                        className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-cyan-600 px-3 text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        {isGenerating && activeChat === 'ia' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                                    </button>
-                                </form>
-                            )}
-                        </footer>
-                    </section>
+                                        <input
+                                            value={chatInput}
+                                            onChange={(event) => setChatInput(event.target.value)}
+                                            placeholder={activeChat === 'ia' ? 'Describe tu objetivo y te genero una rutina...' : 'Escribe tu duda...'}
+                                            className="h-11 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                                        />
+
+                                        <button
+                                            type="submit"
+                                            disabled={isGenerating && activeChat === 'ia'}
+                                            className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-cyan-600 px-3 text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {isGenerating && activeChat === 'ia' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                        </button>
+                                    </form>
+                                )}
+                            </footer>
+                        </section>
+                    )}
+                    {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO END --- */}
                 </div>
             </div>
         </div>

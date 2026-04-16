@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { db } from "../firebase/config"; 
+import { db } from "../firebase/config";
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import ModalExpedienteTrainer from './ModalExpedienteTrainer';
 import { User, Dumbbell, ChevronRight, ArrowLeft } from 'lucide-react';
@@ -183,7 +183,7 @@ const CitasTrainer = ({ embedded = false }) => {
   return (
     <div className={embedded ? '' : 'min-h-screen bg-slate-950 p-4 md:p-8'}>
       <div className={`mx-auto mt-6 w-full ${layoutWidthClass} rounded-[28px] border border-slate-800/80 bg-linear-to-br from-[#0f172a] via-[#0c1a37] to-[#0a1430] p-5 md:p-8 shadow-[0_18px_55px_rgba(2,10,28,0.45)] transition-all duration-300`}>
-        
+
         <header className="mb-8 border-b border-cyan-900/30 pb-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -204,7 +204,7 @@ const CitasTrainer = ({ embedded = false }) => {
             )}
           </div>
         </header>
-        
+
         {!assignmentsReady ? (
           <div className="rounded-2xl border border-slate-800 bg-slate-900/40 px-6 py-8 text-center text-slate-300">
             Cargando clientes asignados...
@@ -229,19 +229,21 @@ const CitasTrainer = ({ embedded = false }) => {
                 </div>
                 <Dumbbell size={22} className="text-slate-700 group-hover:text-cyan-400/60 transition-colors" />
               </div>
-              
+
               <h3 className="text-xl font-bold mb-1 truncate uppercase leading-none flex-1">
-                  {miembro.nombre} <br/> 
-                  <span className="text-sm opacity-60 font-medium">{miembro.apellido}</span>
+                {miembro.nombre} <br />
+                <span className="text-sm opacity-60 font-medium">
+                  {miembro.apellido ? `${miembro.apellido}` : "SIN APELLIDO"}
+                </span>
               </h3>
-              
+
               <div className="mb-6 mt-2">
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase tracking-widest">
-                      {miembro.edad ? `${miembro.edad} AÑOS` : "SIN EDAD"}
-                  </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase tracking-widest">
+                  {miembro.edad ? `${miembro.edad} AÑOS` : "SIN EDAD"}
+                </span>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => { setSelectedMiembro(miembro); setIsModalOpen(true); }}
                 className="mt-auto w-full py-4 rounded-2xl bg-linear-to-r from-purple-500 to-blue-400 font-black text-[10px] tracking-[0.2em] uppercase transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
               >
@@ -253,9 +255,9 @@ const CitasTrainer = ({ embedded = false }) => {
         )}
 
         {isModalOpen && (
-          <ModalExpedienteTrainer 
-            miembro={selectedMiembro} 
-            onClose={() => setIsModalOpen(false)} 
+          <ModalExpedienteTrainer
+            miembro={selectedMiembro}
+            onClose={() => setIsModalOpen(false)}
           />
         )}
       </div>

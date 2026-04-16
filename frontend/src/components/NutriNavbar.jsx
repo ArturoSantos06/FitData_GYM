@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut, UserCircle2 } from 'lucide-react';
+import { Home, Activity, Calculator, Stethoscope, BookOpen, LogOut, MessageCircle, UserCircle2 } from 'lucide-react';
 
 const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
     const tabs = [
@@ -8,6 +8,11 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
         { id: 'calculadora', label: 'Calculadora', icon: Calculator },
         { id: 'dietas', label: 'Dietas', icon: BookOpen },
         { id: 'financiero', label: 'Finanzas', icon: Activity },
+
+        // ==========================================
+        // NUEVA INTEGRACIÓN: MÓDULO DE MENSAJES (ESTRATEGIA CONTEXT API)
+        // ==========================================
+        { id: 'mensajes', label: 'Mensajes', icon: MessageCircle },
         { id: 'perfil', label: 'Perfil', icon: UserCircle2 },
     ];
 
@@ -61,7 +66,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
                     <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-center justify-center gap-1 ${
+                    className={`flex flex-col items-center justify-center gap-1 w-full ${
                     isActive ? 'text-cyan-400' : 'text-slate-500'
                 }`}
             >
@@ -78,7 +83,7 @@ const NutriNavbar = ({ activeTab, setActiveTab, onLogOut}) => {
             })}
             <button
               onClick={onLogOut}
-              className="flex flex-col items-center justify-center gap-1 text-red-400"
+              className="flex flex-col items-center justify-center gap-1 w-full text-red-400"
               >
                 <div className="w-6 h-6">
                     <LogOut size ={24} />

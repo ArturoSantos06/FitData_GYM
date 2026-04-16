@@ -3095,6 +3095,114 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
   }
 });
 
+const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const React = require("react");
+// Fallback in case react-email rendering fails in this environment
+let renderEmail;
+let Html, Head, Body, Container, Text, Heading;
+try {
+  const reactEmail = require("@react-email/components");
+  Html = reactEmail.Html;
+  Head = reactEmail.Head;
+  Body = reactEmail.Body;
+  Container = reactEmail.Container;
+  Text = reactEmail.Text;
+  Heading = reactEmail.Heading;
+  renderEmail = require("@react-email/render").render;
+} catch (e) {
+  logger.warn("No se pudo cargar react-email, se usara HTML crudo", e);
+}
+const { Resend } = require("resend");
+
+exports.onMessageCreated = onDocumentCreated(
+  {
+    document: "chats/{chatId}/messages/{messageId}",
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const messageData = snap.data();
+    const senderId = messageData.senderId;
+    const chatId = event.params.chatId;
+
+    if (!senderId) return;
+
+    try {
+      const db = admin.firestore();
+      
+      const ids = chatId.split("_");
+      const recipientId = ids.find(id => id !== senderId);
+
+      if (!recipientId) return;
+
+      const [senderSnap, recipientSnap] = await Promise.all([
+        db.collection("users").doc(senderId).get(),
+        db.collection("users").doc(recipientId).get()
+      ]);
+
+      const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
+      const recipientEmail = recipientSnap.data()?.email;
+
+      // 1. Guardar notificacion
+      await db.collection(`users/${recipientId}/notifications`).add({
+        title: `Nuevo mensaje de ${senderName}`,
+        body: messageData.text || "Archivo adjunto",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "chat_message",
+        chatId: chatId,
+        senderId: senderId
+      });
+
+      // 2. Enviar correo via Resend
+      if (recipientEmail) {
+        let resendApiKey;
+        try {
+           resendApiKey = RESEND_API_KEY.value();
+        } catch(e) {
+           resendApiKey = process.env.RESEND_API_KEY;
+        }
+        
+        if (resendApiKey) {
+          const resend = new Resend(resendApiKey);
+          
+          let htmlContent = `<h2>Tienes un nuevo mensaje de ${senderName}</h2><p>${messageData.text || "Te han enviado un archivo adjunto."}</p><br><small>FitData GYM</small>`;
+          
+          if (renderEmail && Html) {
+            try {
+              const emailElement = React.createElement(Html, null,
+                React.createElement(Head, null),
+                React.createElement(Body, { style: { fontFamily: "sans-serif", padding: "20px" } },
+                  React.createElement(Container, null,
+                    React.createElement(Heading, null, `Tienes un nuevo mensaje de ${senderName}`),
+                    React.createElement(Text, null, messageData.text || "Te han enviado un archivo adjunto."),
+                    React.createElement(Text, { style: { color: "#888", fontSize: "12px", marginTop: "20px" } }, "FitData GYM")
+                  )
+                )
+              );
+              htmlContent = renderEmail(emailElement);
+            } catch(e) {
+              logger.warn("Fallo el render de react-email, usando por defecto", e);
+            }
+          }
+
+          await resend.emails.send({
+            from: "FitData GYM <onboarding@resend.dev>",
+            to: recipientEmail,
+            subject: `Nuevo mensaje de ${senderName}`,
+            html: htmlContent
+          });
+        } else {
+             logger.warn("No se encontro API Key de Resend");
+        }
+      }
+    } catch (error) {
+      logger.error("Error en onMessageCreated", error);
+    }
+  }
+);
 
 // FUNCIÓN SOLO PARA PRUEBAS: Borrar después de testear
 //exports.testEnvioCorreoManual = onRequest(async (req, res) => {
@@ -3108,3 +3216,94 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
       //  res.status(500).send("❌ Error: " + e.message);
    // }
 //});
+
+
+exports.onMessageCreated = onDocumentCreated(
+  {
+    document: "chats/{chatId}/messages/{messageId}",
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const messageData = snap.data();
+    const senderId = messageData.senderId;
+    const chatId = event.params.chatId;
+
+    if (!senderId) return;
+
+    try {
+      const db = admin.firestore();
+      
+      const ids = chatId.split("_");
+      const recipientId = ids.find(id => id !== senderId);
+
+      if (!recipientId) return;
+
+      const [senderSnap, recipientSnap] = await Promise.all([
+        db.collection("users").doc(senderId).get(),
+        db.collection("users").doc(recipientId).get()
+      ]);
+
+      const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
+      const recipientEmail = recipientSnap.data()?.email;
+
+      // 1. Guardar notificacion
+      await db.collection(`users/${recipientId}/notifications`).add({
+        title: `Nuevo mensaje de ${senderName}`,
+        body: messageData.text || "Archivo adjunto",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "chat_message",
+        chatId: chatId,
+        senderId: senderId
+      });
+
+      // 2. Enviar correo via Resend
+      if (recipientEmail) {
+        let resendApiKey;
+        try {
+           resendApiKey = RESEND_API_KEY.value();
+        } catch(e) {
+           resendApiKey = process.env.RESEND_API_KEY;
+        }
+        
+        if (resendApiKey) {
+          const resend = new Resend(resendApiKey);
+          
+          let htmlContent = `<h2>Tienes un nuevo mensaje de ${senderName}</h2><p>${messageData.text || "Te han enviado un archivo adjunto."}</p><br><small>FitData GYM</small>`;
+          
+          if (renderEmail && Html) {
+            try {
+              const emailElement = React.createElement(Html, null,
+                React.createElement(Head, null),
+                React.createElement(Body, { style: { fontFamily: "sans-serif", padding: "20px" } },
+                  React.createElement(Container, null,
+                    React.createElement(Heading, null, `Tienes un nuevo mensaje de ${senderName}`),
+                    React.createElement(Text, null, messageData.text || "Te han enviado un archivo adjunto."),
+                    React.createElement(Text, { style: { color: "#888", fontSize: "12px", marginTop: "20px" } }, "FitData GYM")
+                  )
+                )
+              );
+              htmlContent = renderEmail(emailElement);
+            } catch(e) {
+              logger.warn("Fallo el render de react-email, usando por defecto", e);
+            }
+          }
+
+          await resend.emails.send({
+            from: "FitData GYM <onboarding@resend.dev>",
+            to: recipientEmail,
+            subject: `Nuevo mensaje de ${senderName}`,
+            html: htmlContent
+          });
+        } else {
+             logger.warn("No se encontro API Key de Resend");
+        }
+      }
+    } catch (error) {
+      logger.error("Error en onMessageCreated", error);
+    }
+  }
+);
