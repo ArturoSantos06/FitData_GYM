@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../../firebase';
 import CitasTrainer from '../../CitasTrainer';
-import ProfessionalMessagesView from '../../chat/ProfessionalMessagesView';
+import BandejaProfesionales from '../../chat/BandejaProfesionales';
 import PerfilEntrenador from '../perfil/PerfilEntrenador';
 import GestionEntrenador from '../gestion/GestionEntrenador';
 import BarraNavegacionEntrenador from './BarraNavegacionEntrenador';
@@ -16,7 +16,6 @@ function PortalEntrenador() {
     try {
       await logoutUser();
     } catch {
-      // ignorar errores de cierre de sesión
     }
     localStorage.removeItem('trainer_token');
     localStorage.removeItem('trainer_username');
@@ -37,7 +36,7 @@ function PortalEntrenador() {
         {pestañaActiva === 'inicio' && <InicioEntrenador />}
         {pestañaActiva === 'agenda' && <CitasTrainer embedded />}
         {pestañaActiva === 'gestion' && <GestionEntrenador />}
-        {pestañaActiva === 'mensajes' && <ProfessionalMessagesView role="trainer" />}
+        {pestañaActiva === 'mensajes' && <BandejaProfesionales role="trainer" />}
         {pestañaActiva === 'perfil' && <PerfilEntrenador />}
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const FeedbackClie = () => {
+const ComentariosCliente = () => {
   const [newMessage, setNewMessage] = useState('');
 
   // Datos simulados para visualizar la estética y los estados de envío
@@ -132,4 +132,4 @@ const FeedbackClie = () => {
   );
 };
 
-export default FeedbackClie;
+export default ComentariosCliente;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase/config';
+import { db } from '../../firebase/config';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { Loader2, Send } from 'lucide-react';
 
@@ -30,7 +30,7 @@ function FeedbackBubble({ isUser, text, time }) {
     );
 }
 
-export default function FeedbackCom({ currentUserUid, targetUserUid, placeholderText, roleType }) {
+export default function ComentariosComunidad({ currentUserUid, targetUserUid, placeholderText, roleType }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(true);
@@ -88,7 +88,7 @@ export default function FeedbackCom({ currentUserUid, targetUserUid, placeholder
             }, { merge: true });
 
         } catch (error) {
-            console.error("Error en FeedbackCom:", error);
+            console.error("Error en ComentariosComunidad:", error);
         }
     };
 

@@ -9,15 +9,15 @@ import {
     where,
     getDocs
 } from "firebase/firestore";
-import VideoYouTube from './iaRutinas/VideoYouTube';
+import VideoYouTube from '../iaRutinas/VideoYouTube';
 
-import { useAssistant } from './asistente/ContextoAsistente';
-import { auth, db } from '../firebase/config';
-import ChatWindow from './chat/ChatWindow';
-import NotificationCenter from './chat/NotificationCenter';
-import { generateAiRoutine, subscribeAiRoutineHistory } from '../firebase/aiRoutineService';
-import { suscribirCatalogoMaquinas } from '../firebase/mantenimiento';
-import FormularioReporteEnChat from './mantenimiento/FormularioReporteEnChat';
+import { useAssistant } from '../asistente/ContextoAsistente';
+import { auth, db } from '../../firebase/config';
+import VentanaChat from './VentanaChat';
+import CentroNotificaciones from './CentroNotificaciones';
+import { generateAiRoutine, subscribeAiRoutineHistory } from '../../firebase/aiRoutineService';
+import { suscribirCatalogoMaquinas } from '../../firebase/mantenimiento';
+import FormularioReporteEnChat from '../mantenimiento/FormularioReporteEnChat';
 
 const GOAL_OPTIONS = [
     { value: 'muscle_gain', label: 'Ganar masa muscular' },
@@ -304,11 +304,11 @@ function ChatBubble({ role, text, time, pending = false }) {
     );
 }
 
-function ClientMessagesWhatsApp() {
+function SoporteWhatsApp() {
     const { ask, quickQuestions } = useAssistant();
 
     const [activeChat, setActiveChat] = useState('ia');
-    const [chatInput, setChatInput] = useState('');
+    const [EntradaMensaje, setEntradaMensaje] = useState('');
 
     const [supportMessages, setSupportMessages] = useState([
         {
@@ -462,7 +462,7 @@ function ClientMessagesWhatsApp() {
     }, []);
 
     useEffect(() => {
-        setChatInput('');
+        setEntradaMensaje('');
     }, [activeChat]);
 
     const supportPreview = supportMessages[supportMessages.length - 1]?.text || 'Sin mensajes';
@@ -573,12 +573,12 @@ function ClientMessagesWhatsApp() {
 
     const handleSend = async (event) => {
         event.preventDefault();
-        const text = chatInput.trim();
+        const text = EntradaMensaje.trim();
         if (!text) {
             return;
         }
 
-        setChatInput('');
+        setEntradaMensaje('');
 
         if (activeChat === 'ia' && isGreetingOnlyMessage(text)) {
             const createdAt = Date.now();
@@ -727,7 +727,7 @@ function ClientMessagesWhatsApp() {
                                 <p className="text-xs text-slate-400">Vista estilo chat para cliente</p>
                             </div>
                             {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO INICIO --- */}
-                            {currentUser && <NotificationCenter userId={currentUser.uid} />}
+                            {currentUser && <CentroNotificaciones userId={currentUser.uid} />}
                             {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO FIN --- */}
                         </div>
 
@@ -828,7 +828,7 @@ function ClientMessagesWhatsApp() {
                     {/* --- NUEVA INTEGRACION CHAT REAL EN TIEMPO COMPARTIDO START --- */}
                     {activeChat === 'entrenador' ? (
                         <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
-                            <ChatWindow
+                            <VentanaChat
                                 // Reemplazamos la concatenación manual por nuestra función de ordenamiento
                                 chatId={getUnifiedChatId(currentUser?.uid, trainerId)}
                                 currentUserId={currentUser?.uid}
@@ -839,7 +839,7 @@ function ClientMessagesWhatsApp() {
                         </div>
                     ) : activeChat === 'nutriologo' ? (
                         <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
-                            <ChatWindow
+                            <VentanaChat
                                 // Aplicamos exactamente la misma función para el nutriólogo
                                 chatId={getUnifiedChatId(currentUser?.uid, nutritionistId)}
                                 currentUserId={currentUser?.uid}
@@ -1050,8 +1050,8 @@ function ClientMessagesWhatsApp() {
                                         </div>
 
                                         <input
-                                            value={chatInput}
-                                            onChange={(event) => setChatInput(event.target.value)}
+                                            value={EntradaMensaje}
+                                            onChange={(event) => setEntradaMensaje(event.target.value)}
                                             placeholder={activeChat === 'ia' ? 'Describe tu objetivo y te genero una rutina...' : 'Escribe tu duda...'}
                                             className="h-11 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400"
                                         />
@@ -1075,4 +1075,4 @@ function ClientMessagesWhatsApp() {
     );
 }
 
-export default ClientMessagesWhatsApp;
+export default SoporteWhatsApp;

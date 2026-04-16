@@ -6,7 +6,7 @@ import Membresia from './Membresia';
 import Tienda from './Tienda';
 import Navbar from './Navbar';
 import VistaPlan from './VistaPlan';
-import ClientMessagesWhatsApp from '../../ClientMessagesWhatsApp';
+import SoporteWhatsApp from '../../chat/SoporteWhatsApp';
 import AssistantWidget from '../../asistente/WidgetAsistente';
 
 function Portal() {
@@ -71,7 +71,7 @@ function Portal() {
 
         {/* MENSAJES: Centro de conversaciones y IA de rutinas */}
         {activeTab === 'mensajes' && (
-          <ClientMessagesWhatsApp />
+          <SoporteWhatsApp />
         )}
 
         {activeTab === 'perfil' && (

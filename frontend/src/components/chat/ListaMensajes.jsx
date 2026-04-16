@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Check, CheckCheck, FileText, Image as ImageIcon, Headphones, Download } from 'lucide-react';
 
-function MessageList({ messages, currentUserId }) {
+function ListaMensajes({ messages, currentUserId }) {
   const containerRef = useRef(null);
 
   // Auto-scroll al abrir o con nuevos mensajes
@@ -102,4 +102,4 @@ function MessageList({ messages, currentUserId }) {
   );
 }
 
-export default MessageList;
+export default ListaMensajes;

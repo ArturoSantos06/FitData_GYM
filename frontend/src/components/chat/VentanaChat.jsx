@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
-import MessageList from './MessageList';
-import ChatInput from './ChatInput';
+import ListaMensajes from './ListaMensajes';
+import EntradaMensaje from './EntradaMensaje';
 import { ChevronLeft, MoreVertical, Phone, Video } from 'lucide-react';
 
 /**
- * ChatWindow
+ * VentanaChat
  * Componente principal para el chat en tiempo real.
  * @param {string} chatId - ID del chat (es decir: userId_trainerId)
  * @param {string} currentUserId - ID del usuario actual mandando
@@ -15,7 +15,7 @@ import { ChevronLeft, MoreVertical, Phone, Video } from 'lucide-react';
  * @param {string} subtitle - Subtitulo
  * @param {function} onBack - Funcion para regresar o cerrar (mobile)
  */
-function ChatWindow({ chatId, currentUserId, title, subtitle = "En línea", onBack }) {
+function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onBack }) {
     const [messages, setMessages] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -61,7 +61,7 @@ function ChatWindow({ chatId, currentUserId, title, subtitle = "En línea", onBa
         return () => unsubscribe();
     }, [chatId, currentUserId]);
 
-    // Función principal accionada por el botón Enviar (o la tecla Enter en ChatInput).
+    // Función principal accionada por el botón Enviar (o la tecla Enter en EntradaMensaje).
     // Recibe el texto escrito, un archivo físico Object tipo (File) y un string definitorio.
     const handleSendMessage = async (text, file, fileType) => {
         setIsUploading(true); // Bloquea el botón
@@ -128,14 +128,14 @@ function ChatWindow({ chatId, currentUserId, title, subtitle = "En línea", onBa
             </header>
 
             {/* Listado de Mensajes */}
-            <MessageList messages={messages} currentUserId={currentUserId} />
+            <ListaMensajes messages={messages} currentUserId={currentUserId} />
 
             {/* Input para msj */}
             <div className="shrink-0 relative z-20">
-                <ChatInput onSendMessage={handleSendMessage} isUploading={isUploading} />
+                <EntradaMensaje onSendMessage={handleSendMessage} isUploading={isUploading} />
             </div>
         </div>
     );
 }
 
-export default ChatWindow;
+export default VentanaChat;

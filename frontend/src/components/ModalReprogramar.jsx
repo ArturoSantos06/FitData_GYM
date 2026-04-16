@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
-import { useAppointments } from '../useAppointments'; 
+import { useAppointments } from "../backend/useAppointments.js";
 
 const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
     const { verificarHorariosDisponibles, reprogramarCita } = useAppointments();

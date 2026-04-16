@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { useAppointments } from '../../../useAppointments'; 
+import { useAppointments } from "../../../backend/useAppointments.js";
 import ModalReprogramar from '../../ModalReprogramar'; 
 
 const CitasNutricion = () => {
