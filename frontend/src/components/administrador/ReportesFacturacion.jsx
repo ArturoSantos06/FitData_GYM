@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, AlertCircle, Loader } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db } from '../../firebase/config';
 
 const toJsDate = (value) => {
   if (!value) return null;

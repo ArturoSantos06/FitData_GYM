@@ -38,7 +38,7 @@ const [activeTab, setActiveTab] = useState('inicio');
             <div className="max-w-7xl mx-auto pt-2 md:pt-4 pb-20 md:pb-0 animate-fade-in">
                 {/* Renderizado de las vistas según el clic */}
                 {activeTab === 'inicio' && <HomeNutri />}
-                {activeTab === 'citas' && <CitasNutri />}
+                {activeTab === 'citas' && <CitasNutri embedded />}
                 {activeTab === 'calculadora' && <MacroCalculatorForm />}
                 {activeTab === 'dietas' && <DietaRepositorio />}
                 {activeTab === 'financiero' && <NutriFinancialDashboard />}

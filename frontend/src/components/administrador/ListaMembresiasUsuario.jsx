@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
-function UserMembershipList({ refreshTrigger }) {
+function ListaMembresiasUsuario({ refreshTrigger }) {
   const [assignments, setAssignments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [usersById, setUsersById] = useState({});
@@ -277,4 +277,4 @@ function UserMembershipList({ refreshTrigger }) {
   );
 }
 
-export default UserMembershipList;
+export default ListaMembresiasUsuario;
