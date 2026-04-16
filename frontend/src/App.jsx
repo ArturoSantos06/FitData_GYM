@@ -24,8 +24,8 @@ import ClientLogin from './components/ClientLogin';
 import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/entrenador/rutinas/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/portal/EntrenadorLogin';
-import NutriologoLogin from './components/NutriologoLogin';
-import NutriPortal from './components/NutriPortal';
+import IniciarSesionNutri from './components/nutriologo/IniciarSesionNutri';
+import NutriPortal from './components/nutriologo/NutriPortal';
 import ReportesFacturacion from './components/administrador/ReportesFacturacion';
 import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
@@ -204,10 +204,10 @@ function NutriologoArea() {
   };
 
   if (!isAuthenticated) {
-    return <NutriologoLogin onLogin={handleLogin} />;
+    return <IniciarSesionNutri onLogin={handleLogin} />;
   }
 
-  return <NutriologoPortal onLogout={handleLogout} />;
+  return <NutriPortal onLogout={handleLogout} />;
 }
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
@@ -439,7 +439,7 @@ function App() {
 
           <Route path="/cliente/login" element={<ClientLogin />} />
           <Route path="/cliente" element={<ClientPortal />} />
-          <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+          <Route path="/nutriologo/login" element={<IniciarSesionNutri />} />
 
           {/* Ruta protegida del Nutriólogo */}
           <Route

@@ -4,7 +4,6 @@ import {
   eliminarClienteDesvinculacion,
   obtenerClientesDesvinculacion,
 } from '../../../backend/clientesDesvinculacionServicio';
-import { auth } from '../../../firebase/config';
 import { filtrarClientesOcultos, ocultarClienteLocalmente } from '../../../backend/visibilidadClientes';
 import FiltrosDesvinculacion from './FiltrosDesvinculacion';
 import TablaDesvinculacionClientes from './TablaDesvinculacionClientes';
@@ -45,7 +44,7 @@ function DesvinculacionClientesEntrenador() {
 
   const alternarArchivado = async (idCliente) => {
     const clienteActual = clientes.find((item) => item.id === idCliente);
-    const archivadoNuevo = !Boolean(clienteActual?.archivado);
+    const archivadoNuevo = !clienteActual?.archivado;
 
     actualizarVisibilidad(idCliente, { archivado: archivadoNuevo });
 
