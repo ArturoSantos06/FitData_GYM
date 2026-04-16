@@ -214,6 +214,46 @@ const isPrivilegedRequest = async (request) => {
   }
 };
 
+const isTrainerForMember = async (memberId, trainerUid, trainerEmail) => {
+  const db = admin.firestore();
+  const memberSnap = await db.doc(`miembros/${memberId}`).get();
+  if (!memberSnap.exists) {
+    return { allowed: false, reason: "El cliente no existe." };
+  }
+
+  const memberData = memberSnap.data() || {};
+  const candidateIds = Array.from(new Set([
+    String(memberId || "").trim(),
+    String(memberData.userId || "").trim(),
+    String(memberData.authUid || "").trim(),
+  ].filter(Boolean)));
+
+  for (const candidateId of candidateIds) {
+    const directSnap = await db.doc(`client_trainer_assignments/${candidateId}`).get();
+    if (directSnap.exists) {
+      const directData = directSnap.data() || {};
+      const matchesTrainer = String(directData.trainerId || directData.trainer_id || "").trim() === trainerUid
+        || String(directData.trainerEmail || directData.trainer_email || "").trim().toLowerCase() === String(trainerEmail || "").trim().toLowerCase();
+      if (matchesTrainer) return { allowed: true };
+    }
+
+    const [byClientIdSnap, byMemberIdSnap] = await Promise.all([
+      db.collection("client_trainer_assignments").where("clientId", "==", candidateId).limit(10).get(),
+      db.collection("client_trainer_assignments").where("memberId", "==", candidateId).limit(10).get(),
+    ]);
+
+    const candidatos = [...byClientIdSnap.docs, ...byMemberIdSnap.docs];
+    for (const docSnap of candidatos) {
+      const data = docSnap.data() || {};
+      const matchesTrainer = String(data.trainerId || data.trainer_id || "").trim() === trainerUid
+        || String(data.trainerEmail || data.trainer_email || "").trim().toLowerCase() === String(trainerEmail || "").trim().toLowerCase();
+      if (matchesTrainer) return { allowed: true };
+    }
+  }
+
+  return { allowed: false, reason: "No tienes permiso para modificar este cliente." };
+};
+
 const buildFacturaDescripcion = (saleData = {}) => {
   const rawDetail = saleData.detalle_productos;
   if (rawDetail) {
@@ -1644,6 +1684,47 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     logger.error("downloadDietFile error", { error: String(error?.message || error) });
     res.status(500).json({ error: "No se pudo completar la descarga." });
   }
+});
+
+exports.actualizarVisibilidadCliente = onCall(async (request) => {
+  const uid = String(request?.auth?.uid || "").trim();
+  const email = String(request?.auth?.token?.email || "").trim();
+  const memberId = String(request?.data?.memberId || "").trim();
+  const archivado = request?.data?.archivado;
+  const eliminado = request?.data?.eliminado;
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Debes iniciar sesión.");
+  }
+
+  if (!memberId) {
+    throw new HttpsError("invalid-argument", "memberId es requerido.");
+  }
+
+  const isAdminUser = await isPrivilegedRequest(request);
+  let allowed = isAdminUser;
+
+  if (!allowed) {
+    const trainerCheck = await isTrainerForMember(memberId, uid, email);
+    allowed = trainerCheck.allowed;
+    if (!allowed) {
+      throw new HttpsError("permission-denied", trainerCheck.reason || "No tienes permiso para modificar este cliente.");
+    }
+  }
+
+  const updatePayload = {};
+  if (typeof archivado === "boolean") updatePayload.archivado = archivado;
+  if (typeof eliminado === "boolean") updatePayload.eliminado = eliminado;
+
+  if (!Object.keys(updatePayload).length) {
+    throw new HttpsError("invalid-argument", "Debes enviar archivado o eliminado.");
+  }
+
+  updatePayload.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+  await admin.firestore().doc(`miembros/${memberId}`).set(updatePayload, { merge: true });
+
+  return { success: true };
 });
 
 exports.onMembershipCreatedSendEmail = onDocumentCreated({

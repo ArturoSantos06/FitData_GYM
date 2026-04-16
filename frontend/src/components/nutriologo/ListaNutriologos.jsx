@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../../firebase/config'; 
+import { db } from '../../firebase/config'; 
 import { collection, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
-import ConfirmModal from '../../ConfirmModal';
-import SuccessModal from '../../SuccessModal';
-import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../../../firebase';
-
+import ConfirmModal from '../ConfirmModal';
+import SuccessModal from '../SuccessModal';
+import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../../firebase';
 
 const ListaNutriologos = () => {
   const [nutris, setNutris] = useState([]);
@@ -371,7 +370,7 @@ const ListaNutriologos = () => {
                   ) : assignedNutritionistId === n.id ? (
                     <>
                       <CheckCircle className="w-4 h-4 inline mr-2" />
-                 AsListignado
+                      Asignado
                     </>
                   ) : (
                     'Seleccionar'

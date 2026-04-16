@@ -171,20 +171,34 @@ function RegistrarUsuario({ onUserRegistered }) {
         email: formData.email.trim(),
         password: formData.password,
         username: formData.username.trim(),
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
+        firstName: formData.first_name.trim(),
+        lastName: formData.last_name.trim(),
         phone: formData.phone.trim(),
+        membershipTypeId: formData.membership_id,
+        paymentMethod: formData.payment_method,
+        montoRecibido: parseFloat(montoRecibido) || 0,
         sexo: formData.sexo,
       });
 
+      if (!result?.success) {
+        throw new Error(result?.error || "No se pudo registrar el cliente.");
+      }
+
       const registroMembresia = membresias.find((m) => m.id === formData.membership_id);
-      const saleResult = await createMembershipSale({
-        email: formData.email.trim(),
-        membership_id: formData.membership_id,
-        payment_method: formData.payment_method,
-        monto_recibido: parseFloat(montoRecibido) || 0,
-        cambio: cambio,
-      });
+      let saleResult = null;
+
+      // Compatibilidad: si backend nuevo ya devolvio folio, se usa; si no, se crea venta en cliente.
+      if (result?.data?.saleFolio) {
+        saleResult = { folio: result.data.saleFolio };
+      } else {
+        saleResult = await createMembershipSale({
+          email: formData.email.trim(),
+          membership_id: formData.membership_id,
+          payment_method: formData.payment_method,
+          monto_recibido: parseFloat(montoRecibido) || 0,
+          cambio: cambio,
+        });
+      }
 
       if (saleResult && saleResult.folio) {
         setEmailReciente(formData.email.trim());
@@ -195,6 +209,8 @@ function RegistrarUsuario({ onUserRegistered }) {
         setFormData({ username: "", email: "", phone: "", password: "", confirm_password: "", first_name: "", last_name: "", sexo: "", membership_id: "", payment_method: "EFECTIVO" });
         setMontoRecibido("");
         setCambio(0);
+      } else {
+        throw new Error("Cliente registrado, pero no se pudo generar folio de venta.");
       }
     } catch (err) {
       console.error("Error registrando cliente:", err);

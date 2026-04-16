@@ -75,7 +75,7 @@ const FeedbackClie = () => {
             N
           </div>
           <div>
-            <h1 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]">
+            <h1 className="text-lg font-bold text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-cyan-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.4)]">
               Nutriólogo Asignado
             </h1>
             <p className="text-xs text-cyan-500">En línea</p>
@@ -84,7 +84,7 @@ const FeedbackClie = () => {
       </header>
 
       {/* Área de Mensajes */}
-      <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black scrollbar-thin scrollbar-thumb-purple-700 scrollbar-track-gray-900">
+      <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black scrollbar-thin scrollbar-thumb-purple-700 scrollbar-track-gray-900">
         {messages.map((msg) => {
           const isClient = msg.senderId === currentClientId;
 

@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import IniciarSesion from './components/administrador/IniciarSesion';
+import Login from './components/administrador/IniciarSesion';
 import Navbar from './components/administrador/Navbar';
-import Inicio from './components/administrador/Inicio'; // El Dashboard del Admin
-import RegistrarUsuario from './components/administrador/registros/RegistrarUsuario';
-import AsignarMembresia from './components/administrador/AsignarMembresia';
-import ListaMembresiasUsuario from './components/administrador/ListaMembresiasUsuario';
-import AdministrarMembresias from './components/administrador/AdministrarMembresias';
+import Home from './components/administrador/Inicio'; // El Dashboard del Admin
+import RegisterUser from './components/administrador/registros/RegistrarUsuario';
+import AssignMembership from './components/administrador/AsignarMembresia';
+import UserMembershipList from './components/administrador/ListaMembresiasUsuario';
+import MembershipAdmin from './components/administrador/AdministrarMembresias';
 import PuntoDeVenta from './components/administrador/PuntoDeVenta';
 import Inventario from './components/administrador/Inventario';
 import CheckInOut from './components/administrador/CheckInOut';
-import PerfilesSaludAdmin from './components/administrador/PerfilesSaludAdmin';
-import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
+import HealthProfilesAdmin from './components/administrador/PerfilesSaludAdmin';
+import BitacoraEntrenador from './components/entrenador/seguimiento/BitacoraEntrenador';
 import GestionEntrenadores from './components/administrador/gestion-entrenadores/GestionEntrenadores';
 import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
 import CitasTrainer from './components/CitasTrainer';
@@ -22,10 +22,10 @@ import LandingPage from './components/LandingPage';
 import Portal from './components/cliente/principal/Portal';
 import Sesion from './components/cliente/principal/Sesion';
 import AboutTeam from './components/AboutTeam';
-import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
-import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
-import NutriologoLogin from './components/NutriologoLogin';
-import NutriPortal from './components/NutriPortal';
+import RutinaEntrenador from './components/entrenador/rutinas/RutinaEntrenador';
+import EntrenadorLogin from './components/entrenador/portal/EntrenadorLogin';
+import IniciarSesionNutri from './components/nutriologo/IniciarSesionNutri';
+import NutriPortal from './components/nutriologo/NutriPortal';
 import ReportesFacturacion from './components/administrador/ReportesFacturacion';
 import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
@@ -33,7 +33,7 @@ import { AssistantProvider } from './components/asistente/ContextoAsistente';
 import AssistantAdminConfig from './components/asistente/ConfiguracionAsistenteAdmin';
 
 //Componete para el entrenador//
-import TrainerPortal from './components/TrainerPortal';
+import PortalEntrenador from './components/entrenador/portal/PortalEntrenador';
 
 function RequireTrainerAuth({ children }) {
   const isTrainerAuthenticated = Boolean(localStorage.getItem('trainer_token'));
@@ -193,14 +193,7 @@ function RequireNutritionistAuth({ children }) {
 
 // --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
 function NutriologoArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const firebaseUser = localStorage.getItem('firebaseUser');
-    if (firebaseUser) setIsAuthenticated(true);
-    setIsLoading(false);
-  }, []);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
 
   const handleLogin = () => setIsAuthenticated(true);
 
@@ -210,24 +203,18 @@ function NutriologoArea() {
     window.location.href = "/";
   };
 
-  if (isLoading) {
-    return (
-      <div className="text-white bg-gray-900 min-h-screen flex items-center justify-center">
-        Cargando...
-      </div>
-    );
-  }
-
   if (!isAuthenticated) {
-    return <NutriologoLogin onLogin={handleLogin} />;
+    return <IniciarSesionNutri onLogin={handleLogin} />;
   }
 
-  return <NutriologoPortal onLogout={handleLogout} />;
+  return <NutriPortal onLogout={handleLogout} />;
 }
 
 // --- 1. COMPONENTE DE ÁREA DE ADMIN (Privado) ---
 function AdminArea() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getCurrentUser()));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasAdminRole, setHasAdminRole] = useState(false);
 
   const [refreshList, setRefreshList] = useState(0);
   const [refreshHealthProfiles, setRefreshHealthProfiles] = useState(0);
@@ -241,6 +228,52 @@ function AdminArea() {
     console.log('🔔 refreshHealthProfiles cambió a:', refreshHealthProfiles);
   }, [refreshHealthProfiles]);
 
+  useEffect(() => {
+    const unsubscribe = onAuthChanged(async (user) => {
+      if (!user) {
+        setIsAuthenticated(false);
+        setHasAdminRole(false);
+        setIsAuthReady(true);
+        localStorage.removeItem('firebaseUser');
+        localStorage.removeItem('token');
+        return;
+      }
+
+      setIsAuthenticated(true);
+
+      try {
+        let role = '';
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || '').toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || '').toLowerCase();
+          }
+        }
+
+        const isAdminRole = role === 'admin';
+        setHasAdminRole(isAdminRole);
+
+        if (!isAdminRole) {
+          localStorage.removeItem('firebaseUser');
+          localStorage.removeItem('token');
+        }
+      } catch {
+        setHasAdminRole(false);
+        localStorage.removeItem('firebaseUser');
+        localStorage.removeItem('token');
+      } finally {
+        setIsAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleLogin = () => setIsAuthenticated(true);
 
   const handleLogout = async () => {
@@ -252,11 +285,19 @@ function AdminArea() {
     window.location.href = "/";
   };
 
-  // Si NO está autenticado, mostramos el Login del Admin
-  if (!isAuthenticated) {
+  if (!isAuthReady) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center text-slate-300">
+        Validando sesión...
+      </div>
+    );
+  }
+
+  // Si NO está autenticado o no tiene rol admin, mostramos Login
+  if (!isAuthenticated || !hasAdminRole) {
     return (
       <div className="bg-gray-900 min-h-screen flex items-center justify-center">
-        <IniciarSesion onLogin={handleLogin} />
+        <Login onLogin={handleLogin} />
       </div>
     );
   }
@@ -268,22 +309,22 @@ function AdminArea() {
         <Routes>
 
           {/* 1. Dashboard Principal */}
-          <Route path="/" element={<Inicio />} />
+          <Route path="/" element={<Home />} />
 
           {/* 2. Registrar Clientes Nuevos */}
-          <Route path="registrar" element={<RegistrarUsuario onUserRegistered={handleUserRegistered} />} />
+          <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
 
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
             <div className="space-y-8">
-              <AsignarMembresia onSuccess={() => setRefreshList(prev => prev + 1)} />
+              <AssignMembership onSuccess={() => setRefreshList(prev => prev + 1)} />
 
-              <ListaMembresiasUsuario refreshTrigger={refreshList} />
+              <UserMembershipList refreshTrigger={refreshList} />
             </div>
           } />
 
           {/* 4. Configuración de Tipos de Membresía */}
-          <Route path="configuracion" element={<AdministrarMembresias />} />
+          <Route path="configuracion" element={<MembershipAdmin />} />
 
           {/* 5. Punto de Venta */}
           <Route path="ventas" element={<PuntoDeVenta />} />
@@ -293,7 +334,7 @@ function AdminArea() {
           <Route path="check-in-out" element={<CheckInOut />} />
 
           {/* 7. Fichas Médicas (Health Profiles) */}
-          <Route path="fichas-medicas" element={<PerfilesSaludAdmin refreshTrigger={refreshHealthProfiles} />} />
+          <Route path="fichas-medicas" element={<HealthProfilesAdmin refreshTrigger={refreshHealthProfiles} />} />
 
 
           {/* 8. Gestión de Entrenadores (RF-018) */}
@@ -398,7 +439,7 @@ function App() {
 
           <Route path="/cliente/login" element={<Sesion />} />
           <Route path="/cliente" element={<Portal />} />
-          <Route path="/nutriologo/login" element={<NutriologoLogin />} />
+          <Route path="/nutriologo/login" element={<IniciarSesionNutri />} />
 
           {/* Ruta protegida del Nutriólogo */}
           <Route
@@ -415,7 +456,7 @@ function App() {
             path="/entrenador"
             element={
               <RequireTrainerAuth>
-                <TrainerPortal />
+                <PortalEntrenador />
               </RequireTrainerAuth>
             }
           />

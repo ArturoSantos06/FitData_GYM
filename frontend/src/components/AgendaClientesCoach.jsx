@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { CLAVE_HIDDEN_CLIENTES, EVENTO_VISIBILIDAD_CLIENTES, filtrarClientesOcultos } from '../backend/visibilidadClientes';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -18,12 +19,28 @@ const AgendaClientesCoach = () => {
     const token = localStorage.getItem('token');
 
     useEffect(() => {
-        fetch(`${API_URL}/api/health-profiles/`, {
+        const cargarClientes = () => fetch(`${API_URL}/api/health-profiles/`, {
             headers: { 'Authorization': `Token ${token}` }
         })
             .then(res => res.json())
-            .then(data => setClientes(data))
+            .then(data => setClientes(filtrarClientesOcultos(Array.isArray(data) ? data.map((item) => ({
+                ...item,
+                id: item.id || item.miembro || item.miembro_id,
+            })) : [])))
             .catch(err => console.error("Error cargando clientes:", err));
+
+        cargarClientes();
+
+        const recargarPorVisibilidad = () => cargarClientes();
+        window.addEventListener(EVENTO_VISIBILIDAD_CLIENTES, recargarPorVisibilidad);
+        const recargarPorStorage = (event) => {
+            if (event.key === CLAVE_HIDDEN_CLIENTES) cargarClientes();
+        };
+        window.addEventListener('storage', recargarPorStorage);
+        return () => {
+            window.removeEventListener(EVENTO_VISIBILIDAD_CLIENTES, recargarPorVisibilidad);
+            window.removeEventListener('storage', recargarPorStorage);
+        };
     }, [token]);
 
     const fetchCitas = useCallback(() => {

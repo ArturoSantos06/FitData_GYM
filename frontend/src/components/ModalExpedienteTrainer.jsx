@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { X, User, Zap } from 'lucide-react';
 import ModalAgendarTrainer from './ModalAgendarTrainer';
-import ModalDetalleTrainer from './entrenador/ModalDetalleTrainer';
+import ModalDetalleEntrenador from './entrenador/seguimiento/ModalDetalleEntrenador';
 import DialogoSistemaNutri from './DialogoSistemaNutri';
 
 const ModalExpedienteTrainer = ({ miembro, onClose }) => {
@@ -35,7 +35,7 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-[50] p-4">
+    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-[#1e293b] w-full max-w-6xl rounded-[2.5rem] border border-slate-700 flex flex-col md:flex-row h-[90vh] overflow-hidden shadow-2xl relative">
         
         {/* PANEL IZQUIERDO */}
@@ -46,7 +46,7 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
             <button onClick={onClose} className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
 
-          <div className="flex flex-col items-center text-center mb-8 p-6 bg-slate-900/50 rounded-[2rem] border border-slate-800 shadow-inner">
+          <div className="flex flex-col items-center text-center mb-8 p-6 bg-slate-900/50 rounded-4xl border border-slate-800 shadow-inner">
              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white mb-4 shadow-2xl" style={{ backgroundColor: miembro.displayColor }}>
                <User size={40}/>
              </div>
@@ -119,7 +119,7 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
             onSuccess={() => { setSelectedDate(null); setRutinaPrevia(''); }}
           />
         )}
-        {viewingEntreno && <ModalDetalleTrainer entreno={viewingEntreno} onClose={() => setViewingEntreno(null)} />}
+        {viewingEntreno && <ModalDetalleEntrenador entreno={viewingEntreno} onClose={() => setViewingEntreno(null)} />}
         {dialog && <DialogoSistemaNutri {...dialog} />}
       </div>
     </div>
