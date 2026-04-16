@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { CLAVE_HIDDEN_CLIENTES, EVENTO_VISIBILIDAD_CLIENTES, filtrarClientesOcultos } from '../backend/visibilidadClientes';
+import { CLAVE_HIDDEN_CLIENTES, EVENTO_VISIBILIDAD_CLIENTES, filtrarClientesOcultos } from '../../../backend/visibilidadClientes';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-const AgendaClientesCoach = () => {
+const AgendaClientes = () => {
     const [clientes, setClientes] = useState([]);
     const [citas, setCitas] = useState([]);
-    const [selectedClient, setSelectedClient] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [calendarMonth, setCalendarMonth] = useState(() => {
+    const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
+    const [mesCalendario, setMesCalendario] = useState(() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), 1);
     });
-    const [formCita, setFormCita] = useState({ inicio: '08:00', fin: '09:00', id: null });
-    const [showPastDateModal, setShowPastDateModal] = useState(false);
-    const [pastDateLabel, setPastDateLabel] = useState('');
+    const [formularioCita, setFormularioCita] = useState({ inicio: '08:00', fin: '09:00', id: null });
+    const [mostrarModalFechaPasada, setMostrarModalFechaPasada] = useState(false);
+    const [etiquetaFechaPasada, setEtiquetaFechaPasada] = useState('');
 
     const token = localStorage.getItem('token');
 
@@ -43,7 +43,7 @@ const AgendaClientesCoach = () => {
         };
     }, [token]);
 
-    const fetchCitas = useCallback(() => {
+    const obtenerCitas = useCallback(() => {
         fetch(`${API_URL}/api/citas/`, {
             headers: { 'Authorization': `Token ${token}` }
         })
@@ -52,73 +52,73 @@ const AgendaClientesCoach = () => {
             .catch(err => console.error("Error cargando citas:", err));
     }, [token]);
 
-    useEffect(() => { fetchCitas(); }, [fetchCitas]);
+    useEffect(() => { obtenerCitas(); }, [obtenerCitas]);
 
-    const toStartOfDay = (date) => {
+    const irAlInicioDia = (date) => {
         return new Date(date.getFullYear(), date.getMonth(), date.getDate());
     };
 
-    const formatDateKey = (date) => {
+    const formatearClaveFeha = (date) => {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const d = String(date.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
     };
 
-    const monthLabel = useMemo(() => {
-        return calendarMonth
+    const etiquetaMes = useMemo(() => {
+        return mesCalendario
             .toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
             .toUpperCase();
-    }, [calendarMonth]);
+    }, [mesCalendario]);
 
-    const calendarDays = useMemo(() => {
-        const year = calendarMonth.getFullYear();
-        const month = calendarMonth.getMonth();
+    const diasCalendario = useMemo(() => {
+        const year = mesCalendario.getFullYear();
+        const month = mesCalendario.getMonth();
 
         const firstDay = new Date(year, month, 1);
-        const mondayBasedOffset = (firstDay.getDay() + 6) % 7;
-        const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
-        const daysInPrevMonth = new Date(year, month, 0).getDate();
+        const offsetBaseLunes = (firstDay.getDay() + 6) % 7;
+        const diasMesActual = new Date(year, month + 1, 0).getDate();
+        const diasMesPrevio = new Date(year, month, 0).getDate();
 
-        const cells = [];
+        const celdas = [];
 
-        for (let i = mondayBasedOffset - 1; i >= 0; i -= 1) {
-            cells.push({
-                date: new Date(year, month - 1, daysInPrevMonth - i),
-                inCurrentMonth: false,
+        for (let i = offsetBaseLunes - 1; i >= 0; i -= 1) {
+            celdas.push({
+                date: new Date(year, month - 1, diasMesPrevio - i),
+                enMesActual: false,
             });
         }
 
-        for (let day = 1; day <= daysInCurrentMonth; day += 1) {
-            cells.push({
+        for (let day = 1; day <= diasMesActual; day += 1) {
+            celdas.push({
                 date: new Date(year, month, day),
-                inCurrentMonth: true,
+                enMesActual: true,
             });
         }
 
-        while (cells.length < 42) {
-            const nextDay = cells.length - (mondayBasedOffset + daysInCurrentMonth) + 1;
-            cells.push({
+        while (celdas.length < 42) {
+            const nextDay = celdas.length - (offsetBaseLunes + diasMesActual) + 1;
+            celdas.push({
                 date: new Date(year, month + 1, nextDay),
-                inCurrentMonth: false,
+                enMesActual: false,
             });
         }
 
-        return cells;
-    }, [calendarMonth]);
+        return celdas;
+    }, [mesCalendario]);
 
-    const citasByDate = useMemo(() => {
+    const citasPorFecha = useMemo(() => {
         const map = new Map();
         citas
-            .filter((c) => c.cliente === selectedClient?.id)
+            .filter((c) => c.cliente === clienteSeleccionado?.id)
             .forEach((cita) => {
                 const count = map.get(cita.fecha) || 0;
                 map.set(cita.fecha, count + 1);
             });
         return map;
-    }, [citas, selectedClient]);
+    }, [citas, clienteSeleccionado]);
 
-    const isSameDay = (a, b) => {
+    const esMismoDia = (a, b) => {
         return (
             a.getFullYear() === b.getFullYear() &&
             a.getMonth() === b.getMonth() &&
@@ -126,28 +126,28 @@ const AgendaClientesCoach = () => {
         );
     };
 
-    const handlePickDate = (date) => {
-        const today = toStartOfDay(new Date());
-        const target = toStartOfDay(date);
+    const manejarSeleccionFecha = (date) => {
+        const hoy = irAlInicioDia(new Date());
+        const objetivo = irAlInicioDia(date);
 
-        if (target < today) {
-            setPastDateLabel(target.toLocaleDateString('es-MX', {
+        if (objetivo < hoy) {
+            setEtiquetaFechaPasada(objetivo.toLocaleDateString('es-MX', {
                 weekday: 'long',
                 day: '2-digit',
                 month: 'long',
                 year: 'numeric',
             }));
-            setShowPastDateModal(true);
+            setMostrarModalFechaPasada(true);
             return;
         }
 
-        setSelectedDate(target);
-        setCalendarMonth(new Date(target.getFullYear(), target.getMonth(), 1));
+        setFechaSeleccionada(objetivo);
+        setMesCalendario(new Date(objetivo.getFullYear(), objetivo.getMonth(), 1));
     };
 
     const citasDelDia = citas.filter(c =>
-        c.cliente === selectedClient?.id &&
-        c.fecha === selectedDate.toISOString().split('T')[0]
+        c.cliente === clienteSeleccionado?.id &&
+        c.fecha === fechaSeleccionada.toISOString().split('T')[0]
     );
 
     const manejarAccion = async (metodo, id = null) => {
@@ -156,14 +156,14 @@ const AgendaClientesCoach = () => {
             method: metodo,
             headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
             body: metodo !== 'DELETE' ? JSON.stringify({
-                cliente: selectedClient.id,
-                fecha: selectedDate.toISOString().split('T')[0],
-                hora_inicio: formCita.inicio,
-                hora_fin: formCita.fin,
+                cliente: clienteSeleccionado.id,
+                fecha: fechaSeleccionada.toISOString().split('T')[0],
+                hora_inicio: formularioCita.inicio,
+                hora_fin: formularioCita.fin,
                 coach: 1 // Ajustar según ID del coach logueado
             }) : null
         });
-        if (res.ok) { fetchCitas(); setFormCita({ inicio: '08:00', fin: '09:00', id: null }); }
+        if (res.ok) { obtenerCitas(); setFormularioCita({ inicio: '08:00', fin: '09:00', id: null }); }
     };
 
     // CAMBIOS DE DISEÑO //
@@ -214,7 +214,7 @@ const AgendaClientesCoach = () => {
 
                         {/* Botón Planificar (mt-auto lo empuja siempre hasta abajo) */}
                         <button
-                            onClick={() => setSelectedClient(c)}
+                            onClick={() => setClienteSeleccionado(c)}
                             className="mt-auto w-full py-2.5 bg-[#007bff] hover:bg-blue-500 text-white rounded-xl transition-colors font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                         >
                             Planificar
@@ -225,7 +225,7 @@ const AgendaClientesCoach = () => {
             </div>
 
             {/* Modal de Calendario (Mantenemos el tuyo que ya estaba súper bien) */}
-            {selectedClient && (
+            {clienteSeleccionado && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
                     <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl flex h-[550px] overflow-hidden">
 
@@ -234,14 +234,14 @@ const AgendaClientesCoach = () => {
                             <div className="flex justify-between mb-6 items-center">
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                                        onClick={() => setMesCalendario(new Date(mesCalendario.getFullYear(), mesCalendario.getMonth() - 1, 1))}
                                         className="h-8 w-8 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
                                         type="button"
                                     >
                                         ‹
                                     </button>
                                     <button
-                                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                                        onClick={() => setMesCalendario(new Date(mesCalendario.getFullYear(), mesCalendario.getMonth() + 1, 1))}
                                         className="h-8 w-8 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
                                         type="button"
                                     >
@@ -251,8 +251,8 @@ const AgendaClientesCoach = () => {
                                         onClick={() => {
                                             const now = new Date();
                                             const start = new Date(now.getFullYear(), now.getMonth(), 1);
-                                            setCalendarMonth(start);
-                                            setSelectedDate(now);
+                                            setMesCalendario(start);
+                                            setFechaSeleccionada(now);
                                         }}
                                         className="h-8 px-3 rounded-lg border border-slate-700 text-[11px] font-bold tracking-wider text-slate-300 hover:bg-slate-800 transition-colors"
                                         type="button"
@@ -260,7 +260,7 @@ const AgendaClientesCoach = () => {
                                         HOY
                                     </button>
                                 </div>
-                                <h2 className="font-bold tracking-wide text-cyan-400 text-sm">{monthLabel}</h2>
+                                <h2 className="font-bold tracking-wide text-cyan-400 text-sm">{etiquetaMes}</h2>
                             </div>
                             
                             <div className="grid grid-cols-7 gap-2 mb-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
@@ -270,28 +270,28 @@ const AgendaClientesCoach = () => {
                             </div>
                             
                             <div className="grid grid-cols-7 gap-2 flex-1">
-                                {calendarDays.map(({ date, inCurrentMonth }) => {
-                                    const today = toStartOfDay(new Date());
-                                    const target = toStartOfDay(date);
-                                    const isPast = target < today;
-                                    const isSelected = isSameDay(target, toStartOfDay(selectedDate));
-                                    const isToday = isSameDay(target, today);
-                                    const key = formatDateKey(target);
-                                    const hasCitas = (citasByDate.get(key) || 0) > 0;
+                                {diasCalendario.map(({ date, enMesActual }) => {
+                                    const hoy = irAlInicioDia(new Date());
+                                    const objetivo = irAlInicioDia(date);
+                                    const esPasado = objetivo < hoy;
+                                    const esSeleccionado = esMismoDia(objetivo, irAlInicioDia(fechaSeleccionada));
+                                    const esHoy = esMismoDia(objetivo, hoy);
+                                    const clave = formatearClaveFeha(objetivo);
+                                    const tieneCitas = (citasPorFecha.get(clave) || 0) > 0;
 
-                                    const baseClass = inCurrentMonth ? 'text-slate-200' : 'text-slate-600';
-                                    const selectedClass = isSelected ? 'ring-2 ring-cyan-400 bg-cyan-900/40 text-cyan-300 font-bold' : 'hover:bg-slate-800';
-                                    const todayClass = isToday ? 'border border-cyan-500/50' : 'border border-transparent';
+                                    const claseBase = enMesActual ? 'text-slate-200' : 'text-slate-600';
+                                    const claseSeleccionada = esSeleccionado ? 'ring-2 ring-cyan-400 bg-cyan-900/40 text-cyan-300 font-bold' : 'hover:bg-slate-800';
+                                    const claseHoy = esHoy ? 'border border-cyan-500/50' : 'border border-transparent';
 
                                     return (
                                         <button
-                                            key={key}
-                                            onClick={() => handlePickDate(target)}
-                                            className={`rounded-xl text-sm transition-all relative flex items-center justify-center ${baseClass} ${selectedClass} ${todayClass} ${isPast ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
+                                            key={clave}
+                                            onClick={() => manejarSeleccionFecha(objetivo)}
+                                            className={`rounded-xl text-sm transition-all relative flex items-center justify-center ${claseBase} ${claseSeleccionada} ${claseHoy} ${esPasado ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
                                             type="button"
                                         >
-                                            <span>{target.getDate()}</span>
-                                            {hasCitas && (
+                                            <span>{objetivo.getDate()}</span>
+                                            {tieneCitas && (
                                                 <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]" />
                                             )}
                                         </button>
@@ -300,75 +300,78 @@ const AgendaClientesCoach = () => {
                             </div>
                         </div>
 
-                        {/* Derecha: Detalles y CRUD */}
-                        <div className="w-1/2 p-8 flex flex-col bg-slate-900 relative">
-                            <button onClick={() => setSelectedClient(null)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors bg-slate-800 p-2 rounded-full">✕</button>
-                            
-                            <div className="flex-1">
-                                <p className="text-cyan-500 text-[10px] font-black tracking-widest uppercase mb-1">Sesiones de {selectedClient.miembro_nombre}</p>
-                                <h2 className="text-2xl font-black mb-6 text-white">{selectedDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long'})}</h2>
-
-                                <div className="space-y-3 overflow-y-auto max-h-[250px] pr-2 custom-scrollbar">
-                                    {citasDelDia.length === 0 ? (
-                                        <p className="text-slate-500 text-sm italic">No hay sesiones programadas para este día.</p>
-                                    ) : (
-                                        citasDelDia.map(cita => (
-                                            <div key={cita.id} className="bg-slate-800/80 p-4 rounded-xl flex justify-between items-center border border-slate-700/50 hover:border-cyan-500/30 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-1 bg-cyan-500 rounded-full"></div>
-                                                    <span className="font-bold text-slate-200">{cita.hora_inicio} - {cita.hora_fin}</span>
-                                                </div>
-                                                <div className="flex gap-3">
-                                                    <button onClick={() => setFormCita({ inicio: cita.hora_inicio, fin: cita.hora_fin, id: cita.id })} className="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider transition-colors">Editar</button>
-                                                    <button onClick={() => manejarAccion('DELETE', cita.id)} className="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider transition-colors">Borrar</button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-slate-800 mt-auto">
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-                                    {formCita.id ? 'Modificar Horario' : 'Nueva Sesión'}
-                                </p>
-                                <div className="flex gap-3 mb-4">
-                                    <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Inicio</label>
-                                        <input type="time" value={formCita.inicio} onChange={e => setFormCita({ ...formCita, inicio: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Fin</label>
-                                        <input type="time" value={formCita.fin} onChange={e => setFormCita({ ...formCita, fin: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all" />
-                                    </div>
+                        {/* Derecha: Citas del día */}
+                        <div className="w-1/2 p-8 flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">{clienteSeleccionado.miembro_nombre}</h3>
+                                    <p className="text-sm text-slate-400 mt-1">{fechaSeleccionada.toLocaleDateString('es-MX')}</p>
                                 </div>
                                 <button
-                                    onClick={() => manejarAccion(formCita.id ? 'PUT' : 'POST', formCita.id)}
-                                    className="w-full py-3.5 bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20"
+                                    onClick={() => setClienteSeleccionado(null)}
+                                    className="text-slate-400 hover:text-white text-2xl transition-colors"
+                                    type="button"
                                 >
-                                    {formCita.id ? 'Actualizar Sesión' : 'Guardar Sesión'}
+                                    ×
                                 </button>
                             </div>
-                        </div>
 
+                            <div className="flex-1 overflow-y-auto space-y-4 mb-6">
+                                {citasDelDia.length > 0 ? (
+                                    citasDelDia.map((cita, idx) => (
+                                        <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                                            <p className="text-sm font-semibold text-white">{cita.hora_inicio} - {cita.hora_fin}</p>
+                                            <button
+                                                onClick={() => manejarAccion('DELETE', cita.id)}
+                                                className="mt-3 text-xs text-red-400 hover:text-red-300"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-slate-500 text-center py-8">Sin citas programadas</p>
+                                )}
+                            </div>
+
+                            {/* Formulario de Nueva Cita */}
+                            <div className="border-t border-slate-700 pt-6">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Nueva Cita</p>
+                                <div className="space-y-3">
+                                    <input
+                                        type="time"
+                                        value={formularioCita.inicio}
+                                        onChange={(e) => setFormularioCita({ ...formularioCita, inicio: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                                    />
+                                    <input
+                                        type="time"
+                                        value={formularioCita.fin}
+                                        onChange={(e) => setFormularioCita({ ...formularioCita, fin: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                                    />
+                                    <button
+                                        onClick={() => manejarAccion('POST')}
+                                        className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-semibold transition-colors"
+                                    >
+                                        Guardar Cita
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal Error Fechas Pasadas */}
-            {showPastDateModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-60">
-                    <div className="w-full max-w-sm rounded-3xl border border-red-500/30 bg-slate-900 p-8 shadow-2xl text-center transform scale-100 animate-fade-in">
-                        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Fecha no válida</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                            Seleccionaste <span className="font-semibold text-red-400">{pastDateLabel}</span>. Solo puedes agendar entrenamientos a partir de la fecha actual.
-                        </p>
+            {/* Modal de Fecha Pasada */}
+            {mostrarModalFechaPasada && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm">
+                        <p className="text-white font-semibold mb-4">⚠️ No puedes seleccionar fechas pasadas</p>
+                        <p className="text-slate-300 text-sm mb-6">{etiquetaFechaPasada}</p>
                         <button
-                            onClick={() => setShowPastDateModal(false)}
-                            className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors uppercase tracking-wider text-xs"
+                            onClick={() => setMostrarModalFechaPasada(false)}
+                            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold transition-colors"
                             type="button"
                         >
                             Entendido
@@ -380,4 +383,4 @@ const AgendaClientesCoach = () => {
     );
 };
 
-export default AgendaClientesCoach;
+export default AgendaClientes;

@@ -6,8 +6,7 @@ import {
   updateProfile
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { auth, functions, db } from "./config";
-import { doc, setDoc } from 'firebase/firestore';
+import { auth, functions } from "./config";
 
 // Login con email y contraseña
 export const loginUser = async (email, password) => {

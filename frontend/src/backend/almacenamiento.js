@@ -1,71 +1,62 @@
-import { 
+import {
   getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
   deleteObject
-} from "firebase/storage";
-import app, { auth, storage } from "./config";
+} from 'firebase/storage';
+import app, { auth, storage } from '../firebase/config';
 
-const sanitizeFileName = (value) => {
+const sanitizarNombreArchivo = (value) => {
   return String(value || 'archivo')
     .replace(/[^a-zA-Z0-9._-]/g, '_')
     .replace(/_+/g, '_');
 };
 
 // Subir imagen
-export const uploadImage = async (file, path) => {
+export const subirImagen = async (file, path) => {
   try {
-    // Validaciones
     if (!file) {
-      throw new Error("No se seleccionó ningún archivo");
+      throw new Error('No se seleccionó ningún archivo');
     }
-    
+
     if (!file.type.startsWith('image/')) {
-      throw new Error("Solo se permiten archivos de imagen");
+      throw new Error('Solo se permiten archivos de imagen');
     }
-    
-    if (file.size > 5 * 1024 * 1024) { 
-      throw new Error("La imagen es muy grande. Máximo 5MB");
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('La imagen es muy grande. Máximo 5MB');
     }
-    
-    console.log(`📤 Subiendo imagen: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
-    console.log(`📍 Ruta: ${path}`);
-    
+
     const storageRef = ref(storage, path);
     const metadata = {
       contentType: file.type,
       customMetadata: {
-        'uploadedAt': new Date().toISOString()
+        uploadedAt: new Date().toISOString()
       }
     };
-    
+
     const snapshot = await uploadBytes(storageRef, file, metadata);
-    console.log('✅ Imagen subida exitosamente');
-    
     const downloadURL = await getDownloadURL(snapshot.ref);
-    console.log(`🔗 URL generada: ${downloadURL.substring(0, 60)}...`);
-    
+
     return { success: true, url: downloadURL };
   } catch (error) {
-    console.error('❌ Error subiendo imagen:', error);
-    
     let errorMessage = error.message;
-    
+
     if (error.code === 'storage/unauthorized') {
-      errorMessage = "No tienes permisos para subir imágenes. Verifica que seas admin.";
+      errorMessage = 'No tienes permisos para subir imágenes. Verifica que seas admin.';
     } else if (error.code === 'storage/canceled') {
-      errorMessage = "La subida fue cancelada";
+      errorMessage = 'La subida fue cancelada';
     } else if (error.code === 'storage/unknown') {
-      errorMessage = "Error desconocido. Verifica que Firebase Storage esté configurado.";
+      errorMessage = 'Error desconocido. Verifica que Firebase Storage esté configurado.';
     }
-    
+
     return { success: false, error: errorMessage };
   }
 };
 
 // Eliminar imagen
-export const deleteImage = async (path) => {
+export const eliminarImagen = async (path) => {
   try {
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
@@ -76,14 +67,14 @@ export const deleteImage = async (path) => {
 };
 
 // Subir documento de dieta (PDF, JPG, PNG — max 10 MB)
-export const uploadDietDocument = async (file, memberId) => {
+export const subirDocumentoDieta = async (file, memberId) => {
   try {
     if (!file) throw new Error('No se seleccionó ningún archivo');
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type)) throw new Error('Solo se permiten PDF, JPG o PNG');
     if (file.size > 10 * 1024 * 1024) throw new Error('El archivo supera el límite de 10 MB');
 
-    const safeName = sanitizeFileName(file.name);
+    const safeName = sanitizarNombreArchivo(file.name);
     const timestamp = Date.now();
     const path = `dietFiles/${memberId}/${timestamp}_${safeName}`;
     const metadata = {
@@ -103,7 +94,7 @@ export const uploadDietDocument = async (file, memberId) => {
   }
 };
 
-const triggerBlobDownload = (blob, fileName) => {
+const forzarDescargaBlob = (blob, fileName) => {
   const safeName = String(fileName || 'archivo').replace(/[\r\n]/g, ' ').trim() || 'archivo';
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -116,7 +107,7 @@ const triggerBlobDownload = (blob, fileName) => {
   URL.revokeObjectURL(objectUrl);
 };
 
-const getDietDownloadFunctionUrl = () => {
+const obtenerUrlFuncionDescargaDieta = () => {
   const customUrl = String(import.meta.env.VITE_DOWNLOAD_DIET_FILE_URL || '').trim();
   if (customUrl) return customUrl;
   const envProjectId = String(import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim();
@@ -126,7 +117,7 @@ const getDietDownloadFunctionUrl = () => {
   return `https://us-east1-${projectId}.cloudfunctions.net/downloadDietFile`;
 };
 
-const extractStoragePathFromUrl = (url) => {
+const extraerRutaStorageDesdeUrl = (url) => {
   if (!url) return '';
   try {
     const parsed = new URL(url);
@@ -140,7 +131,7 @@ const extractStoragePathFromUrl = (url) => {
   }
 };
 
-const extractTokenFromUrl = (url) => {
+const extraerTokenDesdeUrl = (url) => {
   if (!url) return '';
   try {
     const parsed = new URL(url);
@@ -150,16 +141,16 @@ const extractTokenFromUrl = (url) => {
   }
 };
 
-// Descargar documento de dieta 
-export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = '') => {
+// Descargar documento de dieta
+export const descargarDocumentoDieta = async (storagePath, fileName, fallbackUrl = '') => {
   try {
     const safeName = String(fileName || 'archivo').trim() || 'archivo';
     const explicitStoragePath = typeof storagePath === 'string' && !storagePath.trim().startsWith('http')
       ? storagePath.trim()
       : '';
-    const inferredStoragePath = extractStoragePathFromUrl(fallbackUrl);
+    const inferredStoragePath = extraerRutaStorageDesdeUrl(fallbackUrl);
     const resolvedStoragePath = explicitStoragePath || inferredStoragePath;
-    const urlToken = extractTokenFromUrl(fallbackUrl);
+    const urlToken = extraerTokenDesdeUrl(fallbackUrl);
 
     if (!resolvedStoragePath) {
       return {
@@ -168,8 +159,7 @@ export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = 
       };
     }
 
-    // Descarga por Cloud Function autenticada (evita CORS en navegador).
-    const fnUrl = getDietDownloadFunctionUrl();
+    const fnUrl = obtenerUrlFuncionDescargaDieta();
     if (!fnUrl) {
       return {
         success: false,
@@ -201,14 +191,14 @@ export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = 
       }
 
       const blob = await response.blob();
-      triggerBlobDownload(blob, safeName);
+      forzarDescargaBlob(blob, safeName);
       return { success: true };
     } catch (fnError) {
       return {
         success: false,
         error: fnError?.message || 'No se pudo completar la descarga automática del archivo.'
       };
-    };
+    }
   } catch (error) {
     const rawError = String(error?.message || error || 'Error desconocido');
     if (/failed to fetch/i.test(rawError)) {
@@ -222,25 +212,25 @@ export const downloadDietDocument = async (storagePath, fileName, fallbackUrl = 
 };
 
 // Subir imagen de producto
-export const uploadProductImage = async (file, productId) => {
+export const subirImagenProducto = async (file, productId) => {
   const path = `productos/${productId}/${file.name}`;
-  return await uploadImage(file, path);
+  return await subirImagen(file, path);
 };
 
 // Subir imagen de membresía
-export const uploadMembershipImage = async (file, membershipTypeId) => {
+export const subirImagenMembresia = async (file, membershipTypeId) => {
   const path = `memberships/${membershipTypeId}/${file.name}`;
-  return await uploadImage(file, path);
+  return await subirImagen(file, path);
 };
 
 // Subir avatar de miembro
-export const uploadMemberAvatar = async (file, memberId) => {
+export const subirAvatarMiembro = async (file, memberId) => {
   const path = `avatars/${memberId}/${file.name}`;
-  return await uploadImage(file, path);
+  return await subirImagen(file, path);
 };
 
 // Subir adjuntos de rutina (PDF o imagen)
-export const uploadRoutineAttachment = async (file, memberId, trainerUid) => {
+export const subirAdjuntoRutina = async (file, memberId, trainerUid) => {
   try {
     if (!file) {
       throw new Error('No se selecciono ningun archivo');
@@ -256,7 +246,7 @@ export const uploadRoutineAttachment = async (file, memberId, trainerUid) => {
       throw new Error('El archivo es muy grande. Maximo 10MB');
     }
 
-    const safeName = sanitizeFileName(file.name);
+    const safeName = sanitizarNombreArchivo(file.name);
     const timestamp = Date.now();
     const path = `trainerRoutines/${memberId}/${timestamp}_${safeName}`;
     const metadata = {

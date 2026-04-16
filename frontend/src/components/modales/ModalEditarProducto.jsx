@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ModalExito from './ModalExito';
-import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCurrentUser } from '../../firebase';
+import { updateProduct, subirImagenProducto, createInventoryEntry, getUser, getCurrentUser } from '../../firebase';
 
 const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado }) => {
     const [datos, setDatos] = useState({ nombre: '', precio: '', stock: '', imagen: null });
@@ -45,7 +45,7 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
             // 2. Si hay imagen nueva, subirla
             if (datos.imagen) {
                 console.log('📷 Subiendo nueva imagen:', datos.imagen.name);
-                const uploadResult = await uploadProductImage(datos.imagen, producto.id);
+                const uploadResult = await subirImagenProducto(datos.imagen, producto.id);
                 
                 if (!uploadResult.success) {
                     throw new Error(`Error al subir imagen: ${uploadResult.error}`);

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { crearReporteMantenimiento, subirFotoReporte } from '../../firebase/mantenimiento';
+import { crearReporteMantenimiento, subirFotoReporte } from '../../backend/mantenimiento';
 
 function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
     const [maquinaId, setMaquinaId] = useState('');

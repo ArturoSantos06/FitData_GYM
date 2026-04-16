@@ -27,7 +27,7 @@ import {
   updateSelfProfile,
   updateTrainerNote,
   updateUser,
-  uploadRoutineAttachment,
+  subirAdjuntoRutina,
   waitForAuthReady,
 } from '../firebase';
 
@@ -60,6 +60,6 @@ export {
   updateSelfProfile,
   updateTrainerNote,
   updateUser,
-  uploadRoutineAttachment,
+  subirAdjuntoRutina,
   waitForAuthReady,
 };

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
     crearReporteMantenimiento,
     subirFotoReporte,
-} from '../../firebase/mantenimiento';
+} from '../../backend/mantenimiento';
 
 function VistaUsuarioMantenimiento({ maquinas = [] }) {
     const [maquinaId, setMaquinaId] = useState('');

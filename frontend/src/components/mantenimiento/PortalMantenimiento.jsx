@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Wrench } from 'lucide-react';
-import { suscribirCatalogoMaquinas, suscribirReportesMantenimiento } from '../../firebase/mantenimiento';
+import { suscribirCatalogoMaquinas, suscribirReportesMantenimiento } from '../../backend/mantenimiento';
 import TarjetaReporteMantenimiento from './TarjetaReporteMantenimiento';
 import VistaAdminMantenimiento from './VistaAdminMantenimiento';
 import VistaUsuarioMantenimiento from './VistaUsuarioMantenimiento';

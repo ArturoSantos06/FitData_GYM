@@ -7,14 +7,14 @@ import {
   createDietFileRecord,
   deleteDietFileRecord,
   createUser,
-  deleteImage,
+  eliminarImagen,
   getCurrentUser,
   getUser,
   getUserByAuthUid,
   getUserByEmail,
   onAuthChanged,
-  uploadDietDocument,
-  downloadDietDocument
+  subirDocumentoDieta,
+  descargarDocumentoDieta
 } from '../firebase';
 import ModalExito from './modales/ModalExito';
 import ErrorModal from './modales/ErrorModal';
@@ -455,7 +455,7 @@ function DietRepositoryAdmin() {
       return;
     }
 
-    const uploadResult = await uploadDietDocument(selectedFile, selectedMemberId);
+    const uploadResult = await subirDocumentoDieta(selectedFile, selectedMemberId);
     if (!uploadResult.success) {
       setSaving(false);
       setErrorModal({ open: true, message: uploadResult.error || 'No se pudo subir el archivo' });
@@ -479,7 +479,7 @@ function DietRepositoryAdmin() {
     });
 
     if (!recordResult.success) {
-      await deleteImage(uploadResult.path);
+      await eliminarImagen(uploadResult.path);
       setSaving(false);
       setErrorModal({ open: true, message: recordResult.error || 'No se pudo guardar el registro del archivo' });
       return;
@@ -492,7 +492,7 @@ function DietRepositoryAdmin() {
   };
 
   const handleDownload = async (fileItem) => {
-    const result = await downloadDietDocument(
+    const result = await descargarDocumentoDieta(
       fileItem.storagePath,
       fileItem.originalFileName || fileItem.title || 'archivo',
       fileItem.downloadURL || ''
@@ -513,7 +513,7 @@ function DietRepositoryAdmin() {
     }
 
     if (fileItem.storagePath) {
-      await deleteImage(fileItem.storagePath);
+      await eliminarImagen(fileItem.storagePath);
     }
 
     await loadData();

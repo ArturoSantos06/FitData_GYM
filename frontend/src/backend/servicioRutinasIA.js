@@ -1,36 +1,9 @@
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 
-import { auth, db } from './config';
+import { auth, db } from '../firebase/config';
 
-function mapCallableError(error) {
-    const code = String(error?.code || '').toLowerCase();
-    const message = String(error?.message || '').trim();
-
-    if (code.includes('unauthenticated')) {
-        return new Error('Tu sesión expiró. Cierra sesión e inicia sesión nuevamente.');
-    }
-
-    if (code.includes('permission-denied')) {
-        return new Error('No tienes permisos para generar la rutina.');
-    }
-
-    if (code.includes('not-found')) {
-        return new Error('La función de IA no está disponible todavía en Firebase.');
-    }
-
-    if (code.includes('internal') || message.toLowerCase() === 'internal') {
-        return new Error('El servidor de rutinas respondió con error interno. Normalmente se corrige al desplegar Functions y verificar GEMINI_API_KEY.');
-    }
-
-    if (message) {
-        return new Error(message);
-    }
-
-    return new Error('No se pudo generar la rutina con IA.');
-}
-
-export function buildRoutinePrompt(payload) {
-    const customRequest = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || '').trim();
+export function construirPromptRutina(payload) {
+    const solicitudPersonalizada = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || '').trim();
 
     return [
         'Eres un entrenador personal experto en rutinas de gimnasio.',
@@ -56,7 +29,7 @@ export function buildRoutinePrompt(payload) {
         '}',
         'Para cada día, lista entre 4 y 6 ejercicios exactos. El campo "nombre" del ejercicio debe ser claro y específico (ej. "Press de banca con mancuernas") para poder buscarlo en video.',
         '',
-        `Solicitud libre del usuario: ${customRequest || 'sin solicitud adicional'}.`,
+        `Solicitud libre del usuario: ${solicitudPersonalizada || 'sin solicitud adicional'}.`,
         `Objetivo del cliente: ${payload.goalLabel || payload.goal || 'no especificado'}.`,
         `Nivel: ${payload.levelLabel || payload.level || 'no especificado'}.`,
         `Equipo disponible: ${payload.equipment || 'no especificado'}.`,
@@ -64,7 +37,7 @@ export function buildRoutinePrompt(payload) {
     ].join('\n');
 }
 
-export async function generateAiRoutine(payload) {
+export async function generarRutinaIA(payload) {
     const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
     const user = auth.currentUser;
 
@@ -103,26 +76,26 @@ export async function generateAiRoutine(payload) {
     throw new Error('No hay sesión activa para generar la rutina.');
 }
 
-export function subscribeAiRoutineHistory(uid, onNext, onError) {
+export function suscribirHistorialRutinaIA(uid, onNext, onError) {
     const safeUid = String(uid || '').trim();
     if (!safeUid || typeof onNext !== 'function') {
         return () => { };
     }
 
-    const historyQuery = query(
+    const consultaHistorial = query(
         collection(db, 'users', safeUid, 'aiRoutineHistory'),
         orderBy('createdAt', 'desc'),
         limit(20)
     );
 
     return onSnapshot(
-        historyQuery,
+        consultaHistorial,
         (snapshot) => {
-            const history = snapshot.docs.map((docSnap) => ({
+            const historial = snapshot.docs.map((docSnap) => ({
                 id: docSnap.id,
                 ...docSnap.data(),
             }));
-            onNext(history);
+            onNext(historial);
         },
         (error) => {
             if (typeof onError === 'function') {
@@ -132,6 +105,6 @@ export function subscribeAiRoutineHistory(uid, onNext, onError) {
     );
 }
 
-export function getCurrentAuthUid() {
+export function obtenerUidAuthActual() {
     return String(auth.currentUser?.uid || '').trim();
 }
