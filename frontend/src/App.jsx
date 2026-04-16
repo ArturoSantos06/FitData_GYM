@@ -16,7 +16,7 @@ import HealthProfilesAdmin from './components/administrador/PerfilesSaludAdmin';
 import BitacoraEntrenador from './components/entrenador/seguimiento/BitacoraEntrenador';
 import GestionEntrenadores from './components/administrador/gestion-entrenadores/GestionEntrenadores';
 import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
-import CitasTrainer from './components/CitasTrainer';
+import CitasEntrenador from './components/entrenador/gestion/CitasEntrenador';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
 import Portal from './components/cliente/principal/Portal';
@@ -472,7 +472,7 @@ function App() {
             path="/entrenador/citas"
             element={
               <RequireTrainerAuth>
-                <CitasTrainer />
+                <CitasEntrenador />
               </RequireTrainerAuth>
             }
           />

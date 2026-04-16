@@ -7,7 +7,7 @@ import {
   getMemberByUserId,
   getUser,
   getUserByAuthUid,
-  downloadDietDocument,
+  descargarDocumentoDieta,
 } from '../../../firebase';
 
 const formatDate = (value) => {
@@ -128,7 +128,7 @@ function VisorDieta() {
     setDownloading(true);
     setError('');
 
-    const result = await downloadDietDocument(
+    const result = await descargarDocumentoDieta(
       latestDietFile.storagePath,
       latestDietFile.originalFileName || latestDietFile.title || 'dieta_vigente',
       latestDietFile.downloadURL || ''

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../../firebase';
-import CitasTrainer from '../../CitasTrainer';
+import CitasEntrenador from '../gestion/CitasEntrenador';
 import BandejaProfesionales from '../../chat/BandejaProfesionales';
 import PerfilEntrenador from '../perfil/PerfilEntrenador';
 import GestionEntrenador from '../gestion/GestionEntrenador';
@@ -34,7 +34,7 @@ function PortalEntrenador() {
 
       <div className="max-w-7xl mx-auto pt-2 md:pt-4 pb-20 md:pb-0">
         {pestañaActiva === 'inicio' && <InicioEntrenador />}
-        {pestañaActiva === 'agenda' && <CitasTrainer embedded />}
+        {pestañaActiva === 'agenda' && <CitasEntrenador embedded />}
         {pestañaActiva === 'gestion' && <GestionEntrenador />}
         {pestañaActiva === 'mensajes' && <BandejaProfesionales role="trainer" />}
         {pestañaActiva === 'perfil' && <PerfilEntrenador />}

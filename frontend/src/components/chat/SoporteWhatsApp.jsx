@@ -15,8 +15,8 @@ import { useAssistant } from '../asistente/ContextoAsistente';
 import { auth, db } from '../../firebase/config';
 import VentanaChat from './VentanaChat';
 import CentroNotificaciones from './CentroNotificaciones';
-import { generateAiRoutine, subscribeAiRoutineHistory } from '../../firebase/aiRoutineService';
-import { suscribirCatalogoMaquinas } from '../../firebase/mantenimiento';
+import { generarRutinaIA, suscribirHistorialRutinaIA } from '../../backend/servicioRutinasIA';
+import { suscribirCatalogoMaquinas } from '../../backend/mantenimiento';
 import FormularioReporteEnChat from '../mantenimiento/FormularioReporteEnChat';
 
 const GOAL_OPTIONS = [
@@ -377,7 +377,7 @@ function SoporteWhatsApp() {
             }
 
             setAiHistoryLoading(true);
-            unsubscribeHistory = subscribeAiRoutineHistory(
+            unsubscribeHistory = suscribirHistorialRutinaIA(
                 user.uid,
                 (entries) => {
                     setAiHistory(entries);
@@ -654,7 +654,7 @@ function SoporteWhatsApp() {
                 .join('\n')
                 .trim();
 
-            const response = await generateAiRoutine({
+            const response = await generarRutinaIA({
                 ...aiSettings,
                 daysPerWeek: safeDaysPerWeek,
                 sessionLength: safeSessionLength,
@@ -928,7 +928,7 @@ function SoporteWhatsApp() {
 
                             <div
                                 ref={chatBodyRef}
-                                className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),linear-gradient(180deg,#0b141a_0%,#0f1a20_100%)] px-3 py-4 md:px-6"
+                                className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.12),transparent_55%),linear-gradient(180deg,#0b141a_0%,#0f1a20_100%)] px-3 py-4 md:px-6"
                             >
                                 {activeChat === 'ia' && aiHistoryLoading && aiMessages.length === 0 && (
                                     <div className="mx-auto mt-10 flex max-w-sm items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-300">

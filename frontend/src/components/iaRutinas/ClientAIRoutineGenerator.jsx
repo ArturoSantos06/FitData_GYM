@@ -6,7 +6,7 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { auth } from '../../firebase/config';
-import { buildRoutinePrompt, generateAiRoutine, subscribeAiRoutineHistory } from '../../firebase/aiRoutineService';
+import { construirPromptRutina, generarRutinaIA, suscribirHistorialRutinaIA } from '../../backend/servicioRutinasIA';
 
 import VideoYouTube from './VideoYouTube';
 
@@ -160,7 +160,7 @@ function parsearRutinaIA(texto) {
 function ClientAIRoutineGenerator() {
     const [form, setForm] = useState(INITIAL_FORM);
     const [result, setResult] = useState(null);
-    const [promptPreview, setPromptPreview] = useState(buildRoutinePrompt(INITIAL_FORM));
+    const [promptPreview, setPromptPreview] = useState(construirPromptRutina(INITIAL_FORM));
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState('');
     const [history, setHistory] = useState([]);
@@ -202,7 +202,7 @@ function ClientAIRoutineGenerator() {
             }
 
             setHistoryLoading(true);
-            unsubscribeHistory = subscribeAiRoutineHistory(
+            unsubscribeHistory = suscribirHistorialRutinaIA(
                 user.uid,
                 (entries) => {
                     setHistory(entries);
@@ -230,7 +230,7 @@ function ClientAIRoutineGenerator() {
     const updateField = (field, value) => {
         setForm((prev) => {
             const nextForm = { ...prev, [field]: value };
-            setPromptPreview(buildRoutinePrompt(nextForm));
+            setPromptPreview(construirPromptRutina(nextForm));
             return nextForm;
         });
     };
@@ -241,9 +241,9 @@ function ClientAIRoutineGenerator() {
         setError('');
 
         try {
-            const promptMio = buildRoutinePrompt(form);
+            const promptMio = construirPromptRutina(form);
 
-            const response = await generateAiRoutine({
+            const response = await generarRutinaIA({
                 ...form,
                 goalLabel: selectedGoalLabel,
                 levelLabel: selectedLevelLabel,
@@ -267,7 +267,7 @@ function ClientAIRoutineGenerator() {
         setForm(INITIAL_FORM);
         setResult(null);
         setError('');
-        setPromptPreview(buildRoutinePrompt(INITIAL_FORM));
+        setPromptPreview(construirPromptRutina(INITIAL_FORM));
     };
 
     const displayedRoutineText = activeEntry?.routineText || result?.routineText || '';
@@ -388,7 +388,7 @@ function ClientAIRoutineGenerator() {
                             ) : history.length === 0 ? (
                                 <div className="mt-4 rounded-2xl border border-dashed border-slate-700 bg-slate-950/70 px-4 py-8 text-center text-sm text-slate-400">Todavía no hay rutinas generadas.</div>
                             ) : (
-                                <div className="mt-4 space-y-2 max-h-[240px] overflow-auto pr-1">
+                                <div className="mt-4 space-y-2 max-h-60 overflow-auto pr-1">
                                     {history.map((entry) => {
                                         const isActive = entry.id === (activeEntry?.id || selectedHistoryId);
                                         return (

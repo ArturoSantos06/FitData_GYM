@@ -6,7 +6,7 @@ import {
   getTrainerRoutineByMember,
   onAuthChanged,
   searchExerciseCatalog,
-  uploadRoutineAttachment,
+  subirAdjuntoRutina,
 } from './firebase';
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,7 +91,7 @@ export async function guardarRutinaMiembro({ member, memberId, memberName, routi
   const skippedFiles = [];
   const newFiles = files.filter((f) => f instanceof File);
   for (const file of newFiles) {
-    const uploadResult = await uploadRoutineAttachment(file, String(memberId), currentTrainer.uid);
+    const uploadResult = await subirAdjuntoRutina(file, String(memberId), currentTrainer.uid);
     if (!uploadResult.success) {
       if (uploadResult.code === 'storage/unauthorized') {
         skippedFiles.push(file.name);

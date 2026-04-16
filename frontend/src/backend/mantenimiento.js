@@ -8,8 +8,8 @@ import {
     serverTimestamp,
     updateDoc,
 } from 'firebase/firestore';
-import { auth, db } from './config';
-import { uploadImage } from './storage';
+import { auth, db } from '../firebase/config';
+import { subirImagen } from './almacenamiento';
 
 const COLECCION_MAQUINAS = 'catalogo_maquinas';
 const COLECCION_REPORTES = 'reportes_mantenimiento';
@@ -33,12 +33,12 @@ const normalizarErrorMantenimiento = (error) => {
 
 export async function subirFotoMaquina(file) {
     const safeName = `${Date.now()}_${normalizarTexto(file?.name || 'maquina.jpg')}`;
-    return uploadImage(file, `mantenimiento/maquinas/${safeName}`);
+    return subirImagen(file, `mantenimiento/maquinas/${safeName}`);
 }
 
 export async function subirFotoReporte(file) {
     const safeName = `${Date.now()}_${normalizarTexto(file?.name || 'reporte.jpg')}`;
-    return uploadImage(file, `mantenimiento/reportes/${safeName}`);
+    return subirImagen(file, `mantenimiento/reportes/${safeName}`);
 }
 
 export async function crearMaquinaCatalogo({ nombre, fotoUrl }) {

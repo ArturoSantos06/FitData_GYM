@@ -3,7 +3,7 @@ import {
     crearMaquinaCatalogo,
     marcarReporteResuelto,
     subirFotoMaquina,
-} from '../../firebase/mantenimiento';
+} from '../../backend/mantenimiento';
 import TarjetaReporteMantenimiento from './TarjetaReporteMantenimiento';
 
 function VistaAdminMantenimiento({ reportes = [] }) {

@@ -135,17 +135,17 @@ export {
 
 // Export Storage services
 export {
-  uploadImage,
-  deleteImage,
-  uploadProductImage,
-  uploadMembershipImage,
-  uploadMemberAvatar,
-  uploadRoutineAttachment
-} from './storage';
+  subirImagen,
+  eliminarImagen,
+  subirImagenProducto,
+  subirImagenMembresia,
+  subirAvatarMiembro,
+  subirAdjuntoRutina
+} from '../backend/almacenamiento';
 
 export {
-  uploadDietDocument,
-  downloadDietDocument
-} from './storage';
+  subirDocumentoDieta,
+  descargarDocumentoDieta
+} from '../backend/almacenamiento';
 
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createProduct, uploadProductImage } from '../../firebase';
+import { createProduct, subirImagenProducto } from '../../firebase';
 
 const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
@@ -47,7 +47,7 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
             let imagenUrl = null;
             if (nuevoProd.imagen) {
                 console.log('📷 Subiendo imagen:', nuevoProd.imagen.name);
-                const uploadResult = await uploadProductImage(nuevoProd.imagen, productResult.id);
+                const uploadResult = await subirImagenProducto(nuevoProd.imagen, productResult.id);
                 
                 if (!uploadResult.success) {
                     throw new Error(`Error al subir imagen: ${uploadResult.error}`);

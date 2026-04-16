@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMembershipTypes, createMembershipType, updateMembershipType, deleteMembershipType, uploadMembershipImage } from '../../firebase';
+import { getMembershipTypes, createMembershipType, updateMembershipType, deleteMembershipType, subirImagenMembresia } from '../../firebase';
 
 // --- MODAL DE TÉRMINOS ---
 const TermsModal = ({ onClose }) => (
@@ -114,7 +114,7 @@ function AdministrarMembresias() {
       if (editingId) {
         // Update
         if (image) {
-          const uploadResult = await uploadMembershipImage(image, editingId);
+          const uploadResult = await subirImagenMembresia(image, editingId);
           if (uploadResult.success) {
             dataToSend.image = uploadResult.url;
           }
@@ -133,7 +133,7 @@ function AdministrarMembresias() {
         
         // Upload image if present
         if (image) {
-          const uploadResult = await uploadMembershipImage(image, createdId);
+          const uploadResult = await subirImagenMembresia(image, createdId);
           if (uploadResult.success) {
             dataToSend.image = uploadResult.url;
             await updateMembershipType(createdId, dataToSend);
