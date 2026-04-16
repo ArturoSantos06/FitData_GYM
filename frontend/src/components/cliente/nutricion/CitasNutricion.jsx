@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { useAppointments } from "../../../backend/useAppointments.js";
-import ModalReprogramar from '../../ModalReprogramar'; 
+import { useAppointments } from '../../../backend/useAppointments.js';
+import ModalReprogramar from '../../modales/ModalReprogramar';
 
 const CitasNutricion = () => {
     const [clienteId, setClienteId] = useState(null);
@@ -54,7 +54,7 @@ const CitasNutricion = () => {
     return (
         <div className="w-full max-w-3xl mx-auto animate-fade-in">
             <div className="mb-8">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-400">
                     Mis Citas de Nutrición
                 </h2>
                 <p className="text-slate-400 mt-2">

@@ -3,13 +3,13 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db } from '../../firebase/config';
 import { X, User, Zap } from 'lucide-react';
-import ModalAgendarTrainer from './ModalAgendarTrainer';
-import ModalDetalleEntrenador from './entrenador/seguimiento/ModalDetalleEntrenador';
-import DialogoSistemaNutri from './DialogoSistemaNutri';
+import ModalAgendarEntrenador from './ModalAgendarEntrenador';
+import ModalDetalleEntrenador from '../entrenador/seguimiento/ModalDetalleEntrenador';
+import DialogoSistemaNutri from '../DialogoSistemaNutri';
 
-const ModalExpedienteTrainer = ({ miembro, onClose }) => {
+const ModalExpedienteEntrenador = ({ miembro, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewingEntreno, setViewingEntreno] = useState(null);
   const [dialog, _setDialog] = useState(null);
@@ -38,10 +38,8 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-[#1e293b] w-full max-w-6xl rounded-[2.5rem] border border-slate-700 flex flex-col md:flex-row h-[90vh] overflow-hidden shadow-2xl relative">
         
-        {/* PANEL IZQUIERDO */}
         <div className="w-full md:w-80 p-8 bg-[#111827] border-r border-slate-800/50 flex flex-col">
           <div className="flex justify-between items-center mb-8">
-            {/* TÍTULO MODIFICADO A AGENDA */}
             <h2 className="font-black text-2xl tracking-tighter italic text-white uppercase">AGEN<span className="text-cyan-400">DA</span></h2>
             <button onClick={onClose} className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
@@ -52,16 +50,14 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
              </div>
              <div className="text-lg font-black text-white uppercase leading-tight">
                 {miembro.nombre} <br/>
-                {/* APELLIDO AHORA EN CYAN */}
                 <span className="text-cyan-400 text-sm font-bold opacity-80">{miembro.apellido}</span>
              </div>
              <div className="mt-3 px-3 py-1 bg-slate-800/80 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-700">
-                {miembro.edad ? `${miembro.edad} AÑOS` : "ATLETA"}
+                {miembro.edad ? `${miembro.edad} AÑOS` : 'ATLETA'}
              </div>
           </div>
 
           <div className="flex-1 flex flex-col space-y-3">
-             {/* ICONO Y TEXTO AHORA EN CYAN */}
              <label className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
                 <Zap size={12} /> Detalles de la Rutina
              </label>
@@ -69,15 +65,12 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
                 value={rutinaPrevia}
                 onChange={(e) => setRutinaPrevia(e.target.value)}
                 placeholder="Ej: 4x12 Sentadillas, 3x15 Press Banca..."
-                // FOCUS BORDER AHORA EN CYAN
                 className="w-full flex-1 bg-[#0f172a] border border-slate-800 rounded-3xl p-5 text-slate-200 text-sm outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all resize-none shadow-inner font-medium"
              />
           </div>
         </div>
 
-        {/* PANEL DERECHO (CALENDARIO) */}
         <div className="flex-1 p-8 bg-[#0f172a] overflow-y-auto">
-          {/* ESTILOS DEL CALENDARIO MODIFICADOS */}
           <style>{`
             .fc td, .fc th, .fc .fc-scrollgrid { border-color: #1e293b !important; }
             .fc-daygrid-day-number { color: #e2e8f0 !important; font-weight: 900 !important; padding: 12px !important; font-size: 0.9rem !important;}
@@ -110,7 +103,7 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
         </div>
 
         {selectedDate && (
-          <ModalAgendarTrainer 
+          <ModalAgendarEntrenador 
             fecha={selectedDate} 
             miembro={miembro} 
             rutinaInicial={rutinaPrevia}
@@ -126,4 +119,4 @@ const ModalExpedienteTrainer = ({ miembro, onClose }) => {
   );
 };
 
-export default ModalExpedienteTrainer;
+export default ModalExpedienteEntrenador;

@@ -3,10 +3,10 @@ import { db, auth } from '../../../firebase/config';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
 import { getCurrentUser, waitForAuthReady, createTrainerServiceSale, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../../../firebase';
-import ConfirmModal from '../../ConfirmModal';
-import SuccessModal from '../../SuccessModal';
-import ErrorModal from '../../ErrorModal';
-import ModalPagoServicioEntrenador from '../../ModalPagoServicioEntrenador';
+import ModalConfirmacion from '../../modales/ModalConfirmacion';
+import ModalExito from '../../modales/ModalExito';
+import ErrorModal from '../../modales/ErrorModal';
+import ModalPagoServicioEntrenador from '../../modales/ModalPagoServicioEntrenador';
 
 const SERVICE_TYPE_LABELS = {
   PERSONAL: 'Personal',
@@ -534,7 +534,7 @@ const ListaEntrenadores = () => {
         </div>
       )}
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(pendingTrainerSelection)}
         onClose={() => {
           if (!assigning) {
@@ -578,7 +578,7 @@ const ListaEntrenadores = () => {
         }}
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(pendingRating)}
         onClose={() => setPendingRating(null)}
         onConfirm={confirmRateTrainer}
@@ -590,7 +590,7 @@ const ListaEntrenadores = () => {
         variant="info"
       />
 
-      <SuccessModal
+      <ModalExito
         isOpen={successModal.isOpen}
         onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
         title={successModal.title}

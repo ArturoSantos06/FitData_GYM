@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Salad } from 'lucide-react';
-import ConfirmModal from '../../ConfirmModal';
-import ErrorModal from '../../ErrorModal';
-import SuccessModal from '../../SuccessModal';
+import ModalConfirmacion from '../../modales/ModalConfirmacion';
+import ErrorModal from '../../modales/ErrorModal';
+import ModalExito from '../../modales/ModalExito';
 import ClientesConServicioNutricionista from './ClientesConServicioNutricionista';
 import NutricionistasGestion from './NutricionistasGestion';
 import { useGestionNutriologos } from './useGestionNutriologos';
@@ -108,7 +108,7 @@ function GestionNutriologos() {
         )}
       </div>
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(accionPendiente)}
         onClose={() => {
           if (!idNutriologoDesactivando && !idNutriologoReactivando) {
@@ -123,7 +123,7 @@ function GestionNutriologos() {
         confirmLabel={accionPendiente?.type === 'deactivate' ? 'Sí, Descontratar' : 'Sí, Recontratar'}
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(desvinculacionPendiente)}
         onClose={() => {
           if (!idClienteDesvinculando) {
@@ -145,7 +145,7 @@ function GestionNutriologos() {
         message={modalError.message}
       />
 
-      <SuccessModal
+      <ModalExito
         isOpen={modalExito.isOpen}
         onClose={() => setModalExito({ isOpen: false, title: '', message: '', subMessage: '' })}
         title={modalExito.title}

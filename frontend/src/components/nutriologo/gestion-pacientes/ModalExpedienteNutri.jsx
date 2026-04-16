@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { X, User, ClipboardEdit } from 'lucide-react';
-import ModalAgendarNutri from '../../ModalAgendarNutri';
+import ModalAgendarNutri from '../../modales/ModalAgendarNutri';
 import ModalDetalleNutri from './ModalDetalleNutri';
 import DialogoSistemaNutri from '../../DialogoSistemaNutri';
 

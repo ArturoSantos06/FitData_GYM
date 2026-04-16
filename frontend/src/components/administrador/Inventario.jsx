@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from '../SuccessModal';
+import ModalExito from '../modales/ModalExito';
 import { getProducts, getInventoryEntries, createInventoryEntry, getCurrentUser, getUser } from '../../firebase';
 
 function Inventario() {
@@ -200,7 +200,7 @@ function Inventario() {
       )}
 
       {/* MODAL DE ÉXITO */}
-      <SuccessModal 
+      <ModalExito 
         isOpen={showSuccess}
         onClose={() => setShowSuccess(false)}
         title="¡Actualizado!"

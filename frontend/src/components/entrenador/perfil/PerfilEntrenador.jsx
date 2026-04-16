@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import SuccessModal from '../../SuccessModal';
+import ModalExito from '../../modales/ModalExito';
 import FormularioCambioContrasenaEntrenador from './FormularioCambioContrasenaEntrenador';
 import FormularioDatosPerfilEntrenador from './FormularioDatosPerfilEntrenador';
 import MenuPerfilEntrenador from './MenuPerfilEntrenador';
@@ -49,7 +49,7 @@ export default function PerfilEntrenador() {
 
   return (
     <div className="w-full flex justify-center">
-      <SuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} title="Éxito" message={successMessage} />
+      <ModalExito isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} title="Éxito" message={successMessage} />
 
       {vistaActual === 'menu' && <MenuPerfilEntrenador usuario={usuario} onNavigate={setVistaActual} />}
 

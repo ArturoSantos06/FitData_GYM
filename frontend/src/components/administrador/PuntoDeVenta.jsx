@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import TarjetaProducto from './TarjetaProducto';
-import ModalNuevoProducto from '../ModalNuevoProducto';
-import ModalEditarProducto from '../ModalEditarProducto';
+import ModalNuevoProducto from '../modales/ModalNuevoProducto';
+import ModalEditarProducto from '../modales/ModalEditarProducto';
 import HistorialVentas from './HistorialVentas';
-import ConfirmModal from '../ConfirmModal';
-import SuccessModal from '../SuccessModal';
-import ErrorModal from '../ErrorModal';
+import ModalConfirmacion from '../modales/ModalConfirmacion';
+import ModalExito from '../modales/ModalExito';
+import ErrorModal from '../modales/ErrorModal';
 import { getProducts, getUsers, deleteProduct, createSale } from '../../firebase'; 
 
 function PuntoDeVenta() {
@@ -292,7 +292,7 @@ function PuntoDeVenta() {
     return (
         <div className="p-4 md:p-8 bg-slate-900 min-h-screen text-white">
             
-            <ConfirmModal 
+            <ModalConfirmacion 
                 isOpen={showDeleteProductModal}
                 onClose={() => setShowDeleteProductModal(false)}
                 onConfirm={ejecutarEliminacionDB}
@@ -300,7 +300,7 @@ function PuntoDeVenta() {
                 message="Esta acción eliminará el producto del inventario permanentemente."
             />
 
-            <ConfirmModal 
+            <ModalConfirmacion 
                 isOpen={showDeleteCartModal}
                 onClose={() => setShowDeleteCartModal(false)}
                 onConfirm={confirmarBorrarCarrito}
@@ -308,7 +308,7 @@ function PuntoDeVenta() {
                 message="¿Estás seguro de que quieres quitar este producto de la venta actual?"
             />
 
-            <SuccessModal 
+            <ModalExito 
                 isOpen={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
                 title="¡Venta Exitosa!"

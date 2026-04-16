@@ -1,9 +1,9 @@
 import React from 'react';
 import { Clock, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
 import { useGestionEntrenadores } from './useGestionEntrenadores';
-import ConfirmModal from '../../ConfirmModal';
-import ErrorModal from '../../ErrorModal';
-import SuccessModal from '../../SuccessModal';
+import ModalConfirmacion from '../../modales/ModalConfirmacion';
+import ErrorModal from '../../modales/ErrorModal';
+import ModalExito from '../../modales/ModalExito';
 import ClientesConServicioEntrenador from './ClientesConServicioEntrenador';
 import EntrenadoresYPagos from './EntrenadoresYPagos';
 import ModalEntradaPago from './ModalEntradaPago';
@@ -143,7 +143,7 @@ function GestionEntrenadores() {
       </div>
 
       {/* Modales */}
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(gestion.accionPendiente)}
         onClose={() => {
           if (!gestion.idEntrenadorDesactivando && !gestion.idEntrenadorReactivando) {
@@ -158,7 +158,7 @@ function GestionEntrenadores() {
         confirmLabel={gestion.accionPendiente?.type === 'deactivate' ? 'Sí, Descontratar' : 'Sí, Recontratar'}
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(gestion.servicioPendienteDesvincular)}
         onClose={() => {
           if (!gestion.idClienteDesvinculando) {
@@ -180,7 +180,7 @@ function GestionEntrenadores() {
         message={gestion.modalError.message}
       />
 
-      <SuccessModal
+      <ModalExito
         isOpen={gestion.modalExito.isOpen}
         onClose={() => gestion.setModalExito({ isOpen: false, title: '', message: '', subMessage: '' })}
         title={gestion.modalExito.title}

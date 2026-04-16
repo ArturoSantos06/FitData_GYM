@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { createHealthProfile, getHealthProfileByMemberId, getMemberByEmail } from '../firebase';
+import { createHealthProfile, getHealthProfileByMemberId, getMemberByEmail } from '../../../firebase';
 
-export default function AdminHealthForm({ miembroEmail, onClose, onSaved }) {
+export default function FormularioSaludAdmin({ miembroEmail, onClose, onSaved }) {
   const [memberId, setMemberId] = useState(null);
   const [memberName, setMemberName] = useState('');
   const [loading, setLoading] = useState(true);

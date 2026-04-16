@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import ErrorModal from "../../ErrorModal";
-import SuccessModal from "../../SuccessModal";
-import AdminHealthForm from "../../AdminHealthForm";
+import ErrorModal from "../../modales/ErrorModal";
+import ModalExito from "../../modales/ModalExito";
+import FormularioSaludAdmin from "./FormularioSaludAdmin";
 import RegistrarEntrenador from "./RegistrarEntrenador";
 import RegistrarNutriologo from "./RegistrarNutriologo";
 import { registerClientByAdmin, createMembershipSale, getSaleByFolio } from "../../../firebase";
@@ -257,7 +257,7 @@ function RegistrarUsuario({ onUserRegistered }) {
       <div className="relative mx-auto max-w-7xl bg-linear-to-br from-slate-800/90 via-slate-900/90 to-slate-950/90 p-5 md:p-7 text-gray-100 rounded-2xl">
         <ErrorModal isOpen={mostrarModalError} onClose={() => setMostrarModalError(false)} title={tituloError} message={mensajeError} />
 
-        <SuccessModal
+        <ModalExito
           isOpen={mostrarModalExito}
           onClose={() => { setMostrarModalExito(false); setMostrarFormulaioSalud(false); }}
           title="¡Registro Exitoso!"
@@ -267,14 +267,14 @@ function RegistrarUsuario({ onUserRegistered }) {
           {mostrarFormulaioSalud && (
             <div className="mt-2">
               <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
-              <AdminHealthForm
+              <FormularioSaludAdmin
                 miembroEmail={emailReciente}
                 onClose={() => { setMostrarFormulaioSalud(false); setMostrarModalExito(false); }}
                 onSaved={() => { if (onUserRegistered) onUserRegistered(); }}
               />
             </div>
           )}
-        </SuccessModal>
+        </ModalExito>
 
         <div className="mb-8 relative">
           <div className="absolute -top-8 left-0 w-96 h-24 bg-linear-to-r from-blue-500/20 via-cyan-500/20 to-blue-500/20 blur-3xl rounded-full" />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from '../SuccessModal';
+import ModalExito from '../modales/ModalExito';
 import { getUsers, getMembershipTypes, assignMembership } from '../../firebase';
 
 // MODAL DE RENOVACIÓNV 
@@ -177,7 +177,7 @@ function AsignarMembresia({ onSuccess }) {
       
       {conflictData && <RenewModal data={conflictData} onCancel={() => setConflictData(null)} onConfirm={() => submitAssignment(true)} />}
       
-      <SuccessModal 
+      <ModalExito 
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="¡Operación Exitosa!"

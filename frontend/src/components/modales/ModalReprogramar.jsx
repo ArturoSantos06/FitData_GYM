@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
-import { useAppointments } from "../backend/useAppointments.js";
+import { useAppointments } from '../../backend/useAppointments.js';
 
 const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
     const { verificarHorariosDisponibles, reprogramarCita } = useAppointments();
@@ -26,7 +26,7 @@ const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
         };
 
         buscarDisponibilidad();
-    }, [fecha, citaSeleccionada.nutriologoId]); 
+    }, [fecha, citaSeleccionada.nutriologoId]);
 
     // Guardar cambios
     const handleGuardar = async () => {
@@ -39,14 +39,14 @@ const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
         if (exito) {
             onSuccess(); // Cerramos el modal si todo salió bien
         } else {
-            alert("Hubo un error al guardar. Intenta de nuevo.");
+            alert('Hubo un error al guardar. Intenta de nuevo.');
         }
     };
 
     const hoy = new Date().toISOString().split('T')[0];
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-100 p-4 backdrop-blur-sm animate-fade-in">
             <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-700 shadow-2xl relative">
                 
                 {/* Botón cerrar */}
@@ -91,7 +91,7 @@ const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
                     {fecha && !cargandoHorarios && horariosLibres.length === 0 && (
                         <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400 text-sm">
                             <AlertCircle size={16} /> 
-                            {new Date(fecha + "T00:00:00").getDay() === 0 ? "El gimnasio está cerrado los domingos." : "No hay horarios libres este día."}
+                            {new Date(fecha + 'T00:00:00').getDay() === 0 ? 'El gimnasio está cerrado los domingos.' : 'No hay horarios libres este día.'}
                         </div>
                     )}
 

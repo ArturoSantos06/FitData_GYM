@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import ErrorModal from '../../ErrorModal';
-import SuccessModal from '../../SuccessModal';
+import ErrorModal from '../../modales/ErrorModal';
+import ModalExito from '../../modales/ModalExito';
 import { registerTrainerByAdmin, updateUser, getUserByEmail } from '../../../firebase';
 
 function RegistrarEntrenador({ onUserRegistered, tipoRegistro = 'entrenador', onTipoRegistroChange = null }) {
@@ -197,7 +197,7 @@ function RegistrarEntrenador({ onUserRegistered, tipoRegistro = 'entrenador', on
       <div className="relative mx-auto max-w-7xl bg-linear-to-br from-slate-800/90 via-slate-900/90 to-slate-950/90 p-5 md:p-7 text-gray-100 rounded-2xl">
         <ErrorModal isOpen={mostrarModalError} onClose={() => setMostrarModalError(false)} title={tituloError} message={mensajeError} />
 
-        <SuccessModal
+        <ModalExito
           isOpen={mostrarModalExito}
           onClose={() => setMostrarModalExito(false)}
           title="¡Registro Exitoso!"

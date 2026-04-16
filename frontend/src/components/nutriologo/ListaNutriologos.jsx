@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../firebase/config'; 
 import { collection, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
-import ConfirmModal from '../ConfirmModal';
-import SuccessModal from '../SuccessModal';
+import ModalConfirmacion from '../modales/ModalConfirmacion';
+import ModalExito from '../modales/ModalExito';
 import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../../firebase';
 
 const ListaNutriologos = () => {
@@ -219,7 +219,7 @@ const ListaNutriologos = () => {
 
   return (
     <div className="space-y-6">
-      <SuccessModal
+      <ModalExito
         isOpen={successModal.isOpen}
         onClose={() => setSuccessModal({ isOpen: false, title: '', message: '', subMessage: '' })}
         title={successModal.title}
@@ -228,7 +228,7 @@ const ListaNutriologos = () => {
         overlayClassName="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={showSelectModal}
         onClose={() => {
           setShowSelectModal(false);
@@ -242,7 +242,7 @@ const ListaNutriologos = () => {
         overlayClassName="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={showRateModal}
         onClose={() => {
           if (ratingSubmitting) return;

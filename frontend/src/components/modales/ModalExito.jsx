@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 
-const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children, overlayClassName = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in' }) => {
+const ModalExito = ({ isOpen, onClose, title, message, subMessage, children, overlayClassName = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in' }) => {
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
 
@@ -48,4 +48,4 @@ const SuccessModal = ({ isOpen, onClose, title, message, subMessage, children, o
   );
 };
 
-export default SuccessModal;
+export default ModalExito;

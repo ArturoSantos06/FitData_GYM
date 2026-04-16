@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AssistantWidget from './asistente/WidgetAsistente';
+import AssistantWidget from '../asistente/WidgetAsistente';
 
 // --- MODAL DE SELECCIÓN ---
 function UserSelectionModal({ onClose }) {

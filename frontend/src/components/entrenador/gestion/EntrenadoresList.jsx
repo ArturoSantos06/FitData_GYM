@@ -1,9 +1,9 @@
 ﻿import React from 'react';
 import { CheckCircle, Dumbbell } from 'lucide-react';
-import ConfirmModal from '../../ConfirmModal';
-import SuccessModal from '../../SuccessModal';
-import ErrorModal from '../../ErrorModal';
-import ModalPagoServicioEntrenador from '../../ModalPagoServicioEntrenador';
+import ModalConfirmacion from '../../modales/ModalConfirmacion';
+import ModalExito from '../../modales/ModalExito';
+import ErrorModal from '../../modales/ErrorModal';
+import ModalPagoServicioEntrenador from '../../modales/ModalPagoServicioEntrenador';
 import TarjetaEntrenadorServicio from './TarjetaEntrenadorServicio';
 import { useServicioEntrenadores } from '../../../backend/useServicioEntrenadores';
 import { ETIQUETAS_TIPO_SERVICIO } from '../../../backend/utilidadesServicioEntrenador';
@@ -83,7 +83,7 @@ export default function EntrenadoresList() {
         </div>
       )}
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(estado.pendingTrainerSelection)}
         onClose={() => { if (!estado.assigning) estado.setPendingTrainerSelection(null); }}
         onConfirm={estado.confirmarSeleccionEntrenador}
@@ -118,7 +118,7 @@ export default function EntrenadoresList() {
         }}
       />
 
-      <ConfirmModal
+      <ModalConfirmacion
         isOpen={Boolean(estado.pendingRating)}
         onClose={() => estado.setPendingRating(null)}
         onConfirm={estado.confirmarCalificacion}
@@ -128,7 +128,7 @@ export default function EntrenadoresList() {
         variant="info"
       />
 
-      <SuccessModal
+      <ModalExito
         isOpen={estado.successModal.isOpen}
         onClose={() => estado.setSuccessModal({ isOpen: false, title: '', message: '' })}
         title={estado.successModal.title}
