@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { checkInMember, checkOutMember, getAttendances } from '../firebase';
+import { checkInMember, checkOutMember, getAttendances } from '../../firebase';
 
 const CheckInOut = () => {
   const [scanning, setScanning] = useState(false);

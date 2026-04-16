@@ -24,7 +24,7 @@ const RenewModal = ({ data, onConfirm, onCancel }) => {
   );
 };
 
-function AssignMembership({ onSuccess }) {
+function AsignarMembresia({ onSuccess }) {
   const [users, setUsers] = useState([]);
   const [membershipTypes, setMembershipTypes] = useState([]);
   const [selectedUser, setSelectedUser] = useState('');
@@ -337,4 +337,4 @@ function AssignMembership({ onSuccess }) {
   );
 }
 
-export default AssignMembership;
+export default AsignarMembresia;
