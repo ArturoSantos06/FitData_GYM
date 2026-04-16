@@ -1,8 +1,8 @@
 ﻿import React from 'react';
 import SuccessModal from '../../SuccessModal';
-import FormularioCambioContrasenaEntrenador from './componentes/FormularioCambioContrasenaEntrenador';
-import FormularioDatosPerfilEntrenador from './componentes/FormularioDatosPerfilEntrenador';
-import MenuPerfilEntrenador from './componentes/MenuPerfilEntrenador';
+import FormularioCambioContrasenaEntrenador from './FormularioCambioContrasenaEntrenador';
+import FormularioDatosPerfilEntrenador from './FormularioDatosPerfilEntrenador';
+import MenuPerfilEntrenador from './MenuPerfilEntrenador';
 import { usePerfilEntrenador } from '../../../backend/usePerfilEntrenador';
 
 function EstadoCargaPerfil() {

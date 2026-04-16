@@ -21,7 +21,7 @@ function FormularioCambioContrasenaEntrenador({ onBack }) {
     try {
       setCargando(true);
       const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
-      const { auth } = await import('../../../../firebase/config');
+      const { auth } = await import('../../../firebase/config');
       const user = auth.currentUser;
       if (!user?.email) throw new Error('No se pudo identificar la sesión actual');
 

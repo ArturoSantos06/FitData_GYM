@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { loginUser, getUser, getUserByEmail, logoutUser } from '../../firebase';
+import { loginUser, getUser, getUserByEmail, logoutUser } from '../../../firebase';
 
 function EntrenadorLogin() {
   const navigate = useNavigate();

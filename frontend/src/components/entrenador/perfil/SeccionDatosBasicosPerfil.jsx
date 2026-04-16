@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building2, DollarSign, Hash, Mail, Phone, User } from 'lucide-react';
-import { OPCIONES_CONTRATO } from '../../../../backend/perfilEntrenadorUtilidades';
+import { OPCIONES_CONTRATO } from '../../../backend/perfilEntrenadorUtilidades';
 
 function SeccionDatosBasicosPerfil({ form, trainerCode, inputClass, labelClass, onChange }) {
   return (

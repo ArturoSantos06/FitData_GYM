@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../../../firebase/config';
-import { getAllMembers, ensureUserClaim, getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../../../../firebase';
-import { CLAVE_HIDDEN_CLIENTES, EVENTO_VISIBILIDAD_CLIENTES, filtrarClientesOcultos } from '../../../../backend/visibilidadClientes';
+import { db } from '../../../firebase/config';
+import { getAllMembers, ensureUserClaim, getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../../../firebase';
+import { CLAVE_HIDDEN_CLIENTES, EVENTO_VISIBILIDAD_CLIENTES, filtrarClientesOcultos } from '../../../backend/visibilidadClientes';
 
 const normalizarLlave = (valor) => String(valor || '').trim().toLowerCase();
 

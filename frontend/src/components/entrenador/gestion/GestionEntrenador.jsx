@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import BitacoraEntrenador from '../seguimiento/BitacoraEntrenador';
 import HealthProfilesCoach from '../../HealthProfilesCoach';
-import MenuGestionEntrenador from './componentes/MenuGestionEntrenador';
-import PanelGestionRutinas from './componentes/PanelGestionRutinas';
+import MenuGestionEntrenador from './MenuGestionEntrenador';
+import PanelGestionRutinas from './PanelGestionRutinas';
 import DesvinculacionClientesEntrenador from './DesvinculacionClientesEntrenador';
 
 function VistaSecundariaGestion({ vistaActual, onVolver }) {

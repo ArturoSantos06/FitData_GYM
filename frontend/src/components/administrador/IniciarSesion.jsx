@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, getUser, getUserByEmail, createUser, logoutUser } from '../../firebase';
+import { loginUser, getUser, getUserByEmail, createUser, updateUser, logoutUser } from '../../firebase';
 
 function IniciarSesion({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -26,29 +26,37 @@ function IniciarSesion({ onLogin }) {
       }
 
       const { user } = result;
+
+      const ensureAdminProfile = async () => {
+        const adminPayload = {
+          email: user.email,
+          displayName: user.displayName || email.split('@')[0],
+          role: 'admin',
+          authUid: user.uid,
+          isActive: true,
+        };
+
+        const updateResult = await updateUser(user.uid, adminPayload);
+        if (!updateResult?.success) {
+          const createResult = await createUser(user.uid, adminPayload);
+          if (!createResult?.success) {
+            throw new Error(createResult?.error || updateResult?.error || 'No se pudo sincronizar el perfil de administrador');
+          }
+        }
+      };
       
       const userDoc = await getUser(user.uid);
       const roleFromUid = userDoc.success ? userDoc.data?.role : null;
 
       if (roleFromUid !== 'admin') {
         if (user.email === 'admin@fitdata.gym') {
-          await createUser(user.uid, {
-            email: user.email,
-            displayName: user.displayName || email.split('@')[0],
-            role: 'admin'
-          });
+          await ensureAdminProfile();
         } else {
           const emailDoc = await getUserByEmail(user.email);
           const roleFromEmail = emailDoc.success ? emailDoc.data?.role : null;
 
           if (roleFromEmail === 'admin') {
-            if (!userDoc.success) {
-              await createUser(user.uid, {
-                email: user.email,
-                displayName: user.displayName || email.split('@')[0],
-                role: 'admin'
-              });
-            }
+            await ensureAdminProfile();
           } else {
             await logoutUser();
             throw new Error('Acceso denegado: solo administradores pueden acceder aquí');
@@ -76,6 +84,8 @@ function IniciarSesion({ onLogin }) {
           : msg;
       
       setError(errorMessage);
+      localStorage.removeItem('firebaseUser');
+      localStorage.removeItem('token');
       console.error(err);
       setIsLoading(false); 
     }

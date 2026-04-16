@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import BannerMensajesRutina from './componentes/BannerMensajesRutina';
-import CatalogoEjerciciosRutina from './componentes/CatalogoEjerciciosRutina';
-import SeccionArchivosRutina from './componentes/SeccionArchivosRutina';
-import SelectorDiasRutina from './componentes/SelectorDiasRutina';
+import BannerMensajesRutina from './BannerMensajesRutina';
+import CatalogoEjerciciosRutina from './CatalogoEjerciciosRutina';
+import SeccionArchivosRutina from './SeccionArchivosRutina';
+import SelectorDiasRutina from './SelectorDiasRutina';
 import SeccionListaEjercicios from './SeccionListaEjercicios';
 import useGuardadoRutina from '../../../backend/useGuardadoRutina';
 import useRutinaCargaYEdicion from '../../../backend/useRutinaCargaYEdicion';

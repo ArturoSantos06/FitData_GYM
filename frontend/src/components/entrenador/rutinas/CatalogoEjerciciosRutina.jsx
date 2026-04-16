@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
-import { traducirEtiqueta, traducirTextoEjercicio } from '../../../../backend/utilidadesRutinaEntrenador';
+import { traducirEtiqueta, traducirTextoEjercicio } from '../../../backend/utilidadesRutinaEntrenador';
 
 function CatalogoEjerciciosRutina({
   activeDay,

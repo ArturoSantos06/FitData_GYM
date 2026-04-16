@@ -1,7 +1,7 @@
 import React from 'react';
-import BuscadorEjerciciosRapido from './componentes/BuscadorEjerciciosRapido';
-import PestanasDiasRutina from './componentes/PestanasDiasRutina';
-import TarjetaEjercicioRutina from './componentes/TarjetaEjercicioRutina';
+import BuscadorEjerciciosRapido from './BuscadorEjerciciosRapido';
+import PestanasDiasRutina from './PestanasDiasRutina';
+import TarjetaEjercicioRutina from './TarjetaEjercicioRutina';
 
 const toSpanishLabel = (LABEL_TRANSLATIONS, value) => {
     if (!value) return '';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { dividirNombre, normalizarTipoContrato } from '../../../../backend/perfilEntrenadorUtilidades';
+import { dividirNombre, normalizarTipoContrato } from '../../../backend/perfilEntrenadorUtilidades';
 import SeccionDatosBasicosPerfil from './SeccionDatosBasicosPerfil';
 import SeccionServiciosPerfil from './SeccionServiciosPerfil';
 import SeccionFiscalBancariaPerfil from './SeccionFiscalBancariaPerfil';

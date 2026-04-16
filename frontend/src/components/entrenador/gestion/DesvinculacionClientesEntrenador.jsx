@@ -6,8 +6,8 @@ import {
 } from '../../../backend/clientesDesvinculacionServicio';
 import { auth } from '../../../firebase/config';
 import { filtrarClientesOcultos, ocultarClienteLocalmente } from '../../../backend/visibilidadClientes';
-import FiltrosDesvinculacion from './componentes/FiltrosDesvinculacion';
-import TablaDesvinculacionClientes from './componentes/TablaDesvinculacionClientes';
+import FiltrosDesvinculacion from './FiltrosDesvinculacion';
+import TablaDesvinculacionClientes from './TablaDesvinculacionClientes';
 
 function DesvinculacionClientesEntrenador() {
   const [clientes, setClientes] = useState([]);
