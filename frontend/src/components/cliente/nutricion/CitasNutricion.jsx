@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAppointments } from '../../../useAppointments'; 
-import ModalReprogramar from '../../ModalReprogramar'; 
+import ModalReprogramar from '../../modales/ModalReprogramar'; 
 
 const CitasNutricion = () => {
     const [clienteId, setClienteId] = useState(null);

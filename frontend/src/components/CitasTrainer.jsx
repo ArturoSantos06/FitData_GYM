@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { db } from "../firebase/config";
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import ModalExpedienteTrainer from './ModalExpedienteTrainer';
+import ModalExpedienteEntrenador from './modales/ModalExpedienteEntrenador';
 import { User, Dumbbell, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../firebase';
@@ -255,7 +255,7 @@ const CitasTrainer = ({ embedded = false }) => {
         )}
 
         {isModalOpen && (
-          <ModalExpedienteTrainer
+          <ModalExpedienteEntrenador
             miembro={selectedMiembro}
             onClose={() => setIsModalOpen(false)}
           />

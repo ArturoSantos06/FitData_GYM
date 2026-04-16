@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { CircleHelp, Trash2 } from 'lucide-react';
 
-const ConfirmModal = ({
+const ModalConfirmacion = ({
   isOpen,
   onClose,
   onConfirm,
@@ -57,4 +57,4 @@ const ConfirmModal = ({
   );
 };
 
-export default ConfirmModal;
+export default ModalConfirmacion;

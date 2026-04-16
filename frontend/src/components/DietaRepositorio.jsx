@@ -16,9 +16,9 @@ import {
   uploadDietDocument,
   downloadDietDocument
 } from '../firebase';
-import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal';
-import ConfirmModal from './ConfirmModal';
+import ModalExito from './modales/ModalExito';
+import ErrorModal from './modales/ErrorModal';
+import ModalConfirmacion from './modales/ModalConfirmacion';
 
 const allowedTypesLabel = 'PDF, JPG o PNG';
 const maxDietFileSizeBytes = 10 * 1024 * 1024;
@@ -787,7 +787,7 @@ function DietRepositoryAdmin() {
       </section>
 
       {successModal.open && (
-        <SuccessModal
+        <ModalExito
           isOpen={successModal.open}
           title={successModal.title}
           message={successModal.message}
@@ -805,7 +805,7 @@ function DietRepositoryAdmin() {
       )}
 
       {pendingDeleteFile && (
-        <ConfirmModal
+        <ModalConfirmacion
           isOpen={Boolean(pendingDeleteFile)}
           title="Confirmar eliminación"
           message={`¿Eliminar "${(pendingDeleteFile.title || pendingDeleteFile.originalFileName || 'archivo').slice(0, 35)}${(pendingDeleteFile.title || pendingDeleteFile.originalFileName || 'archivo').length > 35 ? '...' : ''}" del expediente?`}

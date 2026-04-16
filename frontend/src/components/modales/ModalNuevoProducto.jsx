@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import ConfirmModal from './ConfirmModal';
-import { createProduct, uploadProductImage } from '../firebase';
+import { createProduct, uploadProductImage } from '../../firebase';
 
 const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', precio: '', stock: '', imagen: null });
@@ -60,7 +59,7 @@ const ModalNuevoProducto = ({ isOpen, onClose, onProductoCreado }) => {
             
             // 3. Actualizar producto con URL de imagen si fue subida
             if (imagenUrl) {
-                const { updateProduct } = await import('../firebase');
+                const { updateProduct } = await import('../../firebase');
                 await updateProduct(productResult.id, { 
                     imagen: imagenUrl,
                     image: imagenUrl 

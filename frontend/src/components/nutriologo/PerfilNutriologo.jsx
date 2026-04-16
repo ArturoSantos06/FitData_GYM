@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import SuccessModal from '../SuccessModal';
+import ModalExito from '../modales/ModalExito';
 import { ArrowLeft, ChevronRight, Hash, Lock, Mail, Phone, User } from 'lucide-react';
 import {
   getCurrentUser,
@@ -480,7 +480,7 @@ function PerfilNutriologo() {
 
   return (
     <div className="w-full flex justify-center">
-      <SuccessModal
+      <ModalExito
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="Éxito"

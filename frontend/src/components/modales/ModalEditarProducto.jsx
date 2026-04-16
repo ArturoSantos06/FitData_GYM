@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from './SuccessModal';
-import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCurrentUser } from '../firebase';
+import ModalExito from './ModalExito';
+import { updateProduct, uploadProductImage, createInventoryEntry, getUser, getCurrentUser } from '../../firebase';
 
 const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado }) => {
     const [datos, setDatos] = useState({ nombre: '', precio: '', stock: '', imagen: null });
@@ -132,7 +132,7 @@ const ModalEditarProducto = ({ isOpen, onClose, producto, onProductoActualizado 
                 </div>
             )}
 
-            <SuccessModal 
+            <ModalExito 
                 isOpen={showSuccess}
                 onClose={() => setShowSuccess(false)}
                 title="¡Actualizado!"

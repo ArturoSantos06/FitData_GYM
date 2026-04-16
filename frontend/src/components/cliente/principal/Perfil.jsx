@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from '../../SuccessModal';
+import ModalExito from '../../modales/ModalExito';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
@@ -206,7 +206,7 @@ function HealthForm() {
         if (status === 'success') {
             return (
                 <>
-                <SuccessModal
+                <ModalExito
                     isOpen={showSaveModal}
                     onClose={() => setShowSaveModal(false)}
                     title="Ficha médica"
@@ -258,7 +258,7 @@ function HealthForm() {
 
     return (
         <div className="w-full">
-            <SuccessModal
+            <ModalExito
                 isOpen={showSaveModal}
                 onClose={() => setShowSaveModal(false)}
                 title="Ficha médica"
@@ -796,7 +796,7 @@ function Perfil() {
 
     return (
         <div className="w-full flex justify-center">
-            <SuccessModal
+            <ModalExito
                 isOpen={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
                 title="Éxito"
