@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import ProductCardClient from '../ProductCardClient';
-import CentroFacturacion from '../CentroFacturacion';
+import ProductCardClient from '../../ProductCardClient';
+import CentroFacturacion from '../../CentroFacturacion';
 import {
   getProducts,
   getUser,
@@ -8,7 +8,7 @@ import {
   getUserByEmail,
   getSales,
   getCurrentUser,
-} from '../../firebase';
+} from '../../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -32,7 +32,7 @@ const resolveUserFromAuth = async (firebaseUser) => {
 
 const buildDate = (value) => value?.toDate?.() || new Date(value || 0);
 
-function ClientStore() {
+function Tienda() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
@@ -206,4 +206,4 @@ function ClientStore() {
   );
 }
 
-export default ClientStore;
+export default Tienda;

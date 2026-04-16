@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { useAppointments } from '../../useAppointments'; 
-import ModalReprogramar from '../ModalReprogramar'; 
+import { useAppointments } from '../../../useAppointments'; 
+import ModalReprogramar from '../../ModalReprogramar'; 
 
-const NutritionAppointments = () => {
+const CitasNutricion = () => {
     const [clienteId, setClienteId] = useState(null);
     const [cancelModal, setCancelModal] = useState({ isOpen: false, idToCancel: null });
     const [reprogramarModal, setReprogramarModal] = useState({ isOpen: false, citaSeleccionada: null });
@@ -135,4 +135,4 @@ const NutritionAppointments = () => {
     );
 };
 
-export default NutritionAppointments;
+export default CitasNutricion;

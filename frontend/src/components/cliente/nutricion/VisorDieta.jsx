@@ -8,7 +8,7 @@ import {
   getUser,
   getUserByAuthUid,
   downloadDietDocument,
-} from '../../firebase';
+} from '../../../firebase';
 
 const formatDate = (value) => {
   if (!value) return 'Sin fecha disponible';
@@ -27,7 +27,7 @@ const formatDate = (value) => {
   }
 };
 
-function ClientDietViewer() {
+function VisorDieta() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -237,4 +237,4 @@ function ClientDietViewer() {
   );
 }
 
-export default ClientDietViewer;
+export default VisorDieta;

@@ -229,7 +229,7 @@ function parseStoredHistory(rawValue) {
   }
 }
 
-function ClientTrainingNeedsAnalysis() {
+function AnalisisNecesidades() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isCompleted, setIsCompleted] = useState(false);
@@ -513,4 +513,4 @@ function ClientTrainingNeedsAnalysis() {
   );
 }
 
-export default ClientTrainingNeedsAnalysis;
+export default AnalisisNecesidades;

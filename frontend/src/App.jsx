@@ -19,8 +19,8 @@ import GestionNutriologos from './components/admistrador/GestionNutriologos';
 import CitasTrainer from './components/CitasTrainer';
 // Nuevos Componentes Públicos
 import LandingPage from './components/LandingPage';
-import ClientePortal from './components/ClientePortal';
-import ClienteSesion from './components/ClienteSesion';
+import Portal from './components/cliente/principal/Portal';
+import Sesion from './components/cliente/principal/Sesion';
 import AboutTeam from './components/AboutTeam';
 import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
@@ -396,8 +396,8 @@ function App() {
 
           <Route path="/equipo" element={<AboutTeam />} />
 
-          <Route path="/cliente/login" element={<ClienteSesion />} />
-          <Route path="/cliente" element={<ClientePortal />} />
+          <Route path="/cliente/login" element={<Sesion />} />
+          <Route path="/cliente" element={<Portal />} />
           <Route path="/nutriologo/login" element={<NutriologoLogin />} />
 
           {/* Ruta protegida del Nutriólogo */}

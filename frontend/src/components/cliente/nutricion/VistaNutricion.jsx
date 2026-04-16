@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
-import { getCurrentUser, waitForAuthReady, getClientNutritionistAssignment, removeNutritionistFromClient } from '../../firebase';
+import { getCurrentUser, waitForAuthReady, getClientNutritionistAssignment, removeNutritionistFromClient } from '../../../firebase';
 
-const ClientNutriView = () => {
+const VistaNutricion = () => {
     // Estados a utilizar //
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [serviceStatus, setServiceStatus] = useState('active');
@@ -172,4 +172,4 @@ const ClientNutriView = () => {
     );
 };
 
-export default ClientNutriView;
+export default VistaNutricion;

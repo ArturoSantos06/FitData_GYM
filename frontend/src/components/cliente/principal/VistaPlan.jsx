@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown, ClipboardList, Calendar } from 'lucide-react';
 
-import ClientRoutine from '../ClientRoutine';
-import ClienteEntrenador from '../ClienteEntrenador';
-import ClientNutriView from '../ClientNutriView';
-import ClientDietViewer from '../ClientDietViewer';
-import ClientTrainingNeedsAnalysis from '../ClientTrainingNeedsAnalysis';
-import NutriologosList from '../NutriologosList';
-import EntrenadoresList from '../EntrenadoresList';
-import NutritionAppointments from '../NutritionAppointments';
+import Rutina from '../entrenamiento/Rutina';
+import Entrenador from '../entrenamiento/Entrenador';
+import VistaNutricion from '../nutricion/VistaNutricion';
+import VisorDieta from '../nutricion/VisorDieta';
+import AnalisisNecesidades from '../entrenamiento/AnalisisNecesidades';
+import ListaNutriologos from '../nutricion/ListaNutriologos';
+import ListaEntrenadores from '../entrenamiento/ListaEntrenadores';
+import CitasNutricion from '../nutricion/CitasNutricion';
 
-function ClientPlanView() {
+function VistaPlan() {
   const [currentView, setCurrentView] = useState('menu');
 
   // Función botón de "Volver"
@@ -125,7 +125,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
-        <ClientRoutine />
+        <Rutina />
       </div>
     );
   }
@@ -134,7 +134,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
-        <ClienteEntrenador />
+        <Entrenador />
       </div>
     );
   }
@@ -143,7 +143,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
-        <ClientTrainingNeedsAnalysis />
+        <AnalisisNecesidades />
       </div>
     );
   }
@@ -165,7 +165,7 @@ function ClientPlanView() {
               </p>
             </div>
 
-            <EntrenadoresList />
+            <ListaEntrenadores />
           </div>
         </div>
       </div>
@@ -271,7 +271,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
-        <ClientDietViewer />
+        <VisorDieta />
       </div>
     );
   }
@@ -280,7 +280,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
-        <ClientNutriView />
+        <VistaNutricion />
       </div>
     );
   }
@@ -302,7 +302,7 @@ function ClientPlanView() {
               </p>
             </div>
 
-            <NutriologosList />
+            <ListaNutriologos />
           </div>
         </div>
       </div>
@@ -314,7 +314,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('nutriologo_menu', 'Volver a Nutrición')}
-        <NutritionAppointments />
+        <CitasNutricion />
       </div>
     );
   }
@@ -377,4 +377,4 @@ function ClientPlanView() {
   );
 }
 
-export default ClientPlanView;
+export default VistaPlan;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import ClientGymOccupancy from '../ClientGymOccupancy';
+import OcupacionGym from './OcupacionGym';
 import {
   auth,
   getUser,
@@ -12,7 +12,7 @@ import {
   getUserMemberships,
   getUserMembershipsByAuthUid,
   getMembershipTypes
-} from '../../firebase';
+} from '../../../firebase';
 
 function formatDate(dateStr) {
   try {
@@ -24,7 +24,7 @@ function formatDate(dateStr) {
   }
 }
 
-function ClientMembership() {
+function Membresia() {
   const [membership, setMembership] = useState(null);
   const [user, setUser] = useState(null);
   const [miembro, setMiembro] = useState(null);
@@ -603,7 +603,7 @@ function ClientMembership() {
         </div>
       </div>
 
-      <ClientGymOccupancy />
+      <OcupacionGym />
 
       {/* Botón de Descarga */}
       <div className="w-full max-w-2xl flex justify-center">
@@ -620,4 +620,4 @@ function ClientMembership() {
   );
 }
 
-export default ClientMembership;
+export default Membresia;

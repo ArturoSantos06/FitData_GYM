@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, limit, onSnapshot, query } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../../../firebase';
 
 const MAX_CAPACITY = Math.max(1, Number(import.meta.env.VITE_GYM_MAX_CAPACITY || 80));
 
@@ -19,7 +19,7 @@ const isSameDay = (a, b) => {
   );
 };
 
-function ClientGymOccupancy() {
+function OcupacionGym() {
   const [activeCount, setActiveCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,4 +93,4 @@ function ClientGymOccupancy() {
   );
 }
 
-export default ClientGymOccupancy;
+export default OcupacionGym;

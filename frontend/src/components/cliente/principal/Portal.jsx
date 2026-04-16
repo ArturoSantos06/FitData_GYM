@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onAuthChanged } from '../../firebase';
-import UserProfile from '../UserProfile';
-import ClientMembership from '../ClientMembership';
-import ClientStore from '../ClientStore';
-import ClientNavbar from '../ClientNavbar';
-import ClientPlanView from '../ClientPlanView';
-import ClientMessagesWhatsApp from '../ClientMessagesWhatsApp';
-import AssistantWidget from '../asistente/WidgetAsistente';
+import { onAuthChanged } from '../../../firebase';
+import Perfil from './Perfil';
+import Membresia from './Membresia';
+import Tienda from './Tienda';
+import Navbar from './Navbar';
+import VistaPlan from './VistaPlan';
+import ClientMessagesWhatsApp from '../../ClientMessagesWhatsApp';
+import AssistantWidget from '../../asistente/WidgetAsistente';
 
-function ClientePortal() {
+function Portal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inicio');
   const [authReady, setAuthReady] = useState(false);
@@ -41,7 +41,7 @@ function ClientePortal() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 md:p-8 pb-24 md:pb-8">
-      <ClientNavbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
 
       {/* Separador para el Navbar de escritorio y el Header de móvil */}
       <div className="h-16 md:h-24" />
@@ -51,21 +51,21 @@ function ClientePortal() {
 
         {activeTab === 'inicio' && (
           <div className="animate-fade-in">
-            <ClientMembership />
+            <Membresia />
           </div>
         )}
 
         {/* MI PLAN: El nuevo menú dividido por áreas */}
         {activeTab === 'plan' && (
           <div className="animate-fade-in">
-            <ClientPlanView />
+            <VistaPlan />
           </div>
         )}
 
         {/* TIENDA: Agrupa catálogo y futuros servicios de pago */}
         {activeTab === 'tienda' && (
           <div className="animate-fade-in">
-            <ClientStore />
+            <Tienda />
           </div>
         )}
 
@@ -76,7 +76,7 @@ function ClientePortal() {
 
         {activeTab === 'perfil' && (
           <div className="animate-fade-in">
-            <UserProfile />
+            <Perfil />
           </div>
         )}
 
@@ -87,4 +87,4 @@ function ClientePortal() {
   );
 }
 
-export default ClientePortal;
+export default Portal;

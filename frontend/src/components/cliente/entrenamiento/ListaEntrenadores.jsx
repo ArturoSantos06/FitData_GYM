@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { db, auth } from '../firebase/config';
+import { db, auth } from '../../../firebase/config';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, Dumbbell } from 'lucide-react';
-import { getCurrentUser, waitForAuthReady, createTrainerServiceSale, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../firebase';
-import ConfirmModal from './ConfirmModal';
-import SuccessModal from './SuccessModal';
-import ErrorModal from './ErrorModal';
-import ModalPagoServicioEntrenador from './ModalPagoServicioEntrenador';
+import { getCurrentUser, waitForAuthReady, createTrainerServiceSale, assignTrainerToClient, getClientTrainerAssignment, getTrainerReviews, addTrainerReview } from '../../../firebase';
+import ConfirmModal from '../../ConfirmModal';
+import SuccessModal from '../../SuccessModal';
+import ErrorModal from '../../ErrorModal';
+import ModalPagoServicioEntrenador from '../../ModalPagoServicioEntrenador';
 
 const SERVICE_TYPE_LABELS = {
   PERSONAL: 'Personal',
@@ -25,7 +25,7 @@ const normalizeServiceType = (value) => {
 
 const formatMoney = (value) => Number(value || 0).toLocaleString();
 
-const EntrenadoresList = () => {
+const ListaEntrenadores = () => {
   const [entrenadores, setEntrenadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -607,4 +607,4 @@ const EntrenadoresList = () => {
   );
 };
 
-export default EntrenadoresList;
+export default ListaEntrenadores;

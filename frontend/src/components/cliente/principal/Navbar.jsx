@@ -1,7 +1,7 @@
 import React from 'react';
 import { QrCode, ShoppingBag, Dumbbell, User, LogOut, MessageSquare } from 'lucide-react';
 
-const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
+const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
   // Solo las 5 pestañas principales para un UX perfecto en móvil
   const tabs = [
     { id: 'inicio', label: 'Inicio', icon: QrCode },
@@ -84,4 +84,4 @@ const ClientNavbar = ({ activeTab, setActiveTab, onLogout }) => {
   );
 };
 
-export default ClientNavbar;
+export default Navbar;

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
-import { getCurrentUser, waitForAuthReady, getClientTrainerAssignment, removeTrainerFromClient } from '../../firebase';
+import { getCurrentUser, waitForAuthReady, getClientTrainerAssignment, removeTrainerFromClient } from '../../../firebase';
 
-const ClienteEntrenador= () => {
+const Entrenador= () => {
     // Estados a utilizar //
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [serviceStatus, setServiceStatus] = useState('active');
@@ -171,4 +171,4 @@ const ClienteEntrenador= () => {
     );
 };
 
-export default ClienteEntrenador;
+export default Entrenador;

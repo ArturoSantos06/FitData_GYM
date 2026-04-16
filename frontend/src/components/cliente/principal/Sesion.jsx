@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { loginUser } from '../../firebase';
+import { loginUser } from '../../../firebase';
 
-function ClienteSesion() {
+function Sesion() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -159,4 +159,4 @@ function ClienteSesion() {
   );
 }
 
-export default ClienteSesion;
+export default Sesion;

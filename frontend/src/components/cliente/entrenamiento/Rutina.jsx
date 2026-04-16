@@ -22,7 +22,7 @@ import {
   getUser,
   getUserByAuthUid,
   subscribeTrainerRoutineByMember,
-} from '../../firebase';
+} from '../../../firebase';
 import { getBlob, getDownloadURL, listAll, ref } from 'firebase/storage';
 
 function formatDateTime(value) {
@@ -188,7 +188,7 @@ function ExerciseCard({ step, index }) {
   );
 }
 
-function ClientRoutine() {
+function Rutina() {
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState(null);
   const [routine, setRoutine] = useState(null);
@@ -649,4 +649,4 @@ function ClientRoutine() {
   );
 }
 
-export default ClientRoutine;
+export default Rutina;

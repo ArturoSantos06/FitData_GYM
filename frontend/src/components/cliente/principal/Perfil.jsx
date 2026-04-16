@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from '../SuccessModal';
+import SuccessModal from '../../SuccessModal';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import {
     updateUser,
     updateSelfProfile,
     getCurrentUser,
-} from '../../firebase';
+} from '../../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -631,7 +631,7 @@ const HealthSection = ({ onBack }) => {
     );
 };
 
-function UserProfile() {
+function Perfil() {
     const [currentView, setCurrentView] = useState('menu');
     const [user, setUser] = useState(null);
     const [, setMiembro] = useState(null);
@@ -828,7 +828,7 @@ function UserProfile() {
     );
 }
 
-export default UserProfile;
+export default Perfil;
 
 // --- Cambio de Contraseña ---
 function ChangePassword({ onBack }) {
@@ -857,7 +857,7 @@ function ChangePassword({ onBack }) {
         try {
             setLoading(true);
             const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
-            const { auth } = await import('../firebase/config');
+            const { auth } = await import('../../../firebase/config');
             const user = auth.currentUser;
             if (user) {
                 const credential = EmailAuthProvider.credential(user.email, currentPassword);
