@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import ProductCardClient from './ProductCardClient';
-import CentroFacturacion from './CentroFacturacion';
+import ProductCardClient from '../ProductCardClient';
+import CentroFacturacion from '../CentroFacturacion';
 import {
   getProducts,
   getUser,
@@ -8,7 +8,7 @@ import {
   getUserByEmail,
   getSales,
   getCurrentUser,
-} from '../firebase';
+} from '../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 

@@ -106,7 +106,7 @@ function AboutTeam() {
       items: [
         { name: 'JWT Tokens', description: 'Generados al hacer login en /admin o /cliente, se envían en cada petición al backend para verificar identidad' },
         { name: 'LocalStorage', description: 'Almacena el token después del login exitoso y se verifica al cargar las páginas protegidas del admin y cliente' },
-        { name: 'Protected Routes', description: 'AdminArea y ClientPortal verifican el token antes de mostrar contenido, redirigen a login si no hay autenticación' },
+        { name: 'Protected Routes', description: 'AdminArea y ClientePortal verifican el token antes de mostrar contenido, redirigen a login si no hay autenticación' },
         { name: 'Django Authentication', description: 'Login de adminitrador y cliente login envían credenciales al backend Django que valida usuario/contraseña' },
         { name: 'Password Hashing', description: 'Las contraseñas de administradores y clientes se encriptan automáticamente al registrarse en el sistema' },
         { name: 'CORS Configuration', description: 'Django permite peticiones del frontend React desplegado en Vercel hacia backend en Render' },

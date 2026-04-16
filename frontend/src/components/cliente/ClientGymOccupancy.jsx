@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, limit, onSnapshot, query } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 
 const MAX_CAPACITY = Math.max(1, Number(import.meta.env.VITE_GYM_MAX_CAPACITY || 80));
 

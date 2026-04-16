@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, FileDown, ClipboardList, Calendar } from 'lucide-react';
 
-import ClientRoutine from './ClientRoutine';
-import ClientCoachView from './ClientCoachView';
-import ClientNutriView from './ClientNutriView';
-import ClientDietViewer from './ClientDietViewer';
-import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
-import NutriologosList from './NutriologosList';
-import EntrenadoresList from './EntrenadoresList';
-import NutritionAppointments from './NutritionAppointments';
+import ClientRoutine from '../ClientRoutine';
+import ClienteEntrenador from '../ClienteEntrenador';
+import ClientNutriView from '../ClientNutriView';
+import ClientDietViewer from '../ClientDietViewer';
+import ClientTrainingNeedsAnalysis from '../ClientTrainingNeedsAnalysis';
+import NutriologosList from '../NutriologosList';
+import EntrenadoresList from '../EntrenadoresList';
+import NutritionAppointments from '../NutritionAppointments';
 
 function ClientPlanView() {
   const [currentView, setCurrentView] = useState('menu');
@@ -134,7 +134,7 @@ function ClientPlanView() {
     return (
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
-        <ClientCoachView />
+        <ClienteEntrenador />
       </div>
     );
   }

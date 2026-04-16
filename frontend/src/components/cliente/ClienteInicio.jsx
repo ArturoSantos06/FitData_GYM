@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ChevronRight, User } from 'lucide-react';
-import { getCurrentUser, getUser } from '../firebase';
+import { getCurrentUser, getUser } from '../../firebase';
 
-function ClientHome({ onNavigateToProfile }) {
+function ClienteInicio({ onNavigateToProfile }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -88,4 +88,4 @@ function ClientHome({ onNavigateToProfile }) {
   );
 }
 
-export default ClientHome;
+export default ClienteInicio;

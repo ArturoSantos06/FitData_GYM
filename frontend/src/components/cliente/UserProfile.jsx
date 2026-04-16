@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from './SuccessModal';
+import SuccessModal from '../SuccessModal';
 import {
     ArrowLeft, User, ChevronRight, Activity, Hash, Mail, Phone, Edit2, Heart, CheckCircle, Calendar, Send, Lock
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import {
     updateUser,
     updateSelfProfile,
     getCurrentUser,
-} from '../firebase';
+} from '../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 

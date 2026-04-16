@@ -8,7 +8,7 @@ import {
   getUser,
   getUserByAuthUid,
   downloadDietDocument,
-} from '../firebase';
+} from '../../firebase';
 
 const formatDate = (value) => {
   if (!value) return 'Sin fecha disponible';

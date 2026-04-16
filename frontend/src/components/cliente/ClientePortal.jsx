@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onAuthChanged } from '../firebase';
-import UserProfile from './UserProfile';
-import ClientMembership from './ClientMembership';
-import ClientStore from './ClientStore';
-import ClientNavbar from './ClientNavbar';
-import ClientPlanView from './ClientPlanView';
-import ClientMessagesWhatsApp from './ClientMessagesWhatsApp';
-import AssistantWidget from './asistente/WidgetAsistente';
+import { onAuthChanged } from '../../firebase';
+import UserProfile from '../UserProfile';
+import ClientMembership from '../ClientMembership';
+import ClientStore from '../ClientStore';
+import ClientNavbar from '../ClientNavbar';
+import ClientPlanView from '../ClientPlanView';
+import ClientMessagesWhatsApp from '../ClientMessagesWhatsApp';
+import AssistantWidget from '../asistente/WidgetAsistente';
 
-function ClientPortal() {
+function ClientePortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inicio');
   const [authReady, setAuthReady] = useState(false);
@@ -87,4 +87,4 @@ function ClientPortal() {
   );
 }
 
-export default ClientPortal;
+export default ClientePortal;

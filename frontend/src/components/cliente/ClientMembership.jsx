@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, Download } from 'lucide-react';
 import QRCode from "react-qr-code";
-import ClientGymOccupancy from './ClientGymOccupancy';
+import ClientGymOccupancy from '../ClientGymOccupancy';
 import {
   auth,
   getUser,
@@ -12,7 +12,7 @@ import {
   getUserMemberships,
   getUserMembershipsByAuthUid,
   getMembershipTypes
-} from '../firebase';
+} from '../../firebase';
 
 function formatDate(dateStr) {
   try {

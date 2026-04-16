@@ -22,7 +22,7 @@ import {
   getUser,
   getUserByAuthUid,
   subscribeTrainerRoutineByMember,
-} from '../firebase';
+} from '../../firebase';
 import { getBlob, getDownloadURL, listAll, ref } from 'firebase/storage';
 
 function formatDateTime(value) {

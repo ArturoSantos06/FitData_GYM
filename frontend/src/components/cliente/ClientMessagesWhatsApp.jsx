@@ -9,15 +9,15 @@ import {
     where,
     getDocs
 } from "firebase/firestore";
-import VideoYouTube from './iaRutinas/VideoYouTube';
+import VideoYouTube from '../iaRutinas/VideoYouTube';
 
-import { useAssistant } from './asistente/ContextoAsistente';
-import { auth, db } from '../firebase/config';
-import ChatWindow from './chat/ChatWindow';
-import NotificationCenter from './chat/NotificationCenter';
-import { generateAiRoutine, subscribeAiRoutineHistory } from '../firebase/aiRoutineService';
-import { suscribirCatalogoMaquinas } from '../firebase/mantenimiento';
-import FormularioReporteEnChat from './mantenimiento/FormularioReporteEnChat';
+import { useAssistant } from '../asistente/ContextoAsistente';
+import { auth, db } from '../../firebase/config';
+import ChatWindow from '../chat/ChatWindow';
+import NotificationCenter from '../chat/NotificationCenter';
+import { generateAiRoutine, subscribeAiRoutineHistory } from '../../firebase/aiRoutineService';
+import { suscribirCatalogoMaquinas } from '../../firebase/mantenimiento';
+import FormularioReporteEnChat from '../mantenimiento/FormularioReporteEnChat';
 
 const GOAL_OPTIONS = [
     { value: 'muscle_gain', label: 'Ganar masa muscular' },
