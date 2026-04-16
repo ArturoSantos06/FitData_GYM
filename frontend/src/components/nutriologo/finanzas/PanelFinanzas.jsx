@@ -1,10 +1,10 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import FinancialSummaryCards from './FinancialSummaryCards';
-import FinancialMonthlyChart from './FinancialMonthlyChart';
-import FinancialOperationsTable from './FinancialOperationsTable';
-import NutriChargePanel from './NutriChargePanel';
-import { useNutritionFinancialData } from './useNutritionFinancialData';
+import FinancialSummaryCards from './ResumenFinanciero';
+import GraficaMensual from './GraficaMensual';
+import FinancialOperationsTable from './TablaOperaciones';
+import PanelCobros from './PanelCobros';
+import { useNutritionFinancialData } from '../useNutritionFinancialData';
 
 export default function NutriFinancialDashboard() {
   const {
@@ -46,10 +46,10 @@ export default function NutriFinancialDashboard() {
         plansCount={plansCount}
       />
 
-      <NutriChargePanel onChargeCreated={reloadData} />
+      <PanelCobros onChargeCreated={reloadData} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <FinancialMonthlyChart monthlyData={monthlyData} />
+        <GraficaMensual monthlyData={monthlyData} />
         <FinancialOperationsTable appointments={appointments} planSales={planSales} />
       </div>
     </div>

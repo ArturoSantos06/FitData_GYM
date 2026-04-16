@@ -1,6 +1,6 @@
 import React from 'react';
 
-function HomeNutri() {
+function InicioNutri() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 text-gray-100 animate-fade-in">
       
@@ -44,4 +44,4 @@ function HomeNutri() {
   );
 }
 
-export default HomeNutri;
+export default InicioNutri;

@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logoutUser } from '../firebase';
+import { logoutUser } from '../../firebase';
 import NutriNavbar from './NutriNavbar';
 
-import HomeNutri from './nutriologo/HomeNutri';
-import MacroCalculatorForm from './MacroCalculatorForm';
-import NutriFinancialDashboard from './nutriologo/NutriFinancialDashboard';
-import CitasNutri from './nutriologo/CitasNutri';
-import DietaRepositorio from './DietaRepositorio';
-import NutritionAssistant from './NutritionAssistant';
-import ProfessionalMessagesView from './chat/ProfessionalMessagesView';
-import PerfilNutriologo from './nutriologo/PerfilNutriologo';
+import InicioNutri from './InicioNutri';
+import MacroCalculatorForm from '../MacroCalculatorForm';
+import PanelFinanzas from './finanzas/PanelFinanzas';
+import CitasNutri from './gestion-pacientes/CitasNutri';
+import DietaRepositorio from '../DietaRepositorio';
+import AsistenteNutricional from './AsistenteNutricional';
+import ProfessionalMessagesView from '../chat/ProfessionalMessagesView';
+import PerfilNutriologo from './PerfilNutriologo';
 
 
 function NutriPortal() {
@@ -37,17 +37,17 @@ const [activeTab, setActiveTab] = useState('inicio');
             
             <div className="max-w-7xl mx-auto pt-2 md:pt-4 pb-20 md:pb-0 animate-fade-in">
                 {/* Renderizado de las vistas según el clic */}
-                {activeTab === 'inicio' && <HomeNutri />}
+                {activeTab === 'inicio' && <InicioNutri />}
                 {activeTab === 'citas' && <CitasNutri embedded />}
                 {activeTab === 'calculadora' && <MacroCalculatorForm />}
                 {activeTab === 'dietas' && <DietaRepositorio />}
-                {activeTab === 'financiero' && <NutriFinancialDashboard />}
+                {activeTab === 'financiero' && <PanelFinanzas />}
                 {activeTab === 'mensajes' && <ProfessionalMessagesView role="nutritionist" />}
                 {activeTab === 'perfil' && <PerfilNutriologo />}
             </div>
 
             {/* El asistente solo es visible en la pestaña de calculadora */}
-            {activeTab === 'calculadora' && <NutritionAssistant />}
+            {activeTab === 'calculadora' && <AsistenteNutricional />}
         </div>
     );
 };

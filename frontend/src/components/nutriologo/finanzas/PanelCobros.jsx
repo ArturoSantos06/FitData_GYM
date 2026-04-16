@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, CreditCard, Search, UserRound, XCircle } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { db } from '../../../firebase/config';
 import {
   createMembershipSale,
   getAllMembers,
@@ -9,7 +9,7 @@ import {
   getUser,
   getUserByAuthUid,
   getUserByEmail,
-} from '../../firebase';
+} from '../../../firebase';
 
 const DEFAULT_PRICE = 500;
 
@@ -30,7 +30,7 @@ const formatCurrency = (value) => {
   }).format(Number(value || 0));
 };
 
-export default function NutriChargePanel({ onChargeCreated }) {
+export default function PanelCobros({ onChargeCreated }) {
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [search, setSearch] = useState('');

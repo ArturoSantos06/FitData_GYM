@@ -6,7 +6,7 @@ import ClientCoachView from './ClientCoachView';
 import ClientNutriView from './ClientNutriView';
 import ClientDietViewer from './ClientDietViewer';
 import ClientTrainingNeedsAnalysis from './ClientTrainingNeedsAnalysis';
-import NutriologosList from './NutriologosList';
+import ListaNutriologos from './nutriologo/ListaNutriologos';
 import EntrenadoresList from './EntrenadoresList';
 import NutritionAppointments from './NutritionAppointments';
 
@@ -302,7 +302,7 @@ function ClientPlanView() {
               </p>
             </div>
 
-            <NutriologosList />
+            <ListaNutriologos />
           </div>
         </div>
       </div>

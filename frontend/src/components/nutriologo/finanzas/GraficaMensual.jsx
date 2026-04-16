@@ -8,7 +8,7 @@ const formatCurrency = (value) => {
   }).format(Number(value || 0));
 };
 
-export default function FinancialMonthlyChart({ monthlyData = [] }) {
+export default function GraficaMensual({ monthlyData = [] }) {
   if (!monthlyData.length) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-400">

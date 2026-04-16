@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { loginUser, getUser, getUserByEmail } from '../firebase';
+import { loginUser, getUser, getUserByEmail } from '../../firebase';
 
 const NUTRITIONIST_ROLES = [
   'nutritionist',
@@ -12,7 +12,7 @@ const NUTRITIONIST_ROLES = [
   'nutri',
 ];
 
-function NutriologoLogin({ onLogin }) {
+function IniciarSesionNutri({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -211,4 +211,4 @@ function NutriologoLogin({ onLogin }) {
     
   
 
-export default NutriologoLogin;
+export default IniciarSesionNutri;

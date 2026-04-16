@@ -19,7 +19,7 @@ const toDateLabel = (value) => {
   });
 };
 
-export default function FinancialOperationsTable({ appointments = [], planSales = [] }) {
+export default function TablaOperaciones({ appointments = [], planSales = [] }) {
   const saleRows = planSales.map((item) => ({
     id: `venta-${item.id}`,
     type: 'Cobro',

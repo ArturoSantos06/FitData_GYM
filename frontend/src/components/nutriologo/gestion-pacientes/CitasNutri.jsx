@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { db } from "../../firebase/config";
+import { db } from "../../../firebase/config";
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../../firebase';
+import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../../../firebase';
 import ModalExpedienteNutri from './ModalExpedienteNutri';
 import { User, Activity, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';

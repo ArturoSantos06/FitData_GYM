@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChefHat, X, Loader2, ExternalLink, Save } from 'lucide-react';
-import { getAllMembers, getHealthProfileByMemberId, createHealthProfile } from '../firebase';
-import { db } from '../firebase/config';
+import { getAllMembers, getHealthProfileByMemberId, createHealthProfile } from '../../firebase';
+import { db } from '../../firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 // --- GENERADOR DE DIETA LOCAL EN ESPAÑOL ---
@@ -88,7 +88,7 @@ const generarMenuLocal = (targetCalories) => {
 };
 // ---------------------------------------------
 
-export default function NutritionAssistant() {
+export default function AsistenteNutricional() {
   const [open, setOpen] = useState(false);
   const [targetCalories, setTargetCalories] = useState(2000);
   const [suggestedMeals, setSuggestedMeals] = useState([]);

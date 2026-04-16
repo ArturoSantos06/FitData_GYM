@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebase/config'; 
+import { db } from '../../firebase/config'; 
 import { collection, getDocs } from 'firebase/firestore';
 import { User, Star, Award, CheckCircle, AlertCircle } from 'lucide-react';
-import ConfirmModal from './ConfirmModal';
-import SuccessModal from './SuccessModal';
-import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../firebase';
+import ConfirmModal from '../ConfirmModal';
+import SuccessModal from '../SuccessModal';
+import { getCurrentUser, waitForAuthReady, assignNutritionistToClient, getClientNutritionistAssignment, getNutritionistReviews, addNutritionistReview } from '../../firebase';
 
-const NutriologosList = () => {
+const ListaNutriologos = () => {
   const [nutris, setNutris] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -391,4 +391,4 @@ const NutriologosList = () => {
   );
 };
 
-export default NutriologosList;
+export default ListaNutriologos;
