@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import MacroResultsCard from './MacroResultsCard';
-import { calculateMacroTargets, nutritionFormulaInfo } from '../utils/nutritionCalculations';
+import TarjetaResultadosMacros from './TarjetaResultadosMacros';
+import { calculateMacroTargets, nutritionFormulaInfo } from '../../utils/nutritionCalculations';
 
 const defaultForm = {
   sex: 'hombre',
@@ -11,7 +11,7 @@ const defaultForm = {
   goal: 'mantener'
 };
 
-function MacroCalculatorForm() {
+function FormularioMacros() {
   const [form, setForm] = useState(defaultForm);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -170,9 +170,9 @@ function MacroCalculatorForm() {
         </button>
       </form>
 
-      <MacroResultsCard result={result} />
+      <TarjetaResultadosMacros result={result} />
     </div>
   );
 }
 
-export default MacroCalculatorForm;
+export default FormularioMacros;

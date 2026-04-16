@@ -7,7 +7,7 @@ import { db } from '../../firebase/config';
 import { X, User, Zap } from 'lucide-react';
 import ModalAgendarEntrenador from './ModalAgendarEntrenador';
 import ModalDetalleEntrenador from '../entrenador/seguimiento/ModalDetalleEntrenador';
-import DialogoSistemaNutri from '../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../nutriologo/DialogoSistemaNutri';
 
 const ModalExpedienteEntrenador = ({ miembro, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);

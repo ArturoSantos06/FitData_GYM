@@ -5,7 +5,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { X, User, ClipboardEdit } from 'lucide-react';
 import ModalAgendarNutri from '../../modales/ModalAgendarNutri';
 import ModalDetalleNutri from './ModalDetalleNutri';
-import DialogoSistemaNutri from '../../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../DialogoSistemaNutri';
 
 const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);

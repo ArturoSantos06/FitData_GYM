@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config'; 
 
-export const useAppointments = (clienteId) => {
+export const CitasNutri = (clienteId) => {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
 

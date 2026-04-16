@@ -15,10 +15,10 @@ import {
   onAuthChanged,
   subirDocumentoDieta,
   descargarDocumentoDieta
-} from '../firebase';
-import ModalExito from './modales/ModalExito';
-import ErrorModal from './modales/ErrorModal';
-import ModalConfirmacion from './modales/ModalConfirmacion';
+} from '../../firebase';
+import ModalExito from '../modales/ModalExito';
+import ErrorModal from '../modales/ErrorModal';
+import ModalConfirmacion from '../modales/ModalConfirmacion';
 
 const allowedTypesLabel = 'PDF, JPG o PNG';
 const maxDietFileSizeBytes = 10 * 1024 * 1024;

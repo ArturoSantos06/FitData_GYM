@@ -4,10 +4,10 @@ import { logoutUser } from '../../firebase';
 import NutriNavbar from './NutriNavbar';
 
 import InicioNutri from './InicioNutri';
-import MacroCalculatorForm from '../MacroCalculatorForm';
+import FormularioMacros from './FormularioMacros';
 import PanelFinanzas from './finanzas/PanelFinanzas';
 import CitasNutri from './gestion-pacientes/CitasNutri';
-import DietaRepositorio from '../DietaRepositorio';
+import DietaRepositorio from './DietaRepositorio';
 import AsistenteNutricional from './AsistenteNutricional';
 import BandejaProfesionales from '../chat/BandejaProfesionales';
 import PerfilNutriologo from './PerfilNutriologo';
@@ -39,7 +39,7 @@ const [activeTab, setActiveTab] = useState('inicio');
                 {/* Renderizado de las vistas según el clic */}
                 {activeTab === 'inicio' && <InicioNutri />}
                 {activeTab === 'citas' && <CitasNutri embedded />}
-                {activeTab === 'calculadora' && <MacroCalculatorForm />}
+                {activeTab === 'calculadora' && <FormularioMacros />}
                 {activeTab === 'dietas' && <DietaRepositorio />}
                 {activeTab === 'financiero' && <PanelFinanzas />}
                 {activeTab === 'mensajes' && <BandejaProfesionales role="nutritionist" />}

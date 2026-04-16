@@ -10,7 +10,7 @@ function NutrientRow({ label, grams, percent, colorClass }) {
   );
 }
 
-function MacroResultsCard({ result }) {
+function TarjetaResultadosMacros({ result }) {
   if (!result) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6">
@@ -61,4 +61,4 @@ function MacroResultsCard({ result }) {
   );
 }
 
-export default MacroResultsCard;
+export default TarjetaResultadosMacros;

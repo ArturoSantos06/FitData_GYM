@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
 import { getCurrentUser } from '../../firebase';
-import DialogoSistemaNutri from '../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../nutriologo/DialogoSistemaNutri';
 import { Clock, Calendar as CalIcon, MessageSquare } from 'lucide-react';
 
 const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose, onSuccess }) => {

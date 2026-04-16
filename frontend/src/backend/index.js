@@ -1,2 +1,2 @@
 // Backend exports
-export { useAppointments } from './useAppointments';
+export { useAppointments } from './CitasNutri';

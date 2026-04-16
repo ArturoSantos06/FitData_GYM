@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth, db } from '../../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import DialogoSistemaNutri from '../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../nutriologo/DialogoSistemaNutri';
 import { Clock, Calendar as CalIcon, Activity } from 'lucide-react';
 
 const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntrenos, onClose, onSuccess }) => {

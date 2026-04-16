@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db } from "../../../firebase/config"; 
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Trash2, Edit3, Save, X, Zap, CalendarClock } from 'lucide-react';
-import DialogoSistemaNutri from '../../DialogoSistemaNutri';
+import DialogoSistemaNutri from '../../nutriologo/DialogoSistemaNutri';
 
 const ModalDetalleEntrenador = ({ entreno, onClose }) => {
   const [isEditing, setIsEditing] = useState(false);

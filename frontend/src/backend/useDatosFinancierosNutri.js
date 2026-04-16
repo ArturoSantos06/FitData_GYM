@@ -108,7 +108,7 @@ const matchesOwner = (record, user) => {
   return idMatch || emailMatch;
 };
 
-export function useNutritionFinancialData() {
+export function useDatosFinancierosNutri() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
