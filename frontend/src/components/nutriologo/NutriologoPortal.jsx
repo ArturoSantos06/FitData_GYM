@@ -104,7 +104,7 @@ function NutriologoPortal() {
           </button>
         </div>
 
-        {activeTab === 'citas' && <CitasNutri />}
+        {activeTab === 'citas' && <CitasNutri embedded />}
         {activeTab === 'calculadora' && <MacroCalculatorForm />}
         {activeTab === 'dietas' && <DietaRepositorio />}
         {activeTab === 'financiero' && <NutriFinancialDashboard />}
