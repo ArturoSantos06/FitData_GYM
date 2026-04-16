@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getCurrentUser, getSales } from '../../firebase';
+import { getCurrentUser, getSales } from '../firebase';
 
 const ownerIdFields = [
   'nutriologoId',

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
-import { useAppointments } from '../../backend/CitasNutri.js';
+import { CitasNutri } from '../../backend/CitasNutri.js';
 
 const ModalReprogramar = ({ citaSeleccionada, onClose, onSuccess }) => {
-    const { verificarHorariosDisponibles, reprogramarCita } = useAppointments();
+    const { verificarHorariosDisponibles, reprogramarCita } = CitasNutri();
     
     const [fecha, setFecha] = useState('');
     const [horariosLibres, setHorariosLibres] = useState([]);

@@ -22,7 +22,7 @@ function Card({ icon, title, value, subtitle, tone }) {
   );
 }
 
-export default function FinancialSummaryCards({
+export default function ResumenFinanciero({
   consultationsTotal,
   plansTotal,
   grandTotal,

@@ -1,10 +1,10 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import FinancialSummaryCards from './ResumenFinanciero';
+import ResumenFinanciero from './ResumenFinanciero';
 import GraficaMensual from './GraficaMensual';
-import FinancialOperationsTable from './TablaOperaciones';
+import TablaOperaciones from './TablaOperaciones';
 import PanelCobros from './PanelCobros';
-import { useNutritionFinancialData } from '../useNutritionFinancialData';
+import { useDatosFinancierosNutri } from '../../../backend/useDatosFinancierosNutri';
 
 export default function NutriFinancialDashboard() {
   const {
@@ -19,7 +19,7 @@ export default function NutriFinancialDashboard() {
     appointments,
     planSales,
     reloadData
-  } = useNutritionFinancialData();
+  } = useDatosFinancierosNutri();
 
   if (loading) {
     return (
@@ -38,7 +38,7 @@ export default function NutriFinancialDashboard() {
         </div>
       )}
 
-      <FinancialSummaryCards
+      <ResumenFinanciero
         consultationsTotal={consultationsTotal}
         plansTotal={plansTotal}
         grandTotal={grandTotal}
@@ -50,7 +50,7 @@ export default function NutriFinancialDashboard() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GraficaMensual monthlyData={monthlyData} />
-        <FinancialOperationsTable appointments={appointments} planSales={planSales} />
+        <TablaOperaciones appointments={appointments} planSales={planSales} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { useAppointments } from '../../../backend/CitasNutri.js';
+import { CitasNutri } from '../../../backend/CitasNutri';
 import ModalReprogramar from '../../modales/ModalReprogramar';
 
 const CitasNutricion = () => {
@@ -16,7 +16,7 @@ const CitasNutricion = () => {
         }
     }, []);
 
-    const { appointments, loading, cancelarCita } = useAppointments(clienteId);
+    const { appointments, loading, cancelarCita } = CitasNutri(clienteId);
 
     const handleCancelConfirm = async () => {
         const exito = await cancelarCita(cancelModal.idToCancel);
