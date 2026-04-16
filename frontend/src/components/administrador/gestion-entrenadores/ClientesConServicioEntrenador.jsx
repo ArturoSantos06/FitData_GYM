@@ -2,70 +2,145 @@ import React from 'react';
 import { Calendar, Search, AlertCircle, Unlink, ReceiptText } from 'lucide-react';
 
 function ClientesConServicioEntrenador({
-  searchTerm,
-  setSearchTerm,
-  filterStatus,
-  setFilterStatus,
-  sortBy,
-  setSortBy,
-  filteredServices,
-  trainerServiceSales,
-  getStatusBadge,
-  onUnlinkClient,
-  unlinkingClientId,
-  onCompleteServiceSale,
-  completingServiceSaleId,
+  terminoBusqueda,
+  setTerminoBusqueda,
+  filtroEstado,
+  setFiltroEstado,
+  ordenarPor,
+  setOrdenarPor,
+  serviciosFiltrados,
+  ventasServiciosEntrenador,
+  obtenerEtiquetaEstado,
+  onDesvincularCliente,
+  idClienteDesvinculando,
+  onCompletarVentaServicio,
+  idVentaServicioCompletando,
 }) {
-  const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
+  const normalizarClaveBusqueda = (value) => String(value || '').trim().toLowerCase();
 
-  const formatServiceType = (value) => {
-    const normalized = String(value || '').trim().toLowerCase();
-    if (normalized.includes('grupal') || normalized.includes('group') || normalized === 'grupal') return 'Grupal';
-    if (normalized.includes('personal') || normalized.includes('individual') || normalized === 'personal') return 'Personal';
+  const toJsDate = (value) => {
+    if (!value) return null;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const parsed = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const parsearDetalleProductos = (rawDetail) => {
+    if (!rawDetail) return [];
+    if (Array.isArray(rawDetail)) return rawDetail;
+    if (typeof rawDetail !== 'string') return [];
+
+    try {
+      const parsed = JSON.parse(rawDetail);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      try {
+        const parsed = JSON.parse(String(rawDetail).replace(/'/g, '"'));
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+  };
+
+  const formatearTipoServicio = (value) => {
+    const normalizado = String(value || '').trim().toLowerCase();
+    if (normalizado.includes('grupal') || normalizado.includes('group') || normalizado === 'grupal') return 'Grupal';
+    if (normalizado.includes('personal') || normalizado.includes('individual') || normalizado === 'personal') return 'Personal';
     return value || 'N/D';
   };
 
-  const formatSaleStatus = (status) => {
-    const normalized = String(status || '').trim().toLowerCase();
-    return normalized === 'completed' ? 'Completado' : 'Pendiente';
+  const formatearEstadoVenta = (status) => {
+    const normalizado = String(status || '').trim().toLowerCase();
+    return normalizado === 'completed' ? 'Completado' : 'Pendiente';
   };
 
-  const isPendingSale = (status) => String(status || '').trim().toLowerCase() === 'pending';
+  const esVentaPendiente = (status) => {
+    const normalizado = String(status || '').trim().toLowerCase();
+    return normalizado === 'pending' || normalizado === 'pendiente';
+  };
 
-  const resolveSaleClientInfo = (sale) => {
-    const saleClientId = normalizeLookupKey(sale?.cliente_id || sale?.cliente || sale?.cliente_auth_uid);
-    const saleClientEmail = normalizeLookupKey(sale?.cliente_email || sale?.clienteEmail || sale?.cliente_email_override);
+  const obtenerEstadoVenta = (sale = {}) => String(
+    sale.payment_status ||
+    sale.paymentStatus ||
+    sale.estado ||
+    sale.status ||
+    sale.estado_pago ||
+    'pending'
+  ).trim().toLowerCase();
 
-    const matchedService = (filteredServices || []).find((service) => {
-      const serviceClientId = normalizeLookupKey(service?.clientId);
-      const serviceClientEmail = normalizeLookupKey(service?.clientEmail);
+  const obtenerMetodoPagoVenta = (sale = {}) => String(
+    sale.metodo_pago ||
+    sale.metodoPago ||
+    sale.paymentMethod ||
+    sale.payment_method ||
+    sale.forma_pago ||
+    sale.paymentType ||
+    sale.metodo ||
+    ''
+  ).trim().toUpperCase() || 'N/D';
 
-      if (saleClientId && serviceClientId && saleClientId === serviceClientId) {
+  const obtenerMontoVenta = (sale = {}) => {
+    const totalDirecto = Number(
+      sale.total ||
+      sale.amount ||
+      sale.monto ||
+      sale.monto_recibido ||
+      sale.montoTotal ||
+      sale.monto_total ||
+      sale.trainerServicePrice ||
+      sale.trainer_service_price ||
+      0
+    );
+
+    if (Number.isFinite(totalDirecto) && totalDirecto > 0) return totalDirecto;
+
+    const productos = parsearDetalleProductos(sale.detalle_productos || sale.detalleProductos || sale.detalle_producto || sale.productos || sale.items);
+    if (productos.length === 0) return 0;
+
+    return productos.reduce((sum, item) => {
+      const cantidad = Number(item?.cantidad || item?.qty || 1) || 1;
+      const precio = Number(item?.precio || item?.price || item?.monto || 0) || 0;
+      return sum + (cantidad * precio);
+    }, 0);
+  };
+
+  const resolverInfoClienteVenta = (sale) => {
+    const idClienteVenta = normalizarClaveBusqueda(sale?.clientId || sale?.cliente_id || sale?.cliente || sale?.cliente_auth_uid);
+    const correoClienteVenta = normalizarClaveBusqueda(sale?.clientEmail || sale?.cliente_email || sale?.clienteEmail || sale?.cliente_email_override);
+
+    const servicioCoincidente = (serviciosFiltrados || []).find((service) => {
+      const idClienteServicio = normalizarClaveBusqueda(service?.clientId);
+      const correoClienteServicio = normalizarClaveBusqueda(service?.clientEmail);
+
+      if (idClienteVenta && idClienteServicio && idClienteVenta === idClienteServicio) {
         return true;
       }
 
-      if (saleClientEmail && serviceClientEmail && saleClientEmail === serviceClientEmail) {
+      if (correoClienteVenta && correoClienteServicio && correoClienteVenta === correoClienteServicio) {
         return true;
       }
 
       return false;
     });
 
-    const fallbackNameFromEmail = String(sale?.cliente_email || sale?.clienteEmail || '').split('@')[0] || 'Cliente';
+    const nombreDesdeCorreo = String(sale?.cliente_email || sale?.clienteEmail || '').split('@')[0] || 'Cliente';
 
     return {
       name:
+        sale?.clientName ||
         sale?.clienteNombre ||
         sale?.cliente_nombre_override ||
         sale?.cliente_username ||
-        matchedService?.clientName ||
-        fallbackNameFromEmail ||
+        servicioCoincidente?.clientName ||
+        nombreDesdeCorreo ||
         'Cliente',
       email:
+        sale?.clientEmail ||
         sale?.cliente_email ||
         sale?.clienteEmail ||
         sale?.cliente_email_override ||
-        matchedService?.clientEmail ||
+        servicioCoincidente?.clientEmail ||
         '',
     };
   };
@@ -80,31 +155,31 @@ function ClientesConServicioEntrenador({
               <input
                 type="text"
                 placeholder="Buscar por cliente, entrenador o tipo de servicio..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={terminoBusqueda}
+                onChange={(e) => setTerminoBusqueda(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
             className="bg-gray-900 border border-gray-600 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">Todos los estados</option>
-            <option value="active">✅ Activos</option>
-            <option value="expired">❌ Vencidos</option>
+            <option value="todos">Todos los estados</option>
+            <option value="activo">✅ Activos</option>
+            <option value="vencido">❌ Vencidos</option>
           </select>
 
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            value={ordenarPor}
+            onChange={(e) => setOrdenarPor(e.target.value)}
             className="bg-gray-900 border border-gray-600 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="daysRemaining">Días restantes</option>
-            <option value="name">Nombre del cliente</option>
-            <option value="trainer">Entrenador</option>
+            <option value="diasRestantes">Días restantes</option>
+            <option value="nombreCliente">Nombre del cliente</option>
+            <option value="entrenador">Entrenador</option>
           </select>
         </div>
       </div>
@@ -113,7 +188,7 @@ function ClientesConServicioEntrenador({
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Calendar size={24} className="text-blue-400" />
-            Servicios de Entrenamiento Contratados ({filteredServices.length})
+            Servicios de Entrenamiento Contratados ({serviciosFiltrados.length})
           </h2>
         </div>
 
@@ -124,17 +199,16 @@ function ClientesConServicioEntrenador({
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Cliente</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Entrenador</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Tipo de Servicio</th>
-                <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Sesiones</th>
-                <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Vencimiento</th>
+                <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Asignado</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Estado</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Monto</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-semibold text-sm">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredServices.length === 0 ? (
+              {serviciosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12">
+                  <td colSpan="7" className="text-center py-12">
                     <div className="flex flex-col items-center gap-3 text-gray-400">
                       <AlertCircle size={48} />
                       <p className="text-lg font-semibold">No hay servicios de entrenamiento registrados</p>
@@ -142,7 +216,7 @@ function ClientesConServicioEntrenador({
                   </td>
                 </tr>
               ) : (
-                filteredServices.map((service) => (
+                serviciosFiltrados.map((service) => (
                   <tr key={service.id} className="hover:bg-gray-700/30 transition-colors">
                     <td className="py-4 px-6">
                       <div>
@@ -154,27 +228,24 @@ function ClientesConServicioEntrenador({
                       <span className="text-purple-300 font-medium text-sm">{service.trainerName}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-blue-300 font-medium text-sm">{formatServiceType(service.serviceType)}</span>
-                    </td>
-                    <td className="py-4 px-6 text-gray-300 text-sm">
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{service.sessionsUsed} / {service.sessionsTotal}</span>
-                        <span className="text-xs text-gray-500">sesiones</span>
-                      </div>
+                      <span className="text-blue-300 font-medium text-sm">{formatearTipoServicio(service.serviceType)}</span>
                     </td>
                     <td className="py-4 px-6 text-gray-300 text-sm font-mono">
-                      {new Date(service.endDate).toLocaleDateString('es-MX')}
+                      {(() => {
+                        const assignedDate = toJsDate(service.assignedAt || service.createdAt || service.updatedAt);
+                        return assignedDate ? assignedDate.toLocaleDateString('es-MX') : 'N/A';
+                      })()}
                     </td>
-                    <td className="py-4 px-6">{getStatusBadge(service)}</td>
-                    <td className="py-4 px-6 text-green-400 font-bold">${service.price.toLocaleString()} MXN</td>
+                    <td className="py-4 px-6">{obtenerEtiquetaEstado(service)}</td>
+                    <td className="py-4 px-6 text-green-400 font-bold">${Number(service.price || service.monto || service.amount || 0).toLocaleString()} MXN</td>
                     <td className="py-4 px-6">
                       <button
-                        onClick={() => onUnlinkClient?.(service)}
-                        disabled={!service.clientId || unlinkingClientId === service.clientId}
+                        onClick={() => onDesvincularCliente?.(service)}
+                        disabled={!service.clientId || idClienteDesvinculando === service.clientId}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Unlink size={16} />
-                        {unlinkingClientId === service.clientId ? 'Desvinculando...' : 'Desvincular'}
+                        {idClienteDesvinculando === service.clientId ? 'Desvinculando...' : 'Desvincular'}
                       </button>
                     </td>
                   </tr>
@@ -189,7 +260,7 @@ function ClientesConServicioEntrenador({
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <ReceiptText size={22} className="text-cyan-300" />
-            Historial de Pagos de Clientes ({trainerServiceSales?.length || 0})
+            Historial de Pagos de Clientes ({ventasServiciosEntrenador?.length || 0})
           </h2>
         </div>
 
@@ -207,44 +278,44 @@ function ClientesConServicioEntrenador({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {(trainerServiceSales || []).length === 0 ? (
+              {(ventasServiciosEntrenador || []).length === 0 ? (
                 <tr>
                   <td colSpan="7" className="text-center py-8 text-gray-400">No hay pagos de servicios de entrenamiento registrados.</td>
                 </tr>
               ) : (
-                (trainerServiceSales || []).map((sale) => {
-                  const status = String(sale.payment_status || '').trim().toLowerCase();
-                  const saleDate = sale.createdAt?.toDate?.() || new Date(sale.fecha || 0);
-                  const saleClientInfo = resolveSaleClientInfo(sale);
+                (ventasServiciosEntrenador || []).map((sale) => {
+                  const status = obtenerEstadoVenta(sale);
+                  const saleDate = toJsDate(sale.createdAt || sale.fecha || sale.assignedAt);
+                  const saleClientInfo = resolverInfoClienteVenta(sale);
                   return (
                     <tr key={sale.id} className="hover:bg-gray-700/20 transition-colors">
                       <td className="py-4 px-6 text-gray-300 text-sm">
-                        {Number.isNaN(saleDate.getTime()) ? 'Sin fecha' : saleDate.toLocaleDateString('es-MX')}
+                        {saleDate ? saleDate.toLocaleDateString('es-MX') : 'Sin fecha'}
                       </td>
                       <td className="py-4 px-6">
                         <p className="text-white font-semibold">{saleClientInfo.name}</p>
                         <p className="text-gray-400 text-xs">{saleClientInfo.email}</p>
                       </td>
                       <td className="py-4 px-6 text-purple-300 text-sm font-medium">{sale.trainer_name || sale.trainerName || 'Entrenador'}</td>
-                      <td className="py-4 px-6 text-gray-300 text-sm">{sale.metodo_pago || 'N/D'}</td>
-                      <td className="py-4 px-6 text-emerald-400 font-bold">${Number(sale.total || 0).toLocaleString()} MXN</td>
+                      <td className="py-4 px-6 text-gray-300 text-sm">{obtenerMetodoPagoVenta(sale)}</td>
+                      <td className="py-4 px-6 text-emerald-400 font-bold">${Number(obtenerMontoVenta(sale)).toLocaleString()} MXN</td>
                       <td className="py-4 px-6">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           status === 'completed'
                             ? 'bg-green-900/50 text-green-300 border border-green-600'
                             : 'bg-yellow-900/50 text-yellow-300 border border-yellow-600'
                         }`}>
-                          {formatSaleStatus(status)}
+                          {formatearEstadoVenta(status)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        {isPendingSale(status) ? (
+                        {esVentaPendiente(status) ? (
                           <button
-                            onClick={() => onCompleteServiceSale?.(sale)}
-                            disabled={completingServiceSaleId === sale.id}
+                            onClick={() => onCompletarVentaServicio?.(sale)}
+                            disabled={idVentaServicioCompletando === sale.id}
                             className="px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {completingServiceSaleId === sale.id ? 'Completando...' : 'Marcar completado'}
+                            {idVentaServicioCompletando === sale.id ? 'Completando...' : 'Marcar completado'}
                           </button>
                         ) : (
                           <span className="text-xs text-gray-400">Sin acción</span>

@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes existentes (Admin)
-import Login from './components/admistrador/Login';
-import Navbar from './components/admistrador/Navbar';
-import Home from './components/admistrador/Home'; // El Dashboard del Admin
-import RegisterUser from './components/admistrador/RegisterUser';
-import AssignMembership from './components/admistrador/AssignMembership';
-import UserMembershipList from './components/admistrador/UserMembershipList';
-import MembershipAdmin from './components/admistrador/MembershipAdmin';
-import PuntoDeVenta from './components/admistrador/PuntoDeVenta';
-import Inventario from './components/admistrador/Inventario';
-import CheckInOut from './components/CheckInOut';
-import HealthProfilesAdmin from './components/HealthProfilesAdmin';
+import Login from './components/administrador/Login';
+import Navbar from './components/administrador/Navbar';
+import Home from './components/administrador/Home'; // El Dashboard del Admin
+import RegistrarUsuario from './components/administrador/registros/RegistrarUsuario';
+import AssignMembership from './components/administrador/AssignMembership';
+import UserMembershipList from './components/administrador/UserMembershipList';
+import MembershipAdmin from './components/administrador/MembershipAdmin';
+import PuntoDeVenta from './components/administrador/PuntoDeVenta';
+import Inventario from './components/administrador/Inventario';
+import CheckInOut from './components/administrador/CheckInOut';
+import HealthProfilesAdmin from './components/administrador/HealthProfilesAdmin';
 import BitacoraEntrenador from './components/entrenador/BitacoraEntrenador';
-import GestionEntrenadores from './components/admistrador/GestionEntrenadores';
-import GestionNutriologos from './components/admistrador/GestionNutriologos';
+import GestionEntrenadores from './components/administrador/gestion-entrenadores/GestionEntrenadores';
+import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
 import CitasTrainer from './components/CitasTrainer';
 import FeedbackClie from './components/FeedbackClie';
 
@@ -28,7 +28,7 @@ import RutinaEntrenador from './components/entrenador/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/EntrenadorLogin';
 import NutriologoLogin from './components/NutriologoLogin';
 import NutriPortal from './components/NutriPortal';
-import ReportesFacturacion from './components/ReportesFacturacion';
+import ReportesFacturacion from './components/administrador/ReportesFacturacion';
 import PortalMantenimiento from './components/mantenimiento/PortalMantenimiento';
 import { logoutUser, getCurrentUser, onAuthChanged, getUserByAuthUid, getUserByEmail } from './firebase';
 import { AssistantProvider } from './components/asistente/ContextoAsistente';
@@ -273,7 +273,7 @@ function AdminArea() {
           <Route path="/" element={<Home />} />
 
           {/* 2. Registrar Clientes Nuevos */}
-          <Route path="registrar" element={<RegisterUser onUserRegistered={handleUserRegistered} />} />
+          <Route path="registrar" element={<RegistrarUsuario onUserRegistered={handleUserRegistered} />} />
 
           {/* 3. Asignar/Renovar Membresías */}
           <Route path="asignar" element={
