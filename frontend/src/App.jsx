@@ -18,10 +18,10 @@ import GestionEntrenadores from './components/administrador/gestion-entrenadores
 import GestionNutriologos from './components/administrador/gestion-nutriologos/GestionNutriologos';
 import CitasEntrenador from './components/entrenador/gestion/CitasEntrenador';
 // Nuevos Componentes Públicos
-import LandingPage from './components/LandingPage';
+import LandingPage from './components/pagina principal/InicioPublico';
 import Portal from './components/cliente/principal/Portal';
 import Sesion from './components/cliente/principal/Sesion';
-import AboutTeam from './components/AboutTeam';
+import AboutTeam from './components/pagina principal/SobreEquipo';
 import RutinaEntrenador from './components/entrenador/rutinas/RutinaEntrenador';
 import EntrenadorLogin from './components/entrenador/portal/EntrenadorLogin';
 import IniciarSesionNutri from './components/nutriologo/IniciarSesionNutri';

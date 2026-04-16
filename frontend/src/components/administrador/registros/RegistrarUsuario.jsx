@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ErrorModal from "../../modales/ErrorModal";
 import ModalExito from "../../modales/ModalExito";
-import AdminHealthForm from "../../AdminHealthForm";
+import FormularioSaludAdmin from "./FormularioSaludAdmin";
 import RegistrarEntrenador from "./RegistrarEntrenador";
 import RegistrarNutriologo from "./RegistrarNutriologo";
 import { registerClientByAdmin, createMembershipSale, getSaleByFolio } from "../../../firebase";
@@ -267,7 +267,7 @@ function RegistrarUsuario({ onUserRegistered }) {
           {mostrarFormulaioSalud && (
             <div className="mt-2">
               <p className="text-xs text-slate-400 mb-2">Completa ahora la ficha médica inicial del cliente antes de su primer acceso.</p>
-              <AdminHealthForm
+              <FormularioSaludAdmin
                 miembroEmail={emailReciente}
                 onClose={() => { setMostrarFormulaioSalud(false); setMostrarModalExito(false); }}
                 onSaved={() => { if (onUserRegistered) onUserRegistered(); }}
