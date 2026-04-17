@@ -8,8 +8,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { construirPromptRutina, generarRutinaIA, suscribirHistorialRutinaIA } from '../../backend/servicioRutinasIA';
 
-import VideoYouTube from './VideoYouTube';
-
 const INITIAL_FORM = {
     goal: 'recomposition',
     level: 'beginner',
@@ -287,7 +285,7 @@ function ClientAIRoutineGenerator() {
                                 Genera y revisa el historial real de rutinas
                             </h1>
                             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-                                Cada rutina generada se guarda automáticamente en tu historial personal. Los videos tutoriales se cargan al instante.
+                                Cada rutina generada se guarda automáticamente en tu historial personal.
                             </p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-3 md:min-w-[360px]">
@@ -410,7 +408,7 @@ function ClientAIRoutineGenerator() {
                             )}
                         </div>
 
-                        {/* BLOQUE DE LA RESPUESTA DE LA IA (CON VIDEOS) */}
+                        {/* BLOQUE DE LA RESPUESTA DE LA IA */}
                         <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5 shadow-xl shadow-slate-950/20">
                             <div className="flex items-center gap-2 text-cyan-300 mb-4">
                                 <MessageSquareText size={18} />
@@ -443,16 +441,11 @@ function ClientAIRoutineGenerator() {
                                                     <div className="grid gap-4 sm:grid-cols-1">
                                                         {dia.ejercicios.map((ejercicio, indexEj) => (
                                                             <div key={indexEj} className="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-lg overflow-hidden flex flex-col">
-                                                                <div className="mb-4">
+                                                                <div>
                                                                     <h4 className="font-bold text-slate-100 text-lg">{ejercicio.nombre}</h4>
                                                                     {ejercicio.descripcion && (
                                                                         <p className="mt-2 text-sm text-slate-400">{ejercicio.descripcion}</p>
                                                                     )}
-                                                                </div>
-                                                                
-                                                                {/* COMPONENTE DE VIDEO CONECTADO */}
-                                                                <div className="mt-auto pt-4 border-t border-slate-800">
-                                                                    <VideoYouTube nombreEjercicio={ejercicio.nombre} />
                                                                 </div>
                                                             </div>
                                                         ))}
