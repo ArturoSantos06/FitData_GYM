@@ -19,12 +19,14 @@ import {
 import ModalExito from '../modales/ModalExito';
 import ErrorModal from '../modales/ErrorModal';
 import ModalConfirmacion from '../modales/ModalConfirmacion';
+import ListaPacientes from './ListaPacientes';
+import FormularioSubirDieta from './FormularioSubirDieta';
+import ListaArchivosDieta from './ListaArchivosDieta';
 
 const allowedTypesLabel = 'PDF, JPG o PNG';
 const maxDietFileSizeBytes = 10 * 1024 * 1024;
 const maxTitleLength = 120;
 const maxNotesLength = 500;
-const maxSearchLength = 80;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -575,215 +577,41 @@ function DietRepositoryAdmin() {
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
         <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-white">Seleccionar Paciente</h2>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">{filteredMembers.length} resultados</span>
-              </div>
-            </div>
-            <input
-              type="text"
-              value={memberFilter}
-              maxLength={maxSearchLength}
-              onChange={(event) => setMemberFilter(event.target.value.slice(0, maxSearchLength))}
-              placeholder="Buscar por nombre, correo o ID..."
-              className="mb-4 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
-            />
-
-            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
-              {loading && (
-                <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-400">
-                  Cargando pacientes asignados...
-                </p>
-              )}
-
-              {!loading && filteredMembers.map((member) => {
-                const isSelected = String(selectedMemberId) === String(member.id);
-                const memberFileCount = files.filter((file) => String(file.memberId) === String(member.id)).length;
-
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleSelectMember(member.id);
-                    }}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                      isSelected
-                        ? 'border-cyan-400 bg-cyan-500/10 shadow-lg shadow-cyan-950/30'
-                        : 'border-slate-700 bg-slate-800/70 hover:border-slate-500 hover:bg-slate-800'
-                    } focus:outline-none focus:ring-0`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white">{member.fullName}</p>
-                        <p className="mt-1 text-xs text-slate-400">{member.email || 'Sin correo registrado'}</p>
-                        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-500">Expediente #{member.id}</p>
-                      </div>
-                      <span className="rounded-full bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-200">{memberFileCount}</span>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {!loading && filteredMembers.length === 0 && (
-                <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-400">
-                  No hay pacientes que coincidan con la búsqueda.
-                </p>
-              )}
-
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-xl">
-            <h2 className="text-lg font-semibold text-white">Subir Archivo al Expediente</h2>
-            <p className="mt-1 text-sm text-slate-400">Formatos permitidos: {allowedTypesLabel}. Tamaño máximo: 10MB.</p>
-
-            <div className="mt-4 space-y-4">
-              <input
-                type="text"
-                value={title}
-                maxLength={maxTitleLength}
-                onChange={(event) => setTitle(event.target.value.slice(0, maxTitleLength))}
-                placeholder="Título del archivo o plan alimenticio"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
-              />
-
-              <textarea
-                value={notes}
-                maxLength={maxNotesLength}
-                onChange={(event) => setNotes(event.target.value.slice(0, maxNotesLength))}
-                placeholder="Notas opcionales para el expediente"
-                rows={4}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
-              />
-
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-600 bg-slate-950/80 px-4 py-6 text-center transition hover:border-cyan-500 hover:bg-slate-950">
-                <span className="text-sm font-medium text-white">Seleccionar archivo</span>
-                <span className="mt-1 text-xs text-slate-400">{selectedFile ? `${selectedFile.name} • ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'Haz clic para elegir PDF, JPG o PNG'}</span>
-                <input
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving || loading}
-              className="mt-5 w-full rounded-2xl bg-linear-to-r from-cyan-500 to-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? 'Guardando archivo...' : 'Guardar en expediente'}
-            </button>
-          </form>
+          <ListaPacientes
+            loading={loading}
+            filteredMembers={filteredMembers}
+            memberFilter={memberFilter}
+            setMemberFilter={setMemberFilter}
+            selectedMemberId={selectedMemberId}
+            handleSelectMember={handleSelectMember}
+            files={files}
+          />
+          <FormularioSubirDieta
+            handleSubmit={handleSubmit}
+            title={title}
+            setTitle={setTitle}
+            notes={notes}
+            setNotes={setNotes}
+            selectedFile={selectedFile}
+            handleFileChange={handleFileChange}
+            saving={saving}
+            loading={loading}
+          />
         </div>
 
-        <div className="self-start rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-xl">
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">Archivos Registrados</h2>
-              <p className="text-sm text-slate-400">
-                {showAllRecent
-                  ? (isNutritionistRole(sessionRole)
-                    ? 'Archivos más recientes de tus pacientes asignados.'
-                    : 'Archivos más recientes de todos los pacientes.')
-                  : 'Consulta y descarga los archivos del expediente digital.'}
-              </p>
-            </div>
-            <div className="flex gap-2 lg:items-center">
-              <button
-                type="button"
-                onClick={() => setShowAllRecent(!showAllRecent)}
-                className={`whitespace-nowrap rounded-lg px-4 py-3 text-sm font-semibold transition ${
-                  showAllRecent
-                    ? 'border border-cyan-500 bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30'
-                    : 'border border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-600'
-                }`}
-              >
-                {showAllRecent ? '← Volver' : 'Ver recientes'}
-              </button>
-              <input
-                type="text"
-                value={fileFilter}
-                maxLength={maxSearchLength}
-                onChange={(event) => setFileFilter(event.target.value.slice(0, maxSearchLength))}
-                placeholder="Buscar archivo o paciente..."
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500 lg:w-auto lg:min-w-xs"
-              />
-            </div>
-          </div>
-
-          {loading ? (
-            <p className="py-4 text-center text-slate-400">Cargando repositorio...</p>
-          ) : !showAllRecent && !selectedMemberId && !fileFilter.trim() ? (
-            <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-4 text-center text-sm text-slate-400">
-              Selecciona un paciente para ver sus archivos.
-            </p>
-          ) : filteredFiles.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-4 text-center text-sm text-slate-400">
-              No hay archivos registrados {showAllRecent ? 'recientemente' : 'con los filtros actuales'}.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {filteredFiles.map((fileItem) => {
-                const date = fileItem.createdAt?.toDate?.() || fileItem.updatedAt?.toDate?.() || null;
-
-                return (
-                  <div key={fileItem.id} className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="break-all text-base font-semibold text-white">{fileItem.title || fileItem.originalFileName}</h3>
-                          <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] uppercase tracking-wide text-cyan-300">
-                            {fileItem.contentType === 'application/pdf' ? 'PDF' : 'Imagen'}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-300">Paciente: {fileItem.resolvedMemberName || 'Sin nombre'}</p>
-                        <p className="mt-1 break-all text-xs text-slate-500">{fileItem.originalFileName}</p>
-                        {fileItem.notes && <p className="mt-3 wrap-break-word text-sm text-slate-400">{fileItem.notes}</p>}
-                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
-                          <span>Subido por: {fileItem.uploadedBy || 'admin'}</span>
-                          <span>{date ? date.toLocaleString('es-MX') : 'Sin fecha'}</span>
-                          <span>{fileItem.size ? `${(fileItem.size / 1024 / 1024).toFixed(2)} MB` : 'Tamaño no disponible'}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 flex-wrap gap-2">
-                        <a
-                          href={fileItem.downloadURL}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
-                        >
-                          Abrir
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleDownload(fileItem)}
-                          className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
-                        >
-                          Descargar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => requestDelete(fileItem)}
-                          disabled={saving}
-                          className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <ListaArchivosDieta
+          loading={loading}
+          sessionRole={sessionRole}
+          showAllRecent={showAllRecent}
+          setShowAllRecent={setShowAllRecent}
+          fileFilter={fileFilter}
+          setFileFilter={setFileFilter}
+          selectedMemberId={selectedMemberId}
+          filteredFiles={filteredFiles}
+          handleDownload={handleDownload}
+          requestDelete={requestDelete}
+          saving={saving}
+        />
       </section>
 
       {successModal.open && (
