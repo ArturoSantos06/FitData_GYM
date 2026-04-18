@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { QrCode, ShoppingBag, Dumbbell, User, LogOut, MessageSquare } from 'lucide-react';
-import { getCurrentUser, getUserByAuthUid, getUser, getUserByEmail } from '../firebase';
+import { getCurrentUser, getUserByAuthUid, getUser, getUserByEmail } from '../../../firebase';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 const resolveUserFromAuth = async (firebaseUser) => {
-    if (!firebaseUser) return { success: false };
-    const userByAuthUid = await getUserByAuthUid(firebaseUser.uid);
-    if (userByAuthUid?.success && userByAuthUid.data) return { success: true, data: userByAuthUid.data };
-    const userByDocId = await getUser(firebaseUser.uid);
-    if (userByDocId?.success && userByDocId.data) return { success: true, data: userByDocId.data };
-    const email = normalizeEmail(firebaseUser.email);
-    if (email) {
-        const userByEmail = await getUserByEmail(email);
-        if (userByEmail?.success && userByEmail.data) return { success: true, data: userByEmail.data };
-    }
-    return { success: false };
+  if (!firebaseUser) return { success: false };
+  const userByAuthUid = await getUserByAuthUid(firebaseUser.uid);
+  if (userByAuthUid?.success && userByAuthUid.data) return { success: true, data: userByAuthUid.data };
+  const userByDocId = await getUser(firebaseUser.uid);
+  if (userByDocId?.success && userByDocId.data) return { success: true, data: userByDocId.data };
+  const email = normalizeEmail(firebaseUser.email);
+  if (email) {
+    const userByEmail = await getUserByEmail(email);
+    if (userByEmail?.success && userByEmail.data) return { success: true, data: userByEmail.data };
+  }
+  return { success: false };
 };
 
 const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
@@ -43,7 +43,7 @@ const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
           finalData.photoURL = u.photoURL || finalData.photoURL;
           finalData.gymPoints = u.gymPoints || 0;
         }
-        
+
         finalData.bgColor = localStorage.getItem(`avatar_bg_color_${uId}`) || '#1D4ED8';
         setUserData(finalData);
       } catch (err) {
@@ -85,8 +85,8 @@ const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${isActive
-                      ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] -translate-y-px'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-b-2 border-transparent'
+                    ? 'bg-slate-800 text-white border-b-2 border-cyan-400 shadow-[0_4px_12px_-2px_rgba(34,211,238,0.3)] -translate-y-px'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border-b-2 border-transparent'
                     }`}
                 >
                   {tab.label}
@@ -105,8 +105,8 @@ const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
           </button>
 
           {userData && (
-            <div 
-              className="flex items-center gap-3 cursor-pointer group pl-6 border-l border-slate-800/50" 
+            <div
+              className="flex items-center gap-3 cursor-pointer group pl-6 border-l border-slate-800/50"
               onClick={() => setActiveTab('perfil')}
               title="Ir a perfil"
             >
@@ -116,7 +116,7 @@ const Navbar = ({ activeTab, setActiveTab, onLogout }) => {
                 </span>
                 <span className="text-[11px] font-bold text-yellow-400 mt-[1px] flex items-center justify-end gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   {userData.gymPoints} pts
                 </span>
