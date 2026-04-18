@@ -73,13 +73,13 @@ function CentroNotificaciones({ userId }) {
 
            {isOpen && (
                <div className="absolute right-0 top-14 w-80 sm:w-96 bg-[#1f2c33]/95 backdrop-blur-xl border border-slate-700/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-fade-in origin-top-right z-50">
-                   <div className="p-3.5 border-b border-slate-700/60 bg-gradient-to-r from-[#202c33] to-[#1f2c33] flex items-center justify-between">
+                   <div className="p-3.5 border-b border-slate-700/60 bg-linear-to-r from-[#202c33] to-[#1f2c33] flex items-center justify-between">
                        <h3 className="font-semibold text-slate-100 text-sm flex items-center gap-2">
                            Notificaciones
                            {unreadCount > 0 && <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full text-xs">{unreadCount} nuevas</span>}
                        </h3>
                        {unreadCount > 0 && (
-                           <button onClick={markAllAsRead} className="text-xs font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 flex items-center rounded-lg">
+                           <button onClick={markAllAsRead} className="text-xs font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 rounded-lg">
                                <CheckCheck size={14} /> Leer todas
                            </button>
                        )}
@@ -104,7 +104,7 @@ function CentroNotificaciones({ userId }) {
                                   {/* Unread indicator dot */}
                                   {!n.read && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-cyan-500 rounded-r-md"></div>}
                                   
-                                  <div className={`mt-0.5 flex items-center justify-center w-10 h-10 rounded-full shrink-0 ${n.read ? 'bg-slate-800 text-slate-400' : 'bg-gradient-to-tr from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/20'}`}>
+                                  <div className={`mt-0.5 flex items-center justify-center w-10 h-10 rounded-full shrink-0 ${n.read ? 'bg-slate-800 text-slate-400' : 'bg-linear-to-tr from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/20'}`}>
                                       <Bell size={18} />
                                   </div>
                                   <div className="flex-1 min-w-0 pr-2">
