@@ -14,7 +14,6 @@ const MessagesBody = ({ role }) => {
     const [showSidebarMobile, setShowSidebarMobile] = useState(true);
     const currentUser = getCurrentUser();
 
-    // Consultar Firestore según el Rol
     useEffect(() => {
         if (!currentUser?.uid) return;
 
@@ -42,11 +41,8 @@ const MessagesBody = ({ role }) => {
                     const assignData = d.data();
                     console.log("3. Datos crudos de la asignación:", assignData);
 
-                    // --- LA CORRECCIÓN CLAVE ---
-                    // Tomamos ESTRICTAMENTE el valor guardado adentro del documento, nunca el d.id
                     const clientId = assignData.clientId;
 
-                    // Si el documento de Firebase está mal hecho y no tiene el campo, lo saltamos.
                     if (!clientId) {
                         console.warn(`Saltando documento ${d.id}: No tiene el campo 'clientId' adentro.`);
                         continue;
@@ -65,7 +61,6 @@ const MessagesBody = ({ role }) => {
                             const u = userSnap.data();
                             console.log(`5. Perfil de cliente encontrado: ${u.displayName}`);
 
-                            // Ahora estamos 100% seguros de que este 'clientId' es la cadena larga (ej. OsVis...)
                             clientsData.push({
                                 clientId: clientId,
                                 name: u.displayName || 'Cliente Sin Nombre',
@@ -108,9 +103,7 @@ const MessagesBody = ({ role }) => {
     return (
         <div className="flex h-[calc(100vh-80px)] w-full overflow-hidden bg-[#0b141a] text-slate-100 font-sans md:h-[calc(100vh-80px)] rounded-3xl border border-slate-700 shadow-2xl relative z-10 mx-auto mt-6" style={{ maxWidth: '1400px' }}>
 
-            {/* SIDEBAR (Lista de contactos) */}
             <aside className={`flex flex-col border-r border-slate-700 bg-[#111b21] md:w-[350px] lg:w-[400px] shrink-0 ${!showSidebarMobile ? 'hidden md:flex' : 'w-full'}`}>
-                {/* Header del Sidebar */}
                 <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-700 bg-[#202c33] px-4 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-600 shadow-lg text-white">
@@ -122,7 +115,6 @@ const MessagesBody = ({ role }) => {
                     </div>
                 </header>
 
-                {/* Buscador */}
                 <div className="border-b border-slate-700 bg-[#111b21] p-3">
                     <div className="relative flex items-center h-10 w-full overflow-hidden rounded-lg bg-[#202c33] px-3 focus-within:ring-1 focus-within:ring-cyan-500 transition-all border border-slate-600">
                         <Search size={18} className="text-slate-400" />
@@ -136,7 +128,6 @@ const MessagesBody = ({ role }) => {
                     </div>
                 </div>
 
-                {/* Lista */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide py-2">
                     {fetchingList ? (
                         <div className="mt-10 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -181,7 +172,6 @@ const MessagesBody = ({ role }) => {
                 </div>
             </aside>
 
-            {/* CHAT MAIN WINDOW */}
             {!selectedClient ? (
                 <div className={`min-h-0 flex-1 flex-col items-center justify-center bg-[#222e35] ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
                     <div className="text-center align-middle justify-center flex flex-col items-center animate-fade-in">

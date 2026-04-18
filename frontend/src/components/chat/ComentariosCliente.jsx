@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 const ComentariosCliente = () => {
   const [newMessage, setNewMessage] = useState('');
 
-  // Datos simulados para visualizar la estética y los estados de envío
   const messages = [
     {
       id: 1,
@@ -17,7 +16,7 @@ const ComentariosCliente = () => {
       text: 'Todo muy bien, pero me quedo con un poco de hambre en las noches.',
       senderId: 'cliente_actual',
       timestamp: '10:15 AM',
-      status: 'read' // ✓✓ azul/cian
+      status: 'read'
     },
     {
       id: 3,
@@ -31,27 +30,24 @@ const ComentariosCliente = () => {
       text: 'Me parece perfecto, gracias.',
       senderId: 'cliente_actual',
       timestamp: '10:22 AM',
-      status: 'delivered' // ✓✓ gris
+      status: 'delivered'
     },
     {
       id: 5,
       text: 'Un mensaje que acaba de salir...',
       senderId: 'cliente_actual',
       timestamp: '10:25 AM',
-      status: 'sent' // ✓ gris
+      status: 'sent'
     }
   ];
 
-  const currentClientId = 'cliente_actual'; // Esto vendrá de tu Firebase Auth
+  const currentClientId = 'cliente_actual';
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    // Aquí irá la lógica para guardar en Firestore
     setNewMessage('');
   };
-
-  // Función auxiliar para renderizar el icono de estado (WhatsApp style)
   const renderStatus = (status) => {
     switch (status) {
       case 'sent':
@@ -68,7 +64,6 @@ const ComentariosCliente = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100 font-sans">
 
-      {/* Header Cyberpunk */}
       <header className="px-6 py-4 bg-gray-900 border-b border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)] z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gray-800 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)] flex items-center justify-center text-cyan-400 font-bold">
@@ -83,7 +78,6 @@ const ComentariosCliente = () => {
         </div>
       </header>
 
-      {/* Área de Mensajes */}
       <main className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black scrollbar-thin scrollbar-thumb-purple-700 scrollbar-track-gray-900">
         {messages.map((msg) => {
           const isClient = msg.senderId === currentClientId;
@@ -92,8 +86,8 @@ const ComentariosCliente = () => {
             <div key={msg.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={`max-w-[75%] px-4 py-2 relative flex flex-col gap-1 ${isClient
-                    ? 'bg-purple-900/40 border border-purple-500/70 text-purple-50 rounded-bl-2xl rounded-tl-2xl rounded-tr-md shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-                    : 'bg-cyan-900/30 border border-cyan-500/70 text-cyan-50 rounded-br-2xl rounded-tr-2xl rounded-tl-md shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                  ? 'bg-purple-900/40 border border-purple-500/70 text-purple-50 rounded-bl-2xl rounded-tl-2xl rounded-tr-md shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                  : 'bg-cyan-900/30 border border-cyan-500/70 text-cyan-50 rounded-br-2xl rounded-tr-2xl rounded-tl-md shadow-[0_0_10px_rgba(6,182,212,0.2)]'
                   }`}
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -109,7 +103,6 @@ const ComentariosCliente = () => {
         })}
       </main>
 
-      {/* Input Area Cyberpunk */}
       <footer className="p-4 bg-gray-900 border-t border-cyan-500 shadow-[0_0_-15px_rgba(6,182,212,0.3)] z-10">
         <form onSubmit={handleSendMessage} className="flex gap-3 max-w-5xl mx-auto">
           <input
