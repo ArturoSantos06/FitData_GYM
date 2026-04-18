@@ -13,91 +13,6 @@ const {
   saveAiRoutineHistory,
 } = require("./aiRutinas/geminiRoutineService");
 
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const moment = require("moment");
-const { sendMarketingEmail } = require("./emailService");
-
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-
-// configuración con los secretos
-exports.motorDeMarketingAutomizado = onSchedule({
-    schedule: "every day 08:00",
-    secrets: ["GYM_EMAIL_PASS"] 
-}, async (event) => {
-    console.log("Iniciando Motor de Marketing FitData (Nivel Avanzado)...");
-        
-    const ayerStr = moment().subtract(1, 'days').format('YYYY-MM-DD');
-    const hoyStr = moment().format('YYYY-MM-DD'); 
-    const enCincoDiasStr = moment().add(5, 'days').format('YYYY-MM-DD');
-    const enTreintaDiasStr = moment().add(30, 'days').format('YYYY-MM-DD');
-
-    try {
-        const db = admin.firestore();
-        const membershipsRef = db.collection("memberships");
-        const todasSnap = await membershipsRef.get();
-        const correosPromesas = [];
-
-        // USAMOS FOR...OF PARA PODER HACER 'AWAIT' ADENTRO
-        for (const doc of todasSnap.docs) {
-            const plan = doc.data();
-            
-            if (plan.userEmail && plan.active === true) {
-                
-                // --- ESTRATEGIAS BASADAS EN LA MEMBRESÍA ---
-                if (plan.endDate === hoyStr) {
-                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VENCIMIENTO_HOY'));
-                } 
-                else if (plan.endDate === enCincoDiasStr) {
-                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'RECORDATORIO_5_DIAS'));
-                }
-                else if (plan.durationDays >= 360 && plan.endDate === enTreintaDiasStr) {
-                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'VIP_RENEWAL'));
-                }
-                else if (plan.durationDays === 1 && plan.endDate === ayerStr) {
-                    correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'DAY_PASS_UPGRADE'));
-                }
-
-                // --- ESTRATEGIA DE RETENCIÓN (ABANDONO) ---
-                if (plan.userId) {
-                    // Buscamos SOLO la asistencia más reciente de este usuario específico
-                    const asistenciasRef = db.collection("asistencias");
-                    const ultimaAsistenciaSnap = await asistenciasRef
-                        .where("userId", "==", plan.userId)
-                        .orderBy("checkInTime", "desc")
-                        .limit(1)
-                        .get();
-
-                    if (!ultimaAsistenciaSnap.empty) {
-                        const ultimaVisita = ultimaAsistenciaSnap.docs[0].data();
-                        
-                        // Calculamos hace cuántos días fue esa entrada
-                        const fechaVisita = moment(ultimaVisita.fecha_hora_entrada);
-                        const diasAusente = moment().diff(fechaVisita, 'days');
-
-                        // Si faltó EXACTAMENTE 14 días (Enviamos solo hoy para no hacer spam diario)
-                        if (diasAusente === 14) {
-                            console.log(`⚠️ Alerta de abandono: ${plan.userName} lleva 14 días sin venir.`);
-                            correosPromesas.push(sendMarketingEmail(plan.userEmail, plan.userName, 'PREVENCION_ABANDONO'));
-                        }
-                    }
-                }
-            }
-        }
-
-        if (correosPromesas.length > 0) {
-            await Promise.all(correosPromesas);
-            console.log(`🚀 Marketing completado: ${correosPromesas.length} campañas enviadas.`);
-        } else {
-            console.log("💤 No hubo campañas de marketing para disparar hoy.");
-        }
-
-    } catch (error) {
-        console.error("❌ Error en el motor de marketing:", error);
-    }
-});
-
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const DEFAULT_FROM_EMAIL = defineSecret("DEFAULT_FROM_EMAIL");
@@ -212,6 +127,46 @@ const isPrivilegedRequest = async (request) => {
   } catch {
     return false;
   }
+};
+
+const isTrainerForMember = async (memberId, trainerUid, trainerEmail) => {
+  const db = admin.firestore();
+  const memberSnap = await db.doc(`miembros/${memberId}`).get();
+  if (!memberSnap.exists) {
+    return { allowed: false, reason: "El cliente no existe." };
+  }
+
+  const memberData = memberSnap.data() || {};
+  const candidateIds = Array.from(new Set([
+    String(memberId || "").trim(),
+    String(memberData.userId || "").trim(),
+    String(memberData.authUid || "").trim(),
+  ].filter(Boolean)));
+
+  for (const candidateId of candidateIds) {
+    const directSnap = await db.doc(`client_trainer_assignments/${candidateId}`).get();
+    if (directSnap.exists) {
+      const directData = directSnap.data() || {};
+      const matchesTrainer = String(directData.trainerId || directData.trainer_id || "").trim() === trainerUid
+        || String(directData.trainerEmail || directData.trainer_email || "").trim().toLowerCase() === String(trainerEmail || "").trim().toLowerCase();
+      if (matchesTrainer) return { allowed: true };
+    }
+
+    const [byClientIdSnap, byMemberIdSnap] = await Promise.all([
+      db.collection("client_trainer_assignments").where("clientId", "==", candidateId).limit(10).get(),
+      db.collection("client_trainer_assignments").where("memberId", "==", candidateId).limit(10).get(),
+    ]);
+
+    const candidatos = [...byClientIdSnap.docs, ...byMemberIdSnap.docs];
+    for (const docSnap of candidatos) {
+      const data = docSnap.data() || {};
+      const matchesTrainer = String(data.trainerId || data.trainer_id || "").trim() === trainerUid
+        || String(data.trainerEmail || data.trainer_email || "").trim().toLowerCase() === String(trainerEmail || "").trim().toLowerCase();
+      if (matchesTrainer) return { allowed: true };
+    }
+  }
+
+  return { allowed: false, reason: "No tienes permiso para modificar este cliente." };
 };
 
 const buildFacturaDescripcion = (saleData = {}) => {
@@ -1644,6 +1599,47 @@ exports.downloadDietFile = onRequest(async (req, res) => {
     logger.error("downloadDietFile error", { error: String(error?.message || error) });
     res.status(500).json({ error: "No se pudo completar la descarga." });
   }
+});
+
+exports.actualizarVisibilidadCliente = onCall(async (request) => {
+  const uid = String(request?.auth?.uid || "").trim();
+  const email = String(request?.auth?.token?.email || "").trim();
+  const memberId = String(request?.data?.memberId || "").trim();
+  const archivado = request?.data?.archivado;
+  const eliminado = request?.data?.eliminado;
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Debes iniciar sesión.");
+  }
+
+  if (!memberId) {
+    throw new HttpsError("invalid-argument", "memberId es requerido.");
+  }
+
+  const isAdminUser = await isPrivilegedRequest(request);
+  let allowed = isAdminUser;
+
+  if (!allowed) {
+    const trainerCheck = await isTrainerForMember(memberId, uid, email);
+    allowed = trainerCheck.allowed;
+    if (!allowed) {
+      throw new HttpsError("permission-denied", trainerCheck.reason || "No tienes permiso para modificar este cliente.");
+    }
+  }
+
+  const updatePayload = {};
+  if (typeof archivado === "boolean") updatePayload.archivado = archivado;
+  if (typeof eliminado === "boolean") updatePayload.eliminado = eliminado;
+
+  if (!Object.keys(updatePayload).length) {
+    throw new HttpsError("invalid-argument", "Debes enviar archivado o eliminado.");
+  }
+
+  updatePayload.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+  await admin.firestore().doc(`miembros/${memberId}`).set(updatePayload, { merge: true });
+
+  return { success: true };
 });
 
 exports.onMembershipCreatedSendEmail = onDocumentCreated({
@@ -3203,20 +3199,6 @@ exports.onMessageCreated = onDocumentCreated(
     }
   }
 );
-
-// FUNCIÓN SOLO PARA PRUEBAS: Borrar después de testear
-//exports.testEnvioCorreoManual = onRequest(async (req, res) => {
-  //  try {
-    //    const { sendMarketingEmail } = require("./emailService");
-        
-      //  await sendMarketingEmail("abecedario0304@gmail.com", "Prueba FitData", "DAY_PASS_UPGRADE");
-        
-        //res.json({ mensaje: "Intento de envío procesado exitosamente" });
-    //} catch (e) {
-      //  res.status(500).send("❌ Error: " + e.message);
-   // }
-//});
-
 
 exports.onMessageCreated = onDocumentCreated(
   {

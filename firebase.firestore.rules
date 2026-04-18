@@ -136,6 +136,12 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
+
+      // Historial de puntos - solo admins pueden escribir
+      match /point_history/{historyId} {
+        allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow write: if isAdmin();
+      }
     }
 
     // Members Collection - Linked to users
