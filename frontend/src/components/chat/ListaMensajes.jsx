@@ -39,7 +39,7 @@ function ListaMensajes({ messages, currentUserId }) {
                 <div className="mt-1">
                    {msg.text && <p className="mb-2">{msg.text}</p>}
                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                   <audio src={msg.fileUrl} controls className="max-w-full h-10 w-[240px] grayscale" />
+                   <audio src={msg.fileUrl} controls className="max-w-full h-10 w-60 grayscale" />
                 </div>
               );
            case 'doc':
@@ -60,7 +60,7 @@ function ListaMensajes({ messages, currentUserId }) {
   };
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-5 min-h-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800/10 via-[#0b141a] to-[#0b141a] scroll-smooth">
+    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-5 min-h-0 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-800/10 via-[#0b141a] to-[#0b141a] scroll-smooth">
       {messages.length === 0 && (
          <div className="mx-auto mt-12 max-w-sm rounded-2xl border border-dashed border-slate-600/60 bg-slate-800/30 px-6 py-8 text-center shadow-lg backdrop-blur-sm">
              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400">
