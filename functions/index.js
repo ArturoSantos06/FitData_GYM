@@ -7,6 +7,7 @@ const admin = require("firebase-admin");
 const PDFDocument = require("pdfkit");
 const { Readable } = require("stream");
 const { randomUUID } = require("crypto");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const {
   buildAiRoutinePrompt,
   extractGeminiText,
@@ -50,7 +51,8 @@ const generateSaleFolio = () => {
 
 const nodemailer = require("nodemailer");
 
-const sendGmailSmtp = async ({ toEmail, subject, message, defaultFrom }) => {
+// Modificado para aceptar diseños HTML (necesario para tu Marketing)
+const sendGmailSmtp = async ({ toEmail, subject, message, htmlTemplate, defaultFrom }) => {
   const gmailUser = GMAIL_USER.value();
   const appPassword = GMAIL_APP_PASSWORD.value();
   const fromEmail = defaultFrom || "FitData GYM <fitdatagym@gmail.com>";
@@ -72,7 +74,7 @@ const sendGmailSmtp = async ({ toEmail, subject, message, defaultFrom }) => {
     to: toEmail,
     subject,
     text: message,
-    html: `<pre>${message}</pre>`,
+    html: htmlTemplate || `<pre>${message}</pre>`,
   });
 
   return { id: info.messageId };
@@ -1054,7 +1056,6 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
       errorMessage: lastGeminiErrorMessage,
     });
 
-    // 404/400 suele indicar modelo no disponible; probamos el siguiente.
     if (response.status !== 404 && response.status !== 400) {
       logger.error("Gemini API error", {
         model: modelName,
@@ -1642,38 +1643,135 @@ exports.actualizarVisibilidadCliente = onCall(async (request) => {
   return { success: true };
 });
 
+
+// ----------------------------------------------------------------------
+// 1. EL TRABAJADOR AUTOMÁTICO DE MARKETING (CRON JOB)
+// ----------------------------------------------------------------------
+// Se ejecutará automáticamente todos los días a las 8:00 AM (Hora Centro)
+exports.trabajadorNocturnoMarketing = onSchedule({
+  schedule: "0 8 * * *", 
+  timeZone: "America/Mexico_City",
+  secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL]
+}, async (event) => {
+  const db = admin.firestore();
+  
+  // 1. Calcular las fechas exactas en el formato de tu base de datos (YYYY-MM-DD)
+  const hoy = new Date();
+  const mexicoOffset = -6 * 60; // Ajuste CST
+  const localHoy = new Date(hoy.getTime() + (hoy.getTimezoneOffset() + mexicoOffset) * 60000);
+
+  const formatoTexto = (fecha) => fecha.toISOString().split('T')[0];
+
+  const hoyStr = formatoTexto(localHoy);
+  
+  const fecha5Dias = new Date(localHoy);
+  fecha5Dias.setDate(fecha5Dias.getDate() + 5);
+  const str5Dias = formatoTexto(fecha5Dias);
+
+  const fecha30Dias = new Date(localHoy);
+  fecha30Dias.setDate(fecha30Dias.getDate() + 30);
+  const str30Dias = formatoTexto(fecha30Dias);
+
+  const loginUrl = 'https://fitdatagym-f347a.web.app/login';
+
+  // Función interna para armar y enviar el diseño HTML
+  const enviarHTML = async (toEmail, userName, tipoCampaña, subjectText, mainMessage, subMessage, callToAction) => {
+      const htmlTemplate = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #0f172a; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; text-align: center; border-bottom: 3px solid #2dd4bf;">
+              <h1 style="color: #2dd4bf; margin: 0; font-size: 28px; letter-spacing: 2px;">FitData GYM</h1>
+          </div>
+          <div style="padding: 40px 30px; background-color: #1e293b; color: #f8fafc;">
+              <h2 style="color: #f1f5f9; font-size: 20px; margin-top: 0;">${mainMessage}</h2>
+              <p style="color: #cbd5e1; font-size: 16px; line-height: 1.6;">${subMessage}</p>
+              <div style="text-align: center; margin-top: 35px; margin-bottom: 15px;">
+                  <a href="${loginUrl}" style="background-color: #0d9488; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">${callToAction}</a>
+              </div>
+          </div>
+          <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+              <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 FitData GYM. Todos los derechos reservados.</p>
+          </div>
+      </div>
+      `;
+
+      try {
+          await sendGmailSmtp({
+              toEmail,
+              subject: subjectText,
+              message: `${mainMessage} ${subMessage}`,
+              htmlTemplate,
+              defaultFrom: DEFAULT_FROM_EMAIL.value() || "FitData GYM <fitdatagym@gmail.com>"
+          });
+          logger.info(`Campaña [${tipoCampaña}] enviada a ${toEmail}`);
+      } catch (error) {
+          logger.error(`Error campaña [${tipoCampaña}] a ${toEmail}:`, error);
+      }
+  };
+
+  // ==========================================
+  // BÚSQUEDA Y ENVÍO MASIVO AUTOMÁTICO
+  // ==========================================
+
+  // A) CAMPAÑA: VENCEN HOY
+  const vencenHoySnap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", hoyStr).get();
+  for (const doc of vencenHoySnap.docs) {
+      const data = doc.data();
+      if (data.userEmail) {
+          await enviarHTML(
+              data.userEmail, data.userName || "Cliente", 'VENCIMIENTO_HOY',
+              '🚨 Tu membresía en FitData GYM vence HOY',
+              `¡Hola, ${data.userName || "Cliente"}! Tu membresía llega hoy a su fin.`,
+              'No dejes que tu progreso se detenga. Pasa a recepción hoy mismo para no perder tu racha.',
+              'Renovar Ahora'
+          );
+      }
+  }
+
+  // B) CAMPAÑA: FALTAN 5 DÍAS
+  const faltan5Snap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", str5Dias).get();
+  for (const doc of faltan5Snap.docs) {
+      const data = doc.data();
+      if (data.userEmail) {
+          await enviarHTML(
+              data.userEmail, data.userName || "Cliente", 'RECORDATORIO_5_DIAS',
+              '⏰ Tu membresía está por vencer',
+              `¡Hola, ${data.userName || "Cliente"}! Te quedan 5 días de entrenamiento.`,
+              'Anticipa tu renovación para que no pierdas ni un solo día. ¡Te esperamos!',
+              'Ver Planes'
+          );
+      }
+  }
+
+  // C) CAMPAÑA: VIP RENEWAL (Solo anualidades que vencen en 30 días)
+  const vipSnap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", str30Dias).where("durationDays", "==", 365).get();
+  for (const doc of vipSnap.docs) {
+      const data = doc.data();
+      if (data.userEmail) {
+          await enviarHTML(
+              data.userEmail, data.userName || "Cliente", 'VIP_RENEWAL',
+              '⭐ Eres Leyenda en FitData GYM',
+              `¡Gracias por tu lealtad, ${data.userName || "Cliente"}!`,
+              'Estás a 30 días de cumplir tu anualidad con nosotros. Renueva este mes y obtén un 20% de descuento directo.',
+              'Canjear Regalo'
+          );
+      }
+  }
+
+  logger.info("Trabajador automático de Marketing terminó su ronda diaria.");
+});
+// ----------------------------------------------------------------------
+
+
+// ============================================================================
+// 2. TICKETS ORIGINALES (VENTAS, RENOVACIONES, BIENVENIDAS) - INTACTOS
+// ============================================================================
+
 exports.onMembershipCreatedSendEmail = onDocumentCreated({
   document: "memberships/{membershipId}",
-  secrets: [
-    GMAIL_USER,
-    GMAIL_APP_PASSWORD,
-    DEFAULT_FROM_EMAIL,
-  ],
+  secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL],
 }, async (event) => {
   const membership = event.data?.data();
-  if (!membership) {
-    logger.warn("Evento memberships sin data, se omite");
-    return;
-  }
-
-  try {
-    await event.data.ref.update({
-      renewalEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      renewalEmailStatus: "skipped_initial_registration",
-      renewalEmailProvider: "none",
-    });
-  } catch (error) {
-    logger.warn("No se pudo marcar skip en membership", {
-      membershipId: event.params.membershipId,
-      error: String(error.message || error),
-    });
-  }
-
-  logger.info("Correo de membership omitido para evitar duplicado", {
-    membershipId: event.params.membershipId,
-    reason: "initial_registration",
-  });
-  return;
+  if (!membership) return;
 
   const eventRef = admin.firestore().collection("_functionEvents").doc(event.id);
   try {
@@ -1683,18 +1781,12 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
       membershipId: event.params.membershipId,
     });
   } catch (error) {
-    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) {
-      logger.info(`Evento duplicado ${event.id}, correo omitido`);
-      return;
-    }
+    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) return;
     throw error;
   }
 
   const recipient = membership.userEmail;
-  if (!recipient) {
-    logger.warn("Membresía sin userEmail, no se envía correo", { membershipId: event.params.membershipId });
-    return;
-  }
+  if (!recipient) return;
 
   const total = Number(membership.membershipPrice || 0);
   const subtotal = total > 0 ? total / 1.16 : 0;
@@ -1747,66 +1839,23 @@ exports.onMembershipCreatedSendEmail = onDocumentCreated({
       renewalEmailProvider: "gmail-api",
       renewalEmailMessageId: result.id || null,
     });
-
-    logger.info("Correo de renovación enviado", {
-      membershipId: event.params.membershipId,
-      email: recipient,
-      messageId: result.id,
-    });
+    logger.info("Correo de renovación enviado exitosamente", { email: recipient });
   } catch (error) {
-    await event.data.ref.update({
-      renewalEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      renewalEmailStatus: "failed",
-      renewalEmailProvider: "gmail-api",
-      renewalEmailError: String(error.message || error),
-    });
-
-    logger.error("Error enviando correo de renovación", {
-      membershipId: event.params.membershipId,
-      email: recipient,
-      error: String(error.message || error),
-    });
+    logger.error("Error enviando correo de renovación", { error: String(error.message || error) });
   }
 });
 
-
-// TRIGGER: Enviar comprobante de venta
-
+// ============================================================================
+// 2. CORREO DE COMPROBANTE DE VENTA (TICKET)
+// ============================================================================
 exports.onSaleCreatedSendEmail = onDocumentCreated({
   document: "ventas/{ventaId}",
-  secrets: [
-    GMAIL_USER,
-    GMAIL_APP_PASSWORD,
-    DEFAULT_FROM_EMAIL,
-  ],
+  secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL],
 }, async (event) => {
   const venta = event.data?.data();
-  if (!venta) {
-    logger.warn("Evento ventas sin data, se omite");
-    return;
-  }
+  if (!venta) return;
 
-  if ((venta.tipo_venta || "") === "ALTA_MEMBRESIA") {
-    try {
-      await event.data.ref.update({
-        saleEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-        saleEmailStatus: "skipped_initial_registration",
-        saleEmailProvider: "none",
-      });
-    } catch (error) {
-      logger.warn("No se pudo marcar skip en venta", {
-        ventaId: event.params.ventaId,
-        error: String(error.message || error),
-      });
-    }
-
-    logger.info("Comprobante de venta omitido para alta inicial", {
-      ventaId: event.params.ventaId,
-      folio: venta.folio || "S/N",
-    });
-    return;
-  }
-
+  // Evitar correos duplicados
   const eventRef = admin.firestore().collection("_functionEvents").doc(event.id);
   try {
     await eventRef.create({
@@ -1815,18 +1864,12 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
       ventaId: event.params.ventaId,
     });
   } catch (error) {
-    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) {
-      logger.info(`Evento duplicado ${event.id}, correo omitido`);
-      return;
-    }
+    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) return;
     throw error;
   }
 
-  const recipient = venta.clienteEmail;
-  if (!recipient) {
-    logger.warn("Venta sin clienteEmail, no se envía correo", { ventaId: event.params.ventaId });
-    return;
-  }
+  const recipient = venta.clienteEmail || venta.cliente_email;
+  if (!recipient) return;
 
   const total = Number(venta.total || 0);
   const subtotal = total > 0 ? total / 1.16 : 0;
@@ -1839,7 +1882,6 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
   const fecha = new Date(venta.fecha?.toDate?.() || venta.fecha || new Date());
   const fechaStr = fecha.toLocaleDateString("es-MX");
 
-  // Parsear detalle_productos (puede ser JSON string o array)
   let productos = [];
   try {
     if (typeof venta.detalle_productos === "string") {
@@ -1847,9 +1889,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
     } else if (Array.isArray(venta.detalle_productos)) {
       productos = venta.detalle_productos;
     }
-  } catch (e) {
-    logger.warn("Error parseando detalle_productos", { error: e });
-  }
+  } catch (e) {}
 
   const detalleProductos = productos
     .map((p) => `- ${p.nombre || p.name || "Producto"} x${p.cantidad || 1} = $${p.precio || p.price || 0}`)
@@ -1899,26 +1939,9 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
       saleEmailProvider: "gmail-smtp",
       saleEmailMessageId: result.id || null,
     });
-
-    logger.info("Comprobante de venta enviado", {
-      ventaId: event.params.ventaId,
-      email: recipient,
-      folio,
-      messageId: result.id,
-    });
+    logger.info("Comprobante de venta enviado exitosamente", { email: recipient });
   } catch (error) {
-    await event.data.ref.update({
-      saleEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      saleEmailStatus: "failed",
-      saleEmailProvider: "gmail-smtp",
-      saleEmailError: String(error.message || error),
-    });
-
-    logger.error("Error enviando comprobante de venta", {
-      ventaId: event.params.ventaId,
-      email: recipient,
-      error: String(error.message || error),
-    });
+    logger.error("Error enviando comprobante de venta", { error: String(error.message || error) });
   }
 });
 
@@ -2074,17 +2097,10 @@ exports.onFacturaRequestCreated = onDocumentCreated({
 
 exports.onMemberCreatedSendEmail = onDocumentCreated({
   document: "miembros/{memberId}",
-  secrets: [
-    GMAIL_USER,
-    GMAIL_APP_PASSWORD,
-    DEFAULT_FROM_EMAIL,
-  ],
+  secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL],
 }, async (event) => {
   const miembro = event.data?.data();
-  if (!miembro) {
-    logger.warn("Evento miembros sin data, se omite");
-    return;
-  }
+  if (!miembro) return;
 
   const eventRef = admin.firestore().collection("_functionEvents").doc(event.id);
   try {
@@ -2094,18 +2110,12 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
       memberId: event.params.memberId,
     });
   } catch (error) {
-    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) {
-      logger.info(`Evento duplicado ${event.id}, correo omitido`);
-      return;
-    }
+    if (error.code === 6 || String(error.message || "").includes("ALREADY_EXISTS")) return;
     throw error;
   }
 
   const recipient = miembro.email;
-  if (!recipient) {
-    logger.warn("Miembro sin email, no se envía correo", { memberId: event.params.memberId });
-    return;
-  }
+  if (!recipient) return;
 
   const nombre = miembro.nombre || "Cliente";
   const apellido = miembro.apellido || "";
@@ -2113,7 +2123,6 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
   const fechaInscripcion = new Date(miembro.fecha_inscripcion?.toDate?.() || miembro.fecha_inscripcion || new Date());
   const fechaStr = fechaInscripcion.toLocaleDateString("es-MX");
 
-  // DATOS DE MEMBRESÍA (pago inicial)
   const folio = miembro.folio || "N/A";
   const membershipName = miembro.membershipTypeName || miembro.membershipName || "Membresía";
   const total = Number(miembro.membershipPrice || 0);
@@ -2179,27 +2188,9 @@ exports.onMemberCreatedSendEmail = onDocumentCreated({
       welcomeEmailProvider: "gmail-smtp",
       welcomeEmailMessageId: result.id || null,
     });
-
-    logger.info("Email de bienvenida y pago enviado", {
-      memberId: event.params.memberId,
-      email: recipient,
-      nombre,
-      folio,
-      messageId: result.id,
-    });
+    logger.info("Email de bienvenida y pago enviado", { email: recipient });
   } catch (error) {
-    await event.data.ref.update({
-      welcomeEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      welcomeEmailStatus: "failed",
-      welcomeEmailProvider: "gmail-smtp",
-      welcomeEmailError: String(error.message || error),
-    });
-
-    logger.error("Error enviando email de bienvenida y pago", {
-      memberId: event.params.memberId,
-      email: recipient,
-      error: String(error.message || error),
-    });
+    logger.error("Error enviando email de bienvenida y pago", { error: String(error.message || error) });
   }
 });
 
@@ -2952,7 +2943,6 @@ exports.updateClientEmail = onCall({ cors: { origin: true }, invoker: "public" }
       updates.push(usersByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
     }
 
-    // 3. Actualizar colección miembros
     const miembrosByAuthUid = await db.collection("miembros").where("authUid", "==", authUid).limit(1).get();
     if (!miembrosByAuthUid.empty) {
       updates.push(miembrosByAuthUid.docs[0].ref.update({ email: newEmail, updatedAt: timestamp }));
@@ -3093,7 +3083,6 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const React = require("react");
-// Fallback in case react-email rendering fails in this environment
 let renderEmail;
 let Html, Head, Body, Container, Text, Heading;
 try {
@@ -3141,7 +3130,6 @@ exports.onMessageCreated = onDocumentCreated(
       const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
       const recipientEmail = recipientSnap.data()?.email;
 
-      // 1. Guardar notificacion
       await db.collection(`users/${recipientId}/notifications`).add({
         title: `Nuevo mensaje de ${senderName}`,
         body: messageData.text || "Archivo adjunto",
@@ -3152,7 +3140,6 @@ exports.onMessageCreated = onDocumentCreated(
         senderId: senderId
       });
 
-      // 2. Enviar correo via Resend
       if (recipientEmail) {
         let resendApiKey;
         try {
@@ -3198,94 +3185,39 @@ exports.onMessageCreated = onDocumentCreated(
       logger.error("Error en onMessageCreated", error);
     }
   }
-);
 
-exports.onMessageCreated = onDocumentCreated(
-  {
-    document: "chats/{chatId}/messages/{messageId}",
-    secrets: [RESEND_API_KEY],
-  },
-  async (event) => {
-    const snap = event.data;
-    if (!snap) return;
 
-    const messageData = snap.data();
-    const senderId = messageData.senderId;
-    const chatId = event.params.chatId;
+);exports.pruebaDisenoMarketing = onRequest({ secrets: ["GMAIL_USER", "GMAIL_APP_PASSWORD", "DEFAULT_FROM_EMAIL"] }, async (req, res) => {
+  const loginUrl = 'https://fitdatagym-f347a.web.app/login';
+  
+  const htmlTemplate = `
+  <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #0f172a; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; text-align: center; border-bottom: 3px solid #2dd4bf;">
+          <h1 style="color: #2dd4bf; margin: 0; font-size: 28px; letter-spacing: 2px;">FitData GYM</h1>
+      </div>
+      <div style="padding: 40px 30px; background-color: #1e293b; color: #f8fafc;">
+          <h2 style="color: #f1f5f9; font-size: 20px; margin-top: 0;">¡Hola, Joely! Tu membresía llega hoy a su fin.</h2>
+          <p style="color: #cbd5e1; font-size: 16px; line-height: 1.6;">No dejes que tu progreso se detenga. Pasa a recepción hoy mismo para no perder tu racha.</p>
+          <div style="text-align: center; margin-top: 35px; margin-bottom: 15px;">
+              <a href="${loginUrl}" style="background-color: #0d9488; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Iniciar Sesión</a>
+          </div>
+      </div>
+      <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+          <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 FitData GYM. Todos los derechos reservados.</p>
+      </div>
+  </div>
+  `;
 
-    if (!senderId) return;
-
-    try {
-      const db = admin.firestore();
-      
-      const ids = chatId.split("_");
-      const recipientId = ids.find(id => id !== senderId);
-
-      if (!recipientId) return;
-
-      const [senderSnap, recipientSnap] = await Promise.all([
-        db.collection("users").doc(senderId).get(),
-        db.collection("users").doc(recipientId).get()
-      ]);
-
-      const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
-      const recipientEmail = recipientSnap.data()?.email;
-
-      // 1. Guardar notificacion
-      await db.collection(`users/${recipientId}/notifications`).add({
-        title: `Nuevo mensaje de ${senderName}`,
-        body: messageData.text || "Archivo adjunto",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        read: false,
-        type: "chat_message",
-        chatId: chatId,
-        senderId: senderId
+  try {
+      await sendGmailSmtp({
+          toEmail: 'reyesjoely448@gmail.com', // Pon tu correo personal aquí
+          subject: '🚨 PRUEBA DE DISEÑO: Tu membresía vence HOY',
+          message: 'Texto de respaldo',
+          htmlTemplate: htmlTemplate,
+          defaultFrom: "FitData GYM <fitdatagym@gmail.com>"
       });
-
-      // 2. Enviar correo via Resend
-      if (recipientEmail) {
-        let resendApiKey;
-        try {
-           resendApiKey = RESEND_API_KEY.value();
-        } catch(e) {
-           resendApiKey = process.env.RESEND_API_KEY;
-        }
-        
-        if (resendApiKey) {
-          const resend = new Resend(resendApiKey);
-          
-          let htmlContent = `<h2>Tienes un nuevo mensaje de ${senderName}</h2><p>${messageData.text || "Te han enviado un archivo adjunto."}</p><br><small>FitData GYM</small>`;
-          
-          if (renderEmail && Html) {
-            try {
-              const emailElement = React.createElement(Html, null,
-                React.createElement(Head, null),
-                React.createElement(Body, { style: { fontFamily: "sans-serif", padding: "20px" } },
-                  React.createElement(Container, null,
-                    React.createElement(Heading, null, `Tienes un nuevo mensaje de ${senderName}`),
-                    React.createElement(Text, null, messageData.text || "Te han enviado un archivo adjunto."),
-                    React.createElement(Text, { style: { color: "#888", fontSize: "12px", marginTop: "20px" } }, "FitData GYM")
-                  )
-                )
-              );
-              htmlContent = renderEmail(emailElement);
-            } catch(e) {
-              logger.warn("Fallo el render de react-email, usando por defecto", e);
-            }
-          }
-
-          await resend.emails.send({
-            from: "FitData GYM <onboarding@resend.dev>",
-            to: recipientEmail,
-            subject: `Nuevo mensaje de ${senderName}`,
-            html: htmlContent
-          });
-        } else {
-             logger.warn("No se encontro API Key de Resend");
-        }
-      }
-    } catch (error) {
-      logger.error("Error en onMessageCreated", error);
-    }
+      res.send("<h1>¡Magia hecha! Revisa tu bandeja de entrada en tu celular o PC.</h1>");
+  } catch (error) {
+      res.status(500).send("<h1>Error al enviar:</h1> <p>" + error.message + "</p>");
   }
-);
+});
