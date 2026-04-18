@@ -3,235 +3,373 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { getCurrentUser, getUser, getUserByAuthUid, getUserByEmail } from '../../../firebase';
 
-const normalizarClaveConsulta = (value) => String(value || '').trim().toLowerCase();
+const normalizeLookupKey = (value) => String(value || '').trim().toLowerCase();
 
-function PerfilesClientes({ disparadorActualizacion }) {
-  const [perfiles, setPerfiles] = useState([]);
-  const [seleccionado, setSeleccionado] = useState(null);
-  const [estaCargando, setEstaCargando] = useState(true);
+function HealthProfilesCoach({ refreshTrigger }) {
+  const [profiles, setProfiles] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filtro, setFiltro] = useState('');
-  const [ultimoDisparador, setUltimoDisparador] = useState(disparadorActualizacion);
+  const [filter, setFilter] = useState('');
+  const [lastTrigger, setLastTrigger] = useState(refreshTrigger);
 
-  const cargarPerfiles = async () => {
-    console.log('📋 PerfilesClientes: Cargando perfiles...');
-    setEstaCargando(true);
+  const loadProfiles = async () => {
+    console.log('📋 HealthProfilesCoach: Cargando perfiles...');
+    setLoading(true);
     setError('');
     try {
-      const usuarioActual = getCurrentUser();
-      if (!usuarioActual) {
-        setPerfiles([]);
-        setEstaCargando(false);
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setProfiles([]);
+        setLoading(false);
         return;
       }
 
-      const [snapshotAsignaciones, snapshotConsulta, snapshotMiembros, porAuthUid, porDocId, porEmail] = await Promise.all([
+      const [assignmentsSnapshot, querySnapshot, membersSnapshot, byAuthUid, byDocId, byEmail] = await Promise.all([
         getDocs(collection(db, 'client_trainer_assignments')),
         getDocs(collection(db, 'healthProfiles')),
         getDocs(collection(db, 'miembros')),
-        getUserByAuthUid(usuarioActual.uid),
-        getUser(usuarioActual.uid),
-        usuarioActual.email ? getUserByEmail(usuarioActual.email, usuarioActual.uid) : Promise.resolve({ success: false }),
+        getUserByAuthUid(currentUser.uid),
+        getUser(currentUser.uid),
+        currentUser.email ? getUserByEmail(currentUser.email, currentUser.uid) : Promise.resolve({ success: false }),
       ]);
 
-      const clavesEntrenador = new Set([
-        usuarioActual.uid,
-        usuarioActual.email,
-      ].map(normalizarClaveConsulta).filter(Boolean));
+      const trainerKeys = new Set([
+        currentUser.uid,
+        currentUser.email,
+      ].map(normalizeLookupKey).filter(Boolean));
 
-      [porAuthUid, porDocId, porEmail]
+      [byAuthUid, byDocId, byEmail]
         .filter((result) => result?.success && result?.data)
         .forEach((result) => {
           const data = result.data;
-          [data.id, data.authUid, data.legacyId, data.email].forEach((clave) => {
-            const normalized = normalizarClaveConsulta(clave);
+          [data.id, data.authUid, data.legacyId, data.email].forEach((key) => {
+            const normalized = normalizeLookupKey(key);
             if (normalized) {
-              clavesEntrenador.add(normalized);
+              trainerKeys.add(normalized);
             }
           });
         });
 
-      const clavesClienteAsignado = new Set();
-      const nombresClienteAsignado = new Set();
-      snapshotAsignaciones.docs.forEach((docSnap) => {
-        const asignacion = docSnap.data() || {};
-        const estado = String(asignacion.status || asignacion.trainerStatus || 'active').toLowerCase();
-        const idEntrenadorAsignacion = normalizarClaveConsulta(asignacion.trainerId || asignacion.trainer_id);
-        const emailEntrenadorAsignacion = normalizarClaveConsulta(asignacion.trainerEmail || asignacion.trainer_email);
-        const coincideEntrenador = clavesEntrenador.has(idEntrenadorAsignacion) || clavesEntrenador.has(emailEntrenadorAsignacion);
+      const assignedClientKeys = new Set();
+      const assignedClientNames = new Set();
+      assignmentsSnapshot.docs.forEach((docSnap) => {
+        const assignment = docSnap.data() || {};
+        const status = String(assignment.status || assignment.trainerStatus || 'active').toLowerCase();
+        const assignmentTrainerId = normalizeLookupKey(assignment.trainerId || assignment.trainer_id);
+        const assignmentTrainerEmail = normalizeLookupKey(assignment.trainerEmail || assignment.trainer_email);
+        const matchesTrainer = trainerKeys.has(assignmentTrainerId) || trainerKeys.has(assignmentTrainerEmail);
 
-        if (!coincideEntrenador || estado !== 'active') {
+        if (!matchesTrainer || status !== 'active') {
           return;
         }
 
-        [asignacion.clientId, asignacion.memberId, docSnap.id].forEach((clave) => {
-          const normalized = normalizarClaveConsulta(clave);
+        [assignment.clientId, assignment.memberId, docSnap.id].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
           if (normalized) {
-            clavesClienteAsignado.add(normalized);
+            assignedClientKeys.add(normalized);
           }
         });
       });
 
-      snapshotMiembros.docs.forEach((memberDoc) => {
-        const datosM = memberDoc.data() || {};
-        const clavesM = [
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberKeys = [
           memberDoc.id,
-          datosM.userId,
-          datosM.authUid,
-          datosM.email,
-        ].map(normalizarClaveConsulta).filter(Boolean);
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].map(normalizeLookupKey).filter(Boolean);
 
-        const nombresM = [
-          `${datosM.nombre || ''} ${datosM.apellido || ''}`.trim(),
-          `${datosM.firstName || ''} ${datosM.lastName || ''}`.trim(),
-          datosM.displayName,
-          datosM.username,
-        ].map(normalizarClaveConsulta).filter(Boolean);
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
+        ].map(normalizeLookupKey).filter(Boolean);
 
-        const coincideAsignacion = clavesM.some((clave) => clavesClienteAsignado.has(clave));
-        if (coincideAsignacion) {
-          nombresM.forEach((nombre) => nombresClienteAsignado.add(nombre));
+        const matchesAssignment = memberKeys.some((key) => assignedClientKeys.has(key));
+        if (matchesAssignment) {
+          memberNames.forEach((name) => assignedClientNames.add(name));
         }
       });
 
-      const mapaM = new Map();
-      const mapaNombresM = new Map();
-      snapshotMiembros.docs.forEach((memberDoc) => {
-        const datosM = memberDoc.data() || {};
-        const registroM = {
+      const memberLookup = new Map();
+      const memberNameLookup = new Map();
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberRecord = {
           id: memberDoc.id,
-          ...datosM,
+          ...memberData,
         };
 
         [
           memberDoc.id,
-          datosM.userId,
-          datosM.authUid,
-          datosM.email,
-        ].forEach((clave) => {
-          const normalized = normalizarClaveConsulta(clave);
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].forEach((key) => {
+          const normalized = normalizeLookupKey(key);
           if (normalized) {
-            mapaM.set(normalized, registroM);
+            memberLookup.set(normalized, memberRecord);
           }
         });
 
-        const nombresM = [
-          `${datosM.nombre || ''} ${datosM.apellido || ''}`.trim(),
-          `${datosM.firstName || ''} ${datosM.lastName || ''}`.trim(),
-          datosM.displayName,
-          datosM.username,
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
         ];
 
-        nombresM.forEach((valorNombre) => {
-          const nombreNormalizado = normalizarClaveConsulta(valorNombre);
-          if (nombreNormalizado) {
-            mapaNombresM.set(nombreNormalizado, registroM);
+        memberNames.forEach((nameValue) => {
+          const normalizedMemberName = normalizeLookupKey(nameValue);
+          if (normalizedMemberName) {
+            memberNameLookup.set(normalizedMemberName, memberRecord);
           }
         });
       });
 
-      const mapaPerfilesPorClaveM = new Map();
-      snapshotConsulta.docs.forEach((docSnap) => {
-        const perfil = {
+      const profilesByMemberKey = new Map();
+      querySnapshot.docs.forEach((docSnap) => {
+        const profile = {
           id: docSnap.id,
           ...docSnap.data(),
         };
 
-        const clavesPerfil = [
-          perfil.id,
-          perfil.memberId,
-          perfil.userId,
-          perfil.userIdDisplay,
-          perfil.memberAuthUid,
-          perfil.memberEmail,
-          perfil.userEmail,
-          perfil.email,
-        ].map(normalizarClaveConsulta).filter(Boolean);
+        const profileKeys = [
+          profile.id,
+          profile.memberId,
+          profile.userId,
+          profile.userIdDisplay,
+          profile.memberAuthUid,
+          profile.memberEmail,
+          profile.userEmail,
+          profile.email,
+        ].map(normalizeLookupKey).filter(Boolean);
 
-        clavesPerfil.forEach((clave) => {
-          if (clavesClienteAsignado.has(clave)) {
-            mapaPerfilesPorClaveM.set(clave, perfil);
+        profileKeys.forEach((key) => {
+          if (!profilesByMemberKey.has(key)) {
+            profilesByMemberKey.set(key, profile);
           }
         });
       });
 
-      const perfilesUnicos = new Map();
-      clavesClienteAsignado.forEach((clave) => {
-        const perfil = mapaPerfilesPorClaveM.get(clave);
-        if (perfil && !perfilesUnicos.has(perfil.id)) {
-          perfilesUnicos.set(perfil.id, perfil);
+      const assignedMembers = [];
+      membersSnapshot.docs.forEach((memberDoc) => {
+        const memberData = memberDoc.data() || {};
+        const memberKeys = [
+          memberDoc.id,
+          memberData.userId,
+          memberData.authUid,
+          memberData.email,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const memberNames = [
+          `${memberData.nombre || ''} ${memberData.apellido || ''}`.trim(),
+          `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim(),
+          memberData.displayName,
+          memberData.username,
+        ].map(normalizeLookupKey).filter(Boolean);
+
+        const matchesAssignment = memberKeys.some((key) => assignedClientKeys.has(key)) || memberNames.some((name) => assignedClientNames.has(name));
+        if (matchesAssignment) {
+          assignedMembers.push({
+            id: memberDoc.id,
+            ...memberData,
+          });
         }
       });
 
-      setPerfiles(Array.from(perfilesUnicos.values()));
-      setEstaCargando(false);
+      const assignedProfiles = assignedMembers
+        .map((member) => {
+          const memberNames = [
+            `${member.nombre || ''} ${member.apellido || ''}`.trim(),
+            `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+            member.displayName,
+            member.username,
+          ].map(normalizeLookupKey).filter(Boolean);
+
+          const memberKeys = [
+            member.id,
+            member.userId,
+            member.authUid,
+            member.email,
+          ].map(normalizeLookupKey).filter(Boolean);
+
+          const profileMatch = [...memberKeys, ...memberNames]
+            .map((key) => profilesByMemberKey.get(key))
+            .find(Boolean);
+
+          if (!profileMatch) {
+            return null;
+          }
+
+          return {
+            ...member,
+            ...profileMatch,
+            id: profileMatch.id,
+            memberName: profileMatch.memberName || `${member.nombre || ''} ${member.apellido || ''}`.trim() || member.displayName || member.username || 'Sin nombre',
+            userIdDisplay: profileMatch.userIdDisplay || member.id || member.userId || '',
+          };
+        })
+        .filter(Boolean);
+
+      setProfiles(assignedProfiles);
     } catch (err) {
-      console.error('Error al cargar perfiles:', err);
-      setError('No se pudieron cargar los perfiles');
-      setEstaCargando(false);
+      console.error('❌ Error en loadProfiles:', err);
+      setError("Error al conectar con la base de datos: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (disparadorActualizacion !== ultimoDisparador) {
-      cargarPerfiles();
-      setUltimoDisparador(disparadorActualizacion);
-    }
-  }, [disparadorActualizacion, ultimoDisparador]);
-
-  useEffect(() => {
-    cargarPerfiles();
+    console.log('🔄 Componente Coach montado, cargando perfiles iniciales');
+    loadProfiles();
   }, []);
 
-  const perfilesFiltrados = perfiles.filter((perfil) => {
-    const nombre = `${perfil.memberName || ''} ${perfil.memberLastName || ''}`.toLowerCase();
-    return nombre.includes(filtro.toLowerCase());
+  useEffect(() => {
+    if (refreshTrigger !== lastTrigger) {
+      console.log('🔔 refreshTrigger cambió de', lastTrigger, 'a', refreshTrigger);
+      setLastTrigger(refreshTrigger);
+      loadProfiles();
+    }
+  }, [refreshTrigger, lastTrigger]);
+
+  const filtered = profiles.filter(p => {
+    if (!filter) return true;
+    return (p.memberName || '').toLowerCase().includes(filter.toLowerCase());
   });
 
-  if (estaCargando) {
-    return <div className="p-6 text-slate-300">Cargando perfiles...</div>;
-  }
-
-  if (error) {
-    return <div className="p-6 text-red-400">{error}</div>;
-  }
-
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6 text-white">Perfiles de Clientes</h2>
+    <div className="w-full max-w-5xl mx-auto p-6">
+      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-blue-400 mb-4">
+        Fichas Médicas de Clientes
+      </h1>
 
-      <input
-        type="text"
-        placeholder="Buscar por nombre..."
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="mb-6 w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500"
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {perfilesFiltrados.map((perfil) => (
-          <div
-            key={perfil.id}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-6 cursor-pointer hover:border-cyan-500 transition-colors"
-            onClick={() => setSeleccionado(perfil)}
-          >
-            <h3 className="font-bold text-white mb-2">{perfil.memberName}</h3>
-            <p className="text-slate-400 text-sm">{perfil.memberEmail}</p>
-          </div>
-        ))}
+      <div className="flex gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Buscar cliente por nombre..."
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none w-full sm:w-auto"
+        />
       </div>
 
-      {seleccionado && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-white mb-4">{seleccionado.memberName}</h3>
-            <p className="text-slate-400 mb-6">{seleccionado.memberEmail}</p>
+      {loading && <p className="text-slate-400 italic">Consultando expedientes...</p>}
+      {error && <p className="text-red-400 mb-3 bg-red-900/20 p-3 rounded-lg border border-red-800">{error}</p>}
+      {!loading && filtered.length === 0 && <p className="text-slate-500">No se encontraron registros.</p>}
+
+      <div className="space-y-2">
+        {filtered.map(p => {
+          // Lógica de fecha igual a la vista de Admin
+          const fecha = p.updatedAt?.toDate?.() || p.createdAt?.toDate?.() || new Date();
+          const fechaStr = fecha.toLocaleDateString('es-MX', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          return (
+            <div key={p.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-slate-800 transition-colors">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-semibold">{p.memberName || 'Sin nombre'}</p>
+                  {p.userIdDisplay && (
+                    <span className="text-xs font-mono bg-slate-700 text-cyan-400 px-2 py-0.5 rounded border border-slate-600">
+                      ID: {p.userIdDisplay}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-[11px] text-slate-400">Actualizado: {fechaStr}</p>
+                  {(p.recent_injuries || p.heart_condition) && (
+                    <span className="px-2 py-0.5 bg-red-900/50 text-red-300 text-[10px] rounded-full font-medium border border-red-800/50 uppercase">
+                      ⚠️ Atención
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelected(p)}
+                className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-purple-900/20"
+              >
+                Ver Ficha
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-xl p-6 relative shadow-2xl">
             <button
-              onClick={() => setSeleccionado(null)}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
-            >
-              Cerrar
-            </button>
+              onClick={() => setSelected(null)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-white text-xl"
+            >✕</button>
+            
+            <div className="mb-6 border-b border-slate-700 pb-2">
+              <h2 className="text-xl font-bold text-white">Cliente: {selected.memberName}</h2>
+              {selected.userIdDisplay && (
+                <p className="text-xs text-cyan-400 font-mono mt-1">Expediente ID: {selected.userIdDisplay}</p>
+              )}
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={`rounded-lg p-3 border ${selected.recent_injuries ? 'bg-red-900/30 border-red-500' : 'bg-slate-800 border-transparent'}`}>
+                  <p className="text-slate-400 text-xs">Lesiones Recientes</p>
+                  <p className={`font-bold text-lg ${selected.recent_injuries ? 'text-red-400' : 'text-white'}`}>
+                    {selected.recent_injuries ? 'SÍ' : 'NO'}
+                  </p>
+                </div>
+                <div className={`rounded-lg p-3 border ${selected.heart_condition ? 'bg-red-900/30 border-red-500' : 'bg-slate-800 border-transparent'}`}>
+                  <p className="text-slate-400 text-xs">Condición Cardíaca</p>
+                  <p className={`font-bold text-lg ${selected.heart_condition ? 'text-red-400' : 'text-white'}`}>
+                    {selected.heart_condition ? 'SÍ' : 'NO'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-800 rounded-lg p-3">
+                  <p className="text-slate-400 text-xs">Edad</p>
+                  <p className="text-white font-semibold text-lg">{selected.age ?? selected.edad ?? '—'}</p>
+                </div>
+                <div className={`rounded-lg p-3 border ${selected.high_blood_pressure ? 'bg-orange-900/20 border-orange-800' : 'bg-slate-800 border-transparent'}`}>
+                  <p className="text-slate-400 text-xs">Presión Alta</p>
+                  <p className="text-white font-semibold text-lg">{selected.high_blood_pressure ? 'Sí' : 'No'}</p>
+                </div>
+                <div className={`rounded-lg p-3 border ${selected.medications ? 'bg-yellow-900/20 border-yellow-800' : 'bg-slate-800 border-transparent'}`}>
+                  <p className="text-slate-400 text-xs">Medicado</p>
+                  <p className="text-white font-semibold text-lg">{selected.medications ? 'Sí' : 'No'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-slate-400 text-xs mb-2">Notas del Cliente</p>
+                <div className="bg-purple-950/30 border border-purple-800/40 rounded-lg p-3 text-purple-100 whitespace-pre-wrap min-h-20">
+                  {selected.additional_info || 'Sin observaciones adicionales.'}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-between items-center">
+              <span className="text-[10px] text-slate-500 italic">
+                Última sincronización: {new Date().toLocaleTimeString()}
+              </span>
+              <button
+                onClick={() => setSelected(null)}
+                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm font-bold transition-colors"
+              >
+                Cerrar ficha
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -239,4 +377,4 @@ function PerfilesClientes({ disparadorActualizacion }) {
   );
 }
 
-export default PerfilesClientes;
+export default HealthProfilesCoach;
