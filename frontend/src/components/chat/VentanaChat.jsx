@@ -115,7 +115,7 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
                         </button>
                     )}
                     <div className="relative">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-600 to-cyan-400 text-white font-bold text-lg shadow-md">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-linear-to-tr from-cyan-600 to-cyan-400 text-white font-bold text-lg shadow-md">
                             {init}
                         </div>
                         <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-[#202c33]"></div>

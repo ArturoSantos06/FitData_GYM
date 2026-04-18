@@ -123,7 +123,7 @@ function EntradaMensaje({ onSendMessage, isUploading }) {
                        }}
                        rows={1}
                        placeholder="Mensaje..."
-                       className="w-full min-h-[44px] max-h-[120px] rounded-2xl border border-slate-700/80 bg-slate-800/60 px-4 py-3 text-[15px] text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 resize-none transition-all scrollbar-hide"
+                       className="w-full min-h-11 max-h-[120px] rounded-2xl border border-slate-700/80 bg-slate-800/60 px-4 py-3 text-[15px] text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 resize-none transition-all scrollbar-hide"
                        style={{ overflowY: 'auto' }}
                    />
                </div>
@@ -131,7 +131,7 @@ function EntradaMensaje({ onSendMessage, isUploading }) {
                <button
                     type="submit"
                     disabled={isUploading || (!text.trim() && !selectedFile)}
-                    className="inline-flex h-11 min-w-[44px] mb-0.5 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-600 to-cyan-400 px-3 text-white shadow-lg shadow-cyan-500/20 transition-all hover:shadow-cyan-500/40 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
+                    className="inline-flex h-11 min-w-11 mb-0.5 items-center justify-center rounded-2xl bg-linear-to-tr from-cyan-600 to-cyan-400 px-3 text-white shadow-lg shadow-cyan-500/20 transition-all hover:shadow-cyan-500/40 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
                     aria-label="Enviar mensaje"
                 >
                     {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={`${text.trim() || selectedFile ? 'animate-pulse-once' : ''}`} />}
