@@ -12,6 +12,7 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
 
     useEffect(() => {
         if (!chatId) return;
+
         const q = query(
             collection(db, 'chats', chatId, 'messages'),
             orderBy('timestamp', 'desc'),
@@ -25,6 +26,7 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
             })).reverse();
 
             setMessages(msgs);
+
             msgs.forEach(msg => {
                 if (msg.senderId !== currentUserId && !msg.read) {
                     const msgRef = doc(db, 'chats', chatId, 'messages', msg.id);
@@ -42,10 +44,12 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
         setIsUploading(true);
         try {
             let fileUrl = null;
+
             if (file) {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const storageRef = ref(storage, `chat_attachments/${chatId}/${fileName}`);
+
                 const uploadTask = await uploadBytesResumable(storageRef, file);
                 fileUrl = await getDownloadURL(uploadTask.ref);
             }
@@ -70,7 +74,6 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
 
     return (
         <div className="flex flex-col h-full bg-[#0b141a] animate-fade-in w-full">
-            {/* Header */}
             <header className="border-b border-slate-700/80 bg-[#202c33] px-3 md:px-5 py-3 shrink-0 flex items-center justify-between shadow-sm z-10">
                 <div className="flex items-center gap-3 md:gap-4">
                     {onBack && (
@@ -94,7 +97,6 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
             {/* Lista de Mensajes */}
             <ListaMensajes messages={messages} currentUserId={currentUserId} />
 
-            {/* Input para msj */}
             <div className="shrink-0 relative z-20">
                 <EntradaMensaje onSendMessage={handleSendMessage} isUploading={isUploading} />
             </div>

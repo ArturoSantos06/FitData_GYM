@@ -14,7 +14,6 @@ const MessagesBody = ({ role }) => {
     const [showSidebarMobile, setShowSidebarMobile] = useState(true);
     const currentUser = getCurrentUser();
 
-    // Consultar Firestore según el Rol
     useEffect(() => {
         if (!currentUser?.uid) return;
 
@@ -26,60 +25,92 @@ const MessagesBody = ({ role }) => {
 
         const fetchClients = async () => {
             try {
-                console.log(`1. Buscando en colección: '${collectionName}' donde '${roleFieldId}' == '${currentUser.uid}'`);
-
                 const q = query(
                     collection(db, collectionName),
                     where(roleFieldId, "==", currentUser.uid)
                 );
 
                 const snap = await getDocs(q);
-                console.log(`2. ¡Asignaciones encontradas!: ${snap.docs.length}`);
-
                 const clientsData = [];
 
                 for (const d of snap.docs) {
-                    const assignData = d.data();
-                    console.log("3. Datos crudos de la asignación:", assignData);
+                    const raw = d.data().clientId;
+                    const clientId = raw != null ? String(raw) : null;
 
-                    // --- LA CORRECCIÓN CLAVE ---
-                    // Tomamos ESTRICTAMENTE el valor guardado adentro del documento, nunca el d.id
-                    const clientId = assignData.clientId;
-
-                    // Si el documento de Firebase está mal hecho y no tiene el campo, lo saltamos.
-                    if (!clientId) {
-                        console.warn(`Saltando documento ${d.id}: No tiene el campo 'clientId' adentro.`);
-                        continue;
-                    }
-
-                    console.log(`4. ID del cliente a buscar en 'users': ${clientId}`);
-
-                    if (clientId === currentUser.uid) {
-                        console.log("Saltando: El ID del cliente es el mismo que el del profesional.");
-                        continue;
-                    }
+                    if (!clientId || clientId === currentUser.uid) continue;
 
                     try {
+                        let clientName = 'Cliente Sin Nombre';
+                        let clientColor = '#0ea5e9';
+                        let found = false;
+
+                        const extractName = (data) => {
+                            if (data.firstName || data.lastName)
+                                return `${data.firstName || ''} ${data.lastName || ''}`.trim();
+                            return data.displayName
+                                || data.name
+                                || data.fullName
+                                || data.full_name
+                                || (data.nombre ? `${data.nombre} ${data.apellido || ''}`.trim() : null)
+                                || data.email
+                                || null;
+                        };
+
                         const userSnap = await getDoc(doc(db, 'users', clientId));
                         if (userSnap.exists()) {
-                            const u = userSnap.data();
-                            console.log(`5. Perfil de cliente encontrado: ${u.displayName}`);
+                            clientName = extractName(userSnap.data()) || clientName;
+                            clientColor = userSnap.data().avatarColor || clientColor;
+                            found = true;
+                        }
 
-                            // Ahora estamos 100% seguros de que este 'clientId' es la cadena larga (ej. OsVis...)
+                        if (!found) {
+                            const uSnap = await getDocs(query(collection(db, 'users'), where('authUid', '==', clientId)));
+                            if (!uSnap.empty) {
+                                clientName = extractName(uSnap.docs[0].data()) || clientName;
+                                clientColor = uSnap.docs[0].data().avatarColor || clientColor;
+                                found = true;
+                            }
+                        }
+
+                        if (!found) {
+                            const mDocSnap = await getDoc(doc(db, 'miembros', clientId));
+                            if (mDocSnap.exists()) {
+                                clientName = extractName(mDocSnap.data()) || clientName;
+                                clientColor = mDocSnap.data().avatarColor || mDocSnap.data().avatar_color || clientColor;
+                                found = true;
+                            }
+                        }
+
+                        if (!found) {
+                            const mSnap = await getDocs(query(collection(db, 'miembros'), where('userId', '==', clientId)));
+                            if (!mSnap.empty) {
+                                clientName = extractName(mSnap.docs[0].data()) || clientName;
+                                clientColor = mSnap.docs[0].data().avatarColor || mSnap.docs[0].data().avatar_color || clientColor;
+                                found = true;
+                            }
+                        }
+
+                        if (!found && !isNaN(Number(clientId))) {
+                            const mSnapNum = await getDocs(query(collection(db, 'miembros'), where('userId', '==', Number(clientId))));
+                            if (!mSnapNum.empty) {
+                                clientName = extractName(mSnapNum.docs[0].data()) || clientName;
+                                clientColor = mSnapNum.docs[0].data().avatarColor || mSnapNum.docs[0].data().avatar_color || clientColor;
+                                found = true;
+                            }
+                        }
+
+                        if (found) {
                             clientsData.push({
                                 clientId: clientId,
-                                name: u.displayName || 'Cliente Sin Nombre',
-                                color: u.avatarColor || '#0ea5e9'
+                                name: clientName,
+                                color: clientColor
                             });
                         } else {
-                            console.warn(`Alerta: No existe el documento en 'users' para el ID: ${clientId}`);
                         }
                     } catch (e) {
                         console.error("Error al obtener info del perfil de usuario", e);
                     }
                 }
-
-                console.log("6. Lista final a renderizar:", clientsData);
                 setClients(clientsData);
             } catch (err) {
                 console.error("Error obteniendo clientes asignados:", err);
@@ -108,9 +139,7 @@ const MessagesBody = ({ role }) => {
     return (
         <div className="flex h-[calc(100vh-80px)] w-full overflow-hidden bg-[#0b141a] text-slate-100 font-sans md:h-[calc(100vh-80px)] rounded-3xl border border-slate-700 shadow-2xl relative z-10 mx-auto mt-6" style={{ maxWidth: '1400px' }}>
 
-            {/* SIDEBAR (Lista de contactos) */}
             <aside className={`flex flex-col border-r border-slate-700 bg-[#111b21] md:w-[350px] lg:w-[400px] shrink-0 ${!showSidebarMobile ? 'hidden md:flex' : 'w-full'}`}>
-                {/* Header del Sidebar */}
                 <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-700 bg-[#202c33] px-4 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-600 shadow-lg text-white">
@@ -122,7 +151,6 @@ const MessagesBody = ({ role }) => {
                     </div>
                 </header>
 
-                {/* Buscador */}
                 <div className="border-b border-slate-700 bg-[#111b21] p-3">
                     <div className="relative flex items-center h-10 w-full overflow-hidden rounded-lg bg-[#202c33] px-3 focus-within:ring-1 focus-within:ring-cyan-500 transition-all border border-slate-600">
                         <Search size={18} className="text-slate-400" />
@@ -136,7 +164,6 @@ const MessagesBody = ({ role }) => {
                     </div>
                 </div>
 
-                {/* Lista */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide py-2">
                     {fetchingList ? (
                         <div className="mt-10 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -181,7 +208,6 @@ const MessagesBody = ({ role }) => {
                 </div>
             </aside>
 
-            {/* CHAT MAIN WINDOW */}
             {!selectedClient ? (
                 <div className={`min-h-0 flex-1 flex-col items-center justify-center bg-[#222e35] ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
                     <div className="text-center align-middle justify-center flex flex-col items-center animate-fade-in">
