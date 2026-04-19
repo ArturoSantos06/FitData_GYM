@@ -14,14 +14,19 @@ import {
   getMembershipTypes
 } from '../../../firebase';
 
-function formatDate(dateStr) {
+function formatDate(dateVal) {
   try {
-    if (!dateStr) return 'N/A';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-  } catch {
-    return dateStr;
-  }
+    if (!dateVal) return 'N/A';
+    if (dateVal.toDate && typeof dateVal.toDate === 'function') {
+      const d = dateVal.toDate();
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    if (typeof dateVal === 'string') {
+      const parts = dateVal.split('T')[0].split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  } catch (e) {}
+  return String(dateVal);
 }
 
 function Membresia() {
@@ -36,13 +41,33 @@ function Membresia() {
   const qrRef = useRef(null);
   const cardBackRef = useRef(null);
 
-  const parseLocalDate = (dateStr, h = 0, m = 0, s = 0, ms = 0) => {
+const parseLocalDate = (dateVal, h = 0, m = 0, s = 0, ms = 0) => {
+    if (!dateVal) return new Date();
     try {
-      const [y, mo, d] = String(dateStr).split('-').map(Number);
-      return new Date(y, (mo || 1) - 1, d, h, m, s, ms);
-    } catch {
-      return new Date(dateStr);
-    }
+      let y, mo, d;
+      if (dateVal.toDate && typeof dateVal.toDate === 'function') {
+        const dObj = dateVal.toDate();
+        y = dObj.getFullYear();
+        mo = dObj.getMonth() + 1;
+        d = dObj.getDate();
+      } 
+      else if (dateVal instanceof Date) {
+        y = dateVal.getFullYear();
+        mo = dateVal.getMonth() + 1;
+        d = dateVal.getDate();
+      } 
+      else if (typeof dateVal === 'string') {
+        const parts = dateVal.split('T')[0].split('-');
+        y = Number(parts[0]);
+        mo = Number(parts[1]);
+        d = Number(parts[2]);
+      }
+
+      if (y && mo && d && !isNaN(y) && !isNaN(mo) && !isNaN(d)) {
+        return new Date(y, mo - 1, d, h, m, s, ms);
+      }
+    } catch (e) {}
+    return new Date(dateVal); 
   };
 
   const getGymHoursForDate = (dateObj) => {
@@ -62,18 +87,20 @@ function Membresia() {
     };
   };
 
-  const formatRemaining = (diffMs) => {
+const formatRemaining = (diffMs) => {
     const safe = Math.max(0, diffMs);
     const totalMinutes = Math.floor(safe / (1000 * 60));
     const days = Math.floor(totalMinutes / (60 * 24));
     const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
     const minutes = totalMinutes % 60;
 
-    if (days > 0) return `${days} día${days > 1 ? 's' : ''} ${hours}h`;
-    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''} ${minutes} min`;
+    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
+    
+    if (hours > 0) return `${hours}h ${minutes} min`;
+    
     return `${minutes} min`;
   };
-
+  
   const calculateTimeRemaining = (endDateStr, options = {}) => {
     if (!endDateStr) return 'Sin fecha';
 
@@ -89,27 +116,13 @@ function Membresia() {
       return formatRemaining(todayWindow.end - now);
     }
 
-    const endDate = parseLocalDate(endDateStr, 0, 0, 0, 0);
-
-    if (
-      now.getFullYear() === endDate.getFullYear() &&
-      now.getMonth() === endDate.getMonth() &&
-      now.getDate() === endDate.getDate()
-    ) {
-      const todayWindow = getGymWindowForDateStr(endDateStr);
-      if (!todayWindow) return 'Gimnasio cerrado';
-      if (now >= todayWindow.end) return 'Vencida';
-      return formatRemaining(todayWindow.end - now);
-    }
-
-    if (now < endDate) {
-      const endDayWindow = getGymWindowForDateStr(endDateStr);
-      if (!endDayWindow) return 'Vigente';
-      if (now >= endDayWindow.end) return 'Vencida';
-      return formatRemaining(endDayWindow.end - now);
-    }
+    const endDayWindow = getGymWindowForDateStr(endDateStr);
     
-    return 'Vencida';
+    const cutoffTime = endDayWindow ? endDayWindow.end : parseLocalDate(endDateStr, 23, 59, 59, 999);
+
+    if (now >= cutoffTime) return 'Vencida';
+
+    return formatRemaining(cutoffTime - now);
   };
 
   const downloadQR = async () => {
