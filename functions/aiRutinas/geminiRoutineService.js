@@ -67,13 +67,59 @@ const extractGeminiText = (responseData = {}) => {
             .trim()
         : "";
 
-    return sanitizeAiRoutineText(
+    const rawText = sanitizeAiRoutineText(
         candidateText ||
         responseData?.text ||
         responseData?.output ||
         responseData?.routineText ||
         ""
     );
+
+    if (!rawText) {
+        return "";
+    }
+
+    const unwrapped = rawText
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+
+    if (unwrapped.startsWith("{") || unwrapped.startsWith("[")) {
+        try {
+            const parsed = JSON.parse(unwrapped);
+            const days = Array.isArray(parsed?.dias) ? parsed.dias : [];
+            if (days.length > 0) {
+                const lines = [];
+                if (parsed?.objetivo) lines.push(`Objetivo: ${String(parsed.objetivo).trim()}`);
+                if (parsed?.frecuencia) lines.push(`Frecuencia: ${String(parsed.frecuencia).trim()}`);
+                if (lines.length) lines.push("");
+
+                days.forEach((day, dayIndex) => {
+                    const title = String(day?.titulo || `Dia ${dayIndex + 1}`).trim();
+                    lines.push(`${title}:`);
+                    const exercises = Array.isArray(day?.ejercicios) ? day.ejercicios : [];
+                    exercises.forEach((exercise, exerciseIndex) => {
+                        const name = String(exercise?.nombre || "Ejercicio").trim();
+                        const sets = String(exercise?.series || "3").trim();
+                        const reps = String(exercise?.repeticiones || "10-12").trim();
+                        const rest = String(exercise?.descanso || "60-90 seg").trim();
+                        lines.push(`${exerciseIndex + 1}. ${name} - ${sets} series x ${reps} repeticiones - Descanso ${rest}`);
+                    });
+                    lines.push("");
+                });
+
+                if (parsed?.recomendaciones) {
+                    lines.push("Recomendaciones:");
+                    lines.push(String(parsed.recomendaciones).trim());
+                }
+
+                return sanitizeAiRoutineText(lines.join("\n"));
+            }
+        } catch {
+        }
+    }
+
+    return rawText;
 };
 
 const buildFallbackRoutineText = (payload = {}) => {

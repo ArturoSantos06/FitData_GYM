@@ -22,7 +22,6 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const GEMINI_MODEL_CANDIDATES = [
   GEMINI_MODEL,
   "gemini-2.5-flash",
-  "gemini-1.5-flash",
 ].filter((model, index, all) => model && all.indexOf(model) === index);
 
 admin.initializeApp();
@@ -669,8 +668,58 @@ const buildFallbackRoutineText = (payload = {}) => {
     "- Priorizar tecnica antes de subir carga",
     "- Detener si aparece dolor agudo",
     "",
-    "Nota: esta rutina se genero en modo respaldo porque GEMINI_API_KEY no esta configurada en Cloud Functions.",
+    "Nota: esta rutina se genero en modo respaldo porque Gemini no devolvio una salida valida en este intento.",
   ].join("\n");
+};
+
+const tryParseRoutineJsonText = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const unwrapped = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  if (!unwrapped.startsWith("{") && !unwrapped.startsWith("[")) {
+    return "";
+  }
+
+  try {
+    const parsed = JSON.parse(unwrapped);
+    const days = Array.isArray(parsed?.dias) ? parsed.dias : [];
+    if (!days.length) return "";
+
+    const lines = [];
+    if (parsed?.objetivo) lines.push(`Objetivo: ${String(parsed.objetivo).trim()}`);
+    if (parsed?.frecuencia) lines.push(`Frecuencia: ${String(parsed.frecuencia).trim()}`);
+    if (lines.length) lines.push("");
+
+    days.forEach((day, dayIndex) => {
+      const title = String(day?.titulo || `Dia ${dayIndex + 1}`).trim();
+      lines.push(`${title}:`);
+
+      const exercises = Array.isArray(day?.ejercicios) ? day.ejercicios : [];
+      exercises.forEach((exercise, exerciseIndex) => {
+        const name = String(exercise?.nombre || "Ejercicio").trim();
+        const sets = String(exercise?.series || "3").trim();
+        const reps = String(exercise?.repeticiones || "10-12").trim();
+        const rest = String(exercise?.descanso || "60-90 seg").trim();
+        lines.push(`${exerciseIndex + 1}. ${name} - ${sets} series x ${reps} repeticiones - Descanso ${rest}`);
+      });
+
+      lines.push("");
+    });
+
+    if (parsed?.recomendaciones) {
+      lines.push("Recomendaciones:");
+      lines.push(String(parsed.recomendaciones).trim());
+    }
+
+    return lines.join("\n").trim();
+  } catch {
+    return "";
+  }
 };
 
 const normalizeRoutineInputText = (value = "") => String(value || "")
@@ -700,7 +749,7 @@ const isStructuredRoutineText = (value = "") => {
   if (!text) return false;
 
   const normalized = normalizeRoutineInputText(text);
-  const hasDayHeader = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(normalized);
+  const hasDayHeader = /\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo|dia\s*\d+)\b/.test(normalized);
   const hasNumberedExercises = /(^|\n)\s*\d+\./.test(text);
   const hasWorkoutKeywords = /(series|repeticiones|calentamiento|descanso)/.test(normalized);
 
@@ -709,18 +758,20 @@ const isStructuredRoutineText = (value = "") => {
 
 const countRoutineDaySections = (value = "") => {
   const text = String(value || "");
-  const matches = text.match(/(^|\n)\s*(\*\*)?(Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:/g);
+  const matches = text.match(/(^|\n)\s*(\*\*)?((Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:|(D[ií]a\s*\d+)\s*[:\-])/g);
   return Array.isArray(matches) ? matches.length : 0;
 };
 
 const countUniqueRoutineDaySections = (value = "") => {
   const text = String(value || "");
-  const regex = /(^|\n)\s*(\*\*)?(Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:/g;
+  const regex = /(^|\n)\s*(\*\*)?((Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo)\s*:|(D[ií]a\s*\d+)\s*[:\-])/g;
   const uniqueDays = new Set();
 
   let match = regex.exec(text);
   while (match) {
-    uniqueDays.add(String(match[3] || "").toLowerCase());
+    const weekday = String(match[4] || "").toLowerCase();
+    const numberedDay = String(match[6] || "").toLowerCase().replace(/\s+/g, " ").trim();
+    uniqueDays.add(weekday || numberedDay);
     match = regex.exec(text);
   }
 
@@ -734,7 +785,7 @@ const isCompleteRoutineText = (value = "", daysPerWeek = 4) => {
   const safeDays = Math.max(1, Math.min(6, Number(daysPerWeek || 4) || 4));
   const daySections = countRoutineDaySections(value);
   const uniqueDaySections = countUniqueRoutineDaySections(value);
-  return daySections === safeDays && uniqueDaySections === safeDays;
+  return daySections >= safeDays && uniqueDaySections >= safeDays;
 };
 
 const applyRequestedRoutineMetadata = (value = "", payload = {}) => {
@@ -760,6 +811,52 @@ const applyRequestedRoutineMetadata = (value = "", payload = {}) => {
     "",
     textWithoutMetadata,
   ].join("\n").trim();
+};
+
+const ensureRoutineCompleteness = (value = "") => {
+  const text = String(value || "").trim();
+  if (!text) return text;
+
+  const normalized = normalizeRoutineInputText(text);
+  const hasWarmup = /calentamiento/.test(normalized);
+  const hasRest = /descanso/.test(normalized);
+  const hasSafety = /recomendaciones\s+de\s+seguridad|recomendaciones/.test(normalized);
+
+  const extraSections = [];
+
+  if (!hasWarmup) {
+    extraSections.push(
+      "Calentamiento (8-10 min):",
+      "- Caminata o bicicleta suave 5 min",
+      "- Movilidad de cadera, hombro y tobillo 3-5 min",
+      ""
+    );
+  }
+
+  if (!hasRest) {
+    extraSections.push(
+      "Descanso recomendado:",
+      "- 60 a 90 segundos entre series",
+      "- 90 a 120 segundos en ejercicios compuestos pesados",
+      ""
+    );
+  }
+
+  if (!hasSafety) {
+    extraSections.push(
+      "Recomendaciones de seguridad:",
+      "- Priorizar tecnica antes de subir carga",
+      "- Mantener hidratacion y buena respiracion",
+      "- Detener si aparece dolor agudo",
+      ""
+    );
+  }
+
+  if (!extraSections.length) {
+    return text;
+  }
+
+  return [text, "", ...extraSections].join("\n").trim();
 };
 
 const buildStrictRoutinePrompt = (basePrompt = "", payload = {}) => {
@@ -964,6 +1061,7 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
 
   let responseData = {};
   let routineText = "";
+  let bestEffortRoutineText = "";
   let selectedModel = GEMINI_MODEL;
   let lastGeminiErrorMessage = "No se pudo generar la rutina con Gemini.";
 
@@ -998,6 +1096,16 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
     if (response.ok) {
       selectedModel = modelName;
       routineText = extractGeminiText(responseData);
+      if (routineText) {
+        bestEffortRoutineText = routineText;
+      }
+
+      if (!isCompleteRoutineText(routineText, requestedDaysPerWeek)) {
+        const strictCandidate = tryParseRoutineJsonText(routineText);
+        if (strictCandidate) {
+          routineText = strictCandidate;
+        }
+      }
 
       if (!isCompleteRoutineText(routineText, requestedDaysPerWeek)) {
         const strictResponse = await fetch(
@@ -1028,7 +1136,16 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
 
         const strictData = await strictResponse.json().catch(() => ({}));
         if (strictResponse.ok) {
-          const strictText = extractGeminiText(strictData);
+          let strictText = extractGeminiText(strictData);
+          if (!isCompleteRoutineText(strictText, requestedDaysPerWeek)) {
+            const parsedStrictText = tryParseRoutineJsonText(strictText);
+            if (parsedStrictText) {
+              strictText = parsedStrictText;
+            }
+          }
+          if (strictText) {
+            bestEffortRoutineText = strictText;
+          }
           if (isCompleteRoutineText(strictText, requestedDaysPerWeek)) {
             routineText = strictText;
           }
@@ -1066,6 +1183,43 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
     }
   }
 
+  if (!routineText && bestEffortRoutineText) {
+    const completedBestEffortText = ensureRoutineCompleteness(
+      applyRequestedRoutineMetadata(bestEffortRoutineText, normalizedPayload)
+    );
+
+    const bestEffortHistoryEntry = await saveAiRoutineHistory({
+      admin,
+      uid: safeUid,
+      payload: {
+        ...normalizedPayload,
+        ownerEmail: authToken?.email || safePayload.ownerEmail || null,
+        ownerDisplayName: authToken?.name || safePayload.ownerDisplayName || null,
+      },
+      prompt,
+      routineText: completedBestEffortText,
+      model: selectedModel,
+      provider: "gemini",
+    });
+
+    logger.warn("Gemini routine accepted as best-effort after strict validation failed", {
+      uid: safeUid,
+      model: selectedModel,
+      historyId: bestEffortHistoryEntry?.id || null,
+      errorMessage: lastGeminiErrorMessage,
+    });
+
+    return {
+      success: true,
+      provider: "gemini",
+      model: selectedModel,
+      prompt,
+      routineText: completedBestEffortText,
+      historyEntry: bestEffortHistoryEntry,
+      bestEffort: true,
+    };
+  }
+
   if (!routineText) {
     const fallbackRoutineText = buildFallbackRoutineText(normalizedPayload);
     const fallbackHistoryEntry = await saveAiRoutineHistory({
@@ -1099,6 +1253,7 @@ const generateClientAiRoutineCore = async ({ uid, payload, authToken = {} }) => 
   }
 
   routineText = applyRequestedRoutineMetadata(routineText, normalizedPayload);
+  routineText = ensureRoutineCompleteness(routineText);
 
   const historyEntry = await saveAiRoutineHistory({
     admin,
