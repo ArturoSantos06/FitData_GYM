@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../../firebase';
 import CitasEntrenador from '../gestion/CitasEntrenador';
@@ -9,25 +9,17 @@ import BarraNavegacionEntrenador from './BarraNavegacionEntrenador';
 import InicioEntrenador from './InicioEntrenador';
 
 function PortalEntrenador() {
-  const [pestañaActiva, setPestañaActiva] = useState('inicio');
-  const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    const initialTab = location.state?.initialTab;
-    if (!initialTab) return;
-
-    const tabsValidas = ['inicio', 'agenda', 'gestion', 'mensajes', 'perfil'];
-    if (tabsValidas.includes(initialTab)) {
-      setPestañaActiva(initialTab);
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.pathname, location.state, navigate]);
+  const navigate = useNavigate();
+  const [pestañaActiva, setPestañaActiva] = useState(() => {
+    return location.state?.initialTab || 'inicio';
+  });
 
   const cerrarSesion = async () => {
     try {
       await logoutUser();
-    } catch {
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
     }
     localStorage.removeItem('trainer_token');
     localStorage.removeItem('trainer_username');

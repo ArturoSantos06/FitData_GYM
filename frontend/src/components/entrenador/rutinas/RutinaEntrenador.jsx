@@ -123,7 +123,7 @@ function RutinaEntrenador() {
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => navigate('/entrenador')}
+              onClick={() => navigate('/entrenador', { state: { initialTab: 'gestion' } })}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
             >
               <ArrowLeft size={16} />
