@@ -122,10 +122,6 @@ function SoporteWhatsApp() {
         if (!currentUser?.uid) return;
 
         const fetchAssignments = async () => {
-            console.log('--- Iniciando búsqueda de vinculaciones ---');
-            console.log('Mi UID (Cliente):', currentUser.uid);
-            console.log('Email del usuario actual:', currentUser.email);
-
             try {
                 const nutriQuery = query(
                     collection(db, 'client_nutritionist_assignments'),
@@ -133,22 +129,49 @@ function SoporteWhatsApp() {
                 );
                 const nutriSnap = await getDocs(nutriQuery);
 
-                console.log('¿Se encontró documento de Nutriólogo?:', !nutriSnap.empty);
-
                 if (!nutriSnap.empty) {
                     const nutriData = nutriSnap.docs[0].data();
-                    console.log('Datos de la vinculación hallada:', nutriData);
 
                     const nId = nutriData.nutritionistId;
-                    console.log('ID del nutriólogo obtenido:', nId);
 
                     const userDoc = await getDoc(doc(db, 'users', nId));
                     if (userDoc.exists()) {
-                        console.log('Perfil del nutriólogo encontrado:', userDoc.data().displayName);
                         setNutritionistName(userDoc.data().displayName);
                         setNutritionistId(nId);
                     } else {
                         console.error("ALERTA: El ID del nutriólogo no existe en la colección 'users'");
+                    }
+                }
+            } catch (error) {
+                console.error('Error en auditoría:', error);
+            }
+        };
+
+        fetchAssignments();
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+
+        const fetchAssignments = async () => {
+            try {
+                const trainerQuery = query(
+                    collection(db, 'client_trainer_assignments'),
+                    where('clientId', '==', currentUser.uid)
+                );
+                const trainerSnap = await getDocs(trainerQuery);
+
+                if (!trainerSnap.empty) {
+                    const trainerData = trainerSnap.docs[0].data();
+
+                    const tId = trainerData.trainerId;
+
+                    const userDoc = await getDoc(doc(db, 'users', tId));
+                    if (userDoc.exists()) {
+                        setTrainerName(userDoc.data().displayName);
+                        setTrainerId(tId);
+                    } else {
+                        console.error("ALERTA: El ID del entrenador no existe en la colección 'users'");
                     }
                 }
             } catch (error) {

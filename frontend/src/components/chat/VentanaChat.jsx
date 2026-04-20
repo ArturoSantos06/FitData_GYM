@@ -48,7 +48,6 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
             if (file) {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-
                 const storageRef = ref(storage, `chat_attachments/${chatId}/${fileName}`);
 
                 const uploadTask = await uploadBytesResumable(storageRef, file);
@@ -95,6 +94,7 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
                 </div>
             </header>
 
+            {/* Lista de Mensajes */}
             <ListaMensajes messages={messages} currentUserId={currentUserId} />
 
             <div className="shrink-0 relative z-20">
