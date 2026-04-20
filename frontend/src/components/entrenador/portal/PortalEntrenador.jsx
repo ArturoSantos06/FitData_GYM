@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../../firebase';
 import CitasEntrenador from '../gestion/CitasEntrenador';
 import BandejaProfesionales from '../../chat/BandejaProfesionales';
@@ -11,6 +11,18 @@ import InicioEntrenador from './InicioEntrenador';
 function PortalEntrenador() {
   const [pestañaActiva, setPestañaActiva] = useState('inicio');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const initialTab = location.state?.initialTab;
+    if (!initialTab) return;
+
+    const tabsValidas = ['inicio', 'agenda', 'gestion', 'mensajes', 'perfil'];
+    if (tabsValidas.includes(initialTab)) {
+      setPestañaActiva(initialTab);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const cerrarSesion = async () => {
     try {
