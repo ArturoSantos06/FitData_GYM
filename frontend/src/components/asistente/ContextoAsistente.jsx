@@ -4,14 +4,24 @@ import { getBestAssistantAnswer } from './nlpAsistente';
 
 const AssistantContext = createContext(null);
 
+const normalizeEntry = (entry = {}) => ({
+  ...entry,
+  id: String(entry.id || '').trim(),
+  question: String(entry.question || ''),
+  answer: String(entry.answer || ''),
+  tags: Array.isArray(entry.tags) ? entry.tags : [],
+  active: entry.active !== false
+});
+
 const readKnowledgeFromStorage = () => {
   try {
     const raw = localStorage.getItem(ASSISTANT_STORAGE_KEY);
-    if (!raw) return DEFAULT_KNOWLEDGE_BASE;
+    if (!raw) return DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry);
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_KNOWLEDGE_BASE;
+    if (!Array.isArray(parsed)) return DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry);
+    return parsed.map(normalizeEntry);
   } catch {
-    return DEFAULT_KNOWLEDGE_BASE;
+    return DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry);
   }
 };
 
@@ -27,7 +37,8 @@ export function AssistantProvider({ children }) {
       id: entry.id || `entry_${Date.now()}`,
       question: String(entry.question || '').trim(),
       answer: String(entry.answer || '').trim(),
-      tags: Array.isArray(entry.tags) ? entry.tags : []
+      tags: Array.isArray(entry.tags) ? entry.tags : [],
+      active: entry.active !== false
     };
 
     if (!next.question || !next.answer) return false;
@@ -41,10 +52,20 @@ export function AssistantProvider({ children }) {
         if (item.id !== entryId) return item;
         return {
           ...item,
-          question: String(updates.question ?? item.question).trim(),
-          answer: String(updates.answer ?? item.answer).trim(),
-          tags: Array.isArray(updates.tags) ? updates.tags : item.tags
+          question: String(updates.question ?? item.question),
+          answer: String(updates.answer ?? item.answer),
+          tags: Array.isArray(updates.tags) ? updates.tags : item.tags,
+          active: typeof updates.active === 'boolean' ? updates.active : item.active !== false
         };
+      })
+    );
+  };
+
+  const setEntryActive = (entryId, active) => {
+    setKnowledgeBase((prev) =>
+      prev.map((item) => {
+        if (item.id !== entryId) return item;
+        return { ...item, active: Boolean(active) };
       })
     );
   };
@@ -54,10 +75,13 @@ export function AssistantProvider({ children }) {
   };
 
   const resetDefaultKnowledge = () => {
-    setKnowledgeBase(DEFAULT_KNOWLEDGE_BASE);
+    setKnowledgeBase(DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry));
   };
 
-  const ask = (question) => getBestAssistantAnswer(question, knowledgeBase);
+  const ask = (question) => {
+    const activeKnowledge = knowledgeBase.filter((item) => item.active !== false);
+    return getBestAssistantAnswer(question, activeKnowledge);
+  };
 
   const value = useMemo(
     () => ({
@@ -66,6 +90,7 @@ export function AssistantProvider({ children }) {
       ask,
       addEntry,
       updateEntry,
+      setEntryActive,
       removeEntry,
       resetDefaultKnowledge
     }),

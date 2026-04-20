@@ -8,6 +8,7 @@ import VistaUsuarioMantenimiento from './VistaUsuarioMantenimiento';
 function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }) {
     const [vista, setVista] = useState(modoSoloAdmin ? 'admin' : vistaInicial);
     const [maquinas, setMaquinas] = useState([]);
+    const [catalogoCargando, setCatalogoCargando] = useState(true);
     const [reportes, setReportes] = useState([]);
     const [errorCatalogo, setErrorCatalogo] = useState('');
     const [errorReportes, setErrorReportes] = useState('');
@@ -17,8 +18,12 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
             (data) => {
                 setMaquinas(data);
                 setErrorCatalogo('');
+                setCatalogoCargando(false);
             },
-            (error) => setErrorCatalogo(String(error?.message || 'No se pudo cargar el catalogo.'))
+            (error) => {
+                setErrorCatalogo(String(error?.message || 'No se pudo cargar el catalogo.'));
+                setCatalogoCargando(false);
+            }
         );
 
         const offReportes = suscribirReportesMantenimiento(
@@ -41,7 +46,7 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
     );
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-6 md:px-8 text-slate-100">
+        <div className="min-h-[80vh] px-4 py-6 text-gray-100 md:px-8">
             <div className="mx-auto max-w-6xl space-y-6">
                 <header className="rounded-2xl border border-cyan-500/20 bg-slate-900/90 px-4 py-4 text-white shadow-xl md:px-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -101,7 +106,7 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
                 )}
 
                 {(vista === 'admin' || modoSoloAdmin) && (
-                    <VistaAdminMantenimiento reportes={reportes} />
+                    <VistaAdminMantenimiento reportes={reportes} maquinas={maquinas} catalogoCargando={catalogoCargando} />
                 )}
             </div>
         </div>

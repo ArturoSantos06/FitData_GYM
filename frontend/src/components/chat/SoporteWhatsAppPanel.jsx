@@ -67,10 +67,10 @@ function SoporteWhatsAppPanel({
     isGenerating,
 }) {
     return (
-        <div className="w-full animate-fade-in">
-            <div className="mx-auto h-[calc(100vh-12rem)] min-h-[560px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0b141a] shadow-2xl">
+        <div className="relative left-1/2 w-[calc(100vw-4rem)] -translate-x-1/2 animate-fade-in px-1 md:w-[calc(100vw-6rem)] md:px-2">
+            <div className="mx-auto h-[calc(100vh-3.5rem)] min-h-[840px] max-h-[1180px] w-full max-w-none overflow-hidden rounded-2xl border border-slate-700 bg-[#0b141a] shadow-2xl">
                 <div className="flex h-full flex-col md:flex-row">
-                    <aside className={`w-full border-b border-slate-700 bg-[#111b21] md:w-[340px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
+                    <aside className={`w-full border-b border-slate-700 bg-[#111b21] md:w-[460px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
                         <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between">
                             <div>
                                 <h2 className="text-base font-bold text-slate-100">Mensajes</h2>

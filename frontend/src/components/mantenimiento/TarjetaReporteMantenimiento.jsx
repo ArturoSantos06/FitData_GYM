@@ -10,7 +10,15 @@ function formatearFecha(valor) {
     }
 }
 
-function TarjetaReporteMantenimiento({ reporte, mostrarAccionResolver = false, onResolver, resolviendo = false }) {
+function TarjetaReporteMantenimiento({
+    reporte,
+    mostrarAccionResolver = false,
+    onResolver,
+    resolviendo = false,
+    mostrarAccionEliminar = false,
+    onEliminar,
+    eliminando = false,
+}) {
     const pendiente = String(reporte?.estado || '').toLowerCase() !== 'resuelto';
     const [imagenActiva, setImagenActiva] = useState('');
 
@@ -58,22 +66,35 @@ function TarjetaReporteMantenimiento({ reporte, mostrarAccionResolver = false, o
                         {pendiente ? 'Pendiente' : 'Resuelto'}
                     </span>
 
-                    {mostrarAccionResolver && pendiente && (
-                        <button
-                            type="button"
-                            onClick={() => onResolver?.(reporte.id)}
-                            disabled={resolviendo}
-                            className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {resolviendo ? 'Guardando...' : 'Marcar como resuelto'}
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {mostrarAccionResolver && pendiente && (
+                            <button
+                                type="button"
+                                onClick={() => onResolver?.(reporte.id)}
+                                disabled={resolviendo || eliminando}
+                                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {resolviendo ? 'Guardando...' : 'Marcar como resuelto'}
+                            </button>
+                        )}
+
+                        {mostrarAccionEliminar && (
+                            <button
+                                type="button"
+                                onClick={() => onEliminar?.(reporte.id)}
+                                disabled={eliminando || resolviendo}
+                                className="rounded-xl border border-rose-400/50 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {eliminando ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {imagenActiva && (
                 <div
-                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4"
+                    className="fixed inset-0 z-70 flex items-center justify-center bg-black/85 p-4"
                     onClick={() => setImagenActiva('')}
                 >
                     <div className="relative max-h-[90vh] max-w-5xl" onClick={(event) => event.stopPropagation()}>

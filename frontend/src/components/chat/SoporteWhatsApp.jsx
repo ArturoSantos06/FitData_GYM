@@ -187,7 +187,11 @@ function SoporteWhatsApp() {
     const aiPreview = aiHistory[0]?.requestSummary || 'Describe tu objetivo para generar una rutina.';
 
     const aiMessages = useMemo(() => {
-        const knownHistoryIds = new Set(aiHistory.map((entry) => entry?.id).filter(Boolean));
+        const historyById = new Map(
+            aiHistory
+                .filter((entry) => entry?.id)
+                .map((entry) => [entry.id, entry])
+        );
         const formatted = [];
 
         aiHistory
@@ -213,7 +217,25 @@ function SoporteWhatsApp() {
                 }
             });
 
-        const pendingLocal = localAiMessages.filter((message) => !message.historyId || !knownHistoryIds.has(message.historyId));
+        const pendingLocal = localAiMessages.filter((message) => {
+            if (!message?.historyId) return true;
+
+            const historyEntry = historyById.get(message.historyId);
+            if (!historyEntry) return true;
+
+            const hasSummary = Boolean(String(historyEntry?.requestSummary || '').trim());
+            const hasRoutine = Boolean(String(historyEntry?.routineText || '').trim());
+
+            if (message.role === 'user') {
+                return !hasSummary;
+            }
+
+            if (message.role === 'assistant') {
+                return !hasRoutine;
+            }
+
+            return !(hasSummary || hasRoutine);
+        });
         formatted.push(...pendingLocal);
 
         if (pendingAiPrompt) {
@@ -271,12 +293,13 @@ function SoporteWhatsApp() {
 
     const handleReportCreated = ({ maquinaNombre, descripcion }) => {
         const createdAt = Date.now();
+        const nombreVisible = String(maquinaNombre || '').trim() || 'Sin maquina seleccionada';
         setMaintenanceMessages((prev) => [
             ...prev,
             {
                 id: `su_report_${createdAt}_${Math.random()}`,
                 role: 'user',
-                text: `Reporte de maquina: ${maquinaNombre}\nDetalle: ${descripcion}`,
+                text: `Reporte de maquina: ${nombreVisible}\nDetalle: ${descripcion}`,
                 createdAt,
             },
             {
@@ -388,6 +411,7 @@ function SoporteWhatsApp() {
             const createdAt = Date.now();
             const historyId = response?.historyEntry?.id || null;
             const routineText = String(response?.routineText || '').trim();
+            const linkedHistoryId = routineText ? historyId : null;
 
             setLocalAiMessages((prev) => [
                 ...prev,
@@ -396,14 +420,14 @@ function SoporteWhatsApp() {
                     role: 'user',
                     text,
                     createdAt,
-                    historyId,
+                    historyId: linkedHistoryId,
                 },
                 {
                     id: `local_a_${createdAt}_${Math.random()}`,
                     role: 'assistant',
                     text: routineText || 'No se pudo leer la respuesta de la IA.',
                     createdAt,
-                    historyId,
+                    historyId: linkedHistoryId,
                 },
             ]);
 
