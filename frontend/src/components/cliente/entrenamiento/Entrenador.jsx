@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
-import { getCurrentUser, waitForAuthReady, getClientTrainerAssignment, removeTrainerFromClient } from '../../../firebase';
+import { waitForAuthReady, getClientTrainerAssignment, removeTrainerFromClient } from '../../../firebase';
 
 const Entrenador= () => {
     // Estados a utilizar //

@@ -475,7 +475,7 @@ function Rutina() {
 
       {/* ---- Header ---- */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-700 bg-linear-to-br from-slate-900 via-slate-900 to-blue-950 p-5 md:p-7">
-       <div className="absolute top-0 left-0 right-0 h-[10px] bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-500 z-10 shadow-[0_0_15px_rgba(7,182,212,0.8)]" />
+      <div className="absolute top-0 left-0 right-0 h-2.5 bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-500 z-10 shadow-[0_0_15px_rgba(7,182,212,0.8)]" />
         {/* Decoración de fondo */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-blue-600/10 blur-2xl" />
@@ -531,7 +531,7 @@ function Rutina() {
         </div>
 
        {/* LÍNEA CON DEGRADADO */}
-<div className="mt-6 h-[1px] w-full bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-500 opacity-50" />
+<div className="mt-6 h-px w-full bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-500 opacity-50" />
 
       </div>
 

@@ -11,7 +11,7 @@ function InicioNutri() {
           alt="FitData Nutrition Logo" 
           className="mx-auto h-24 md:h-32 mb-6 drop-shadow-lg" 
         />
-        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 tracking-tight leading-tight mb-2">
+        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-emerald-400 via-teal-400 to-cyan-400 tracking-tight leading-tight mb-2">
           Portal del Nutriólogo
         </h1>
         <p className="text-xl md:text-2xl text-gray-400 mt-3 tracking-wide uppercase font-medium">
