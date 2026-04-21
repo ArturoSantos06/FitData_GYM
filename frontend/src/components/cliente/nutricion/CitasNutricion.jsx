@@ -77,6 +77,8 @@ const CitasNutricion = () => {
 
     return (
         <div className="w-full max-w-3xl mx-auto animate-fade-in space-y-6">
+            {/* Línea de color degradado superior */}
+            <div className="w-full h-2 rounded-t-xl bg-linear-to-r from-blue-500 via-cyan-400 to-teal-300 mb-2"></div>
             
   
             <div className="relative bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden p-6 md:p-8">

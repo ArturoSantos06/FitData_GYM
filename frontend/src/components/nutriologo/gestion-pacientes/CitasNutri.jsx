@@ -189,10 +189,12 @@ const CitasNutri = ({ embedded = false }) => {
 
   const backPath = location.pathname.startsWith('/nutriologo') ? '/nutriologo' : '/admin';
 
-  return (
+ return (
     <div className={embedded ? '' : 'min-h-screen bg-slate-950 p-4 md:p-8'}>
-      <div className={`mx-auto mt-6 w-full ${layoutWidthClass} rounded-[28px] border border-slate-800/80 bg-linear-to-br from-[#0f172a] via-[#0c1a37] to-[#0a1430] p-5 md:p-8 shadow-[0_18px_55px_rgba(2,10,28,0.45)] transition-all duration-300`}>
-
+      {/* 1. Agregamos 'relative' aquí: */}
+     <div className={`mx-auto mt-6 w-full ${layoutWidthClass} rounded-[28px] border border-slate-800/80 bg-linear-to-br from-[#0f172a] via-[#0c1a37] to-[#0a1430] p-5 md:p-8 shadow-[0_18px_55px_rgba(2,10,28,0.45)] transition-all duration-300`}>
+        
+        <div className="-mx-5 -mt-5 mb-5 md:-mx-8 md:-mt-8 md:mb-8 h-2 rounded-t-[27px] bg-linear-to-r from-blue-500 via-cyan-400 to-teal-300"></div>
         <header className="mb-8 border-b border-cyan-900/30 pb-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
