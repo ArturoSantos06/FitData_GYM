@@ -88,7 +88,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 </button>
 
                 {mostrarOpcionesMaquina && (
-                    <div className="absolute z-20 mt-1 max-h-96 w-full overflow-y-auto rounded-lg border border-slate-600 bg-slate-950 shadow-lg">
+                    <div className="absolute bottom-full z-20 mb-1 max-h-72 w-full overflow-y-auto overscroll-contain rounded-lg border border-slate-600 bg-slate-950 shadow-lg">
                         {maquinas.length === 0 ? (
                             <p className="px-3 py-2 text-xs text-slate-400">No hay maquinas disponibles.</p>
                         ) : (
