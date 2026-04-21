@@ -1,14 +1,16 @@
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-
 import { auth, db } from '../firebase/config';
 
 export function construirPromptRutina(payload) {
-    const solicitudPersonalizada = String(payload.customRequest || payload.requestText || payload.extraNotes || payload.preferences || '').trim();
+    // Combinamos las preferencias y notas extra si existen
+    const notasExtra = String(payload.extraNotes || '').trim();
+    const preferencias = String(payload.preferences || '').trim();
+    const solicitudPersonalizada = [preferencias, notasExtra].filter(Boolean).join(' | ');
 
     return [
         'Eres un entrenador personal experto en rutinas de gimnasio.',
-        'Genera una rutina segura y personalizada en español.',
-        'IMPORTANTE: Debes responder EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional antes ni después. Usa esta estructura exacta:',
+        'Genera una rutina segura y estrictamente adaptada a los parámetros del usuario.',
+        'REGLA ABSOLUTA: Tu respuesta debe ser ÚNICAMENTE un objeto JSON válido. Nada de texto antes ni después (sin bloques de código markdown si es posible). Usa esta estructura exacta:',
         '{',
         '  "objetivo": "Resumen del objetivo",',
         '  "frecuencia": "X días a la semana",',
@@ -19,21 +21,27 @@ export function construirPromptRutina(payload) {
         '      "ejercicios": [',
         '        {',
         '          "nombre": "Sentadilla Libre",',
-        '          "series": "4",',
-        '          "repeticiones": "10-12",',
-        '          "descanso": "90 seg"',
+        '          "descripcion": "4 series x 10-12 repeticiones. Descanso: 90 seg"',
         '        }',
         '      ]',
         '    }',
         '  ]',
         '}',
-        'Para cada día, lista entre 4 y 6 ejercicios exactos. El campo "nombre" del ejercicio debe ser claro y específico (ej. "Press de banca con mancuernas") para poder buscarlo en video.',
         '',
-        `Solicitud libre del usuario: ${solicitudPersonalizada || 'sin solicitud adicional'}.`,
+        'INSTRUCCIONES CLAVE:',
+        '- Genera EXACTAMENTE la cantidad de días solicitados en "Frecuencia". Si pide 4 días, el arreglo "dias" debe tener 4 elementos.',
+        '- Ajusta la cantidad de ejercicios para que la rutina dure exactamente el tiempo indicado en "Duración por sesión".',
+        '- Respeta estrictamente las "Limitaciones o lesiones" (ej. si le duele la rodilla, cero impacto).',
+        '- Usa solo el "Equipo disponible".',
+        '',
+        'PARÁMETROS DEL USUARIO:',
         `Objetivo del cliente: ${payload.goalLabel || payload.goal || 'no especificado'}.`,
         `Nivel: ${payload.levelLabel || payload.level || 'no especificado'}.`,
+        `Frecuencia solicitada: ${payload.daysPerWeek || 'no especificado'} días por semana.`,
+        `Duración por sesión: ${payload.sessionLength || 'no especificado'} minutos.`,
         `Equipo disponible: ${payload.equipment || 'no especificado'}.`,
         `Limitaciones o lesiones: ${payload.limitations || 'ninguna especificada'}.`,
+        `Preferencias y notas: ${solicitudPersonalizada || 'sin solicitud adicional'}.`
     ].join('\n');
 }
 
