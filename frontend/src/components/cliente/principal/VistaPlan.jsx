@@ -3,6 +3,7 @@ import { ChevronRight, Dumbbell, Apple, ArrowLeft, Users, XCircle, Activity, Fil
 
 import Rutina from '../entrenamiento/Rutina';
 import Entrenador from '../entrenamiento/Entrenador';
+import ClasesEntrenamiento from '../entrenamiento/ClasesEntrenamiento';
 import VistaNutricion from '../nutricion/VistaNutricion';
 import VisorDieta from '../nutricion/VisorDieta';
 import AnalisisNecesidades from '../entrenamiento/AnalisisNecesidades';
@@ -78,7 +79,24 @@ function VistaPlan() {
                 <ChevronRight className="text-slate-500 group-hover:text-cyan-400" size={24} />
               </button>
 
-              {/* Opción 3: Análisis de Necesidades */}
+              {/* Opción 3: Ver Entrenamiento Programado */}
+              <button
+                onClick={() => setCurrentView('entrenador_clases')}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-violet-500/50"
+              >
+                <div className="flex items-center gap-5 text-left">
+                  <div className="p-3.5 bg-violet-500/10 rounded-xl text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-all shadow-inner">
+                    <Calendar size={28} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-violet-300 font-bold text-lg">Mi Entrenamiento</span>
+                    <span className="text-slate-400 text-sm mt-0.5">Revisa las sesiones y ejercicios que te programó tu entrenador.</span>
+                  </div>
+                </div>
+                <ChevronRight className="text-slate-500 group-hover:text-violet-400" size={24} />
+              </button>
+
+              {/* Opción 4: Análisis de Necesidades */}
               <button
                 onClick={() => setCurrentView('entrenador_analisis')}
                 className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-amber-500/50"
@@ -95,7 +113,7 @@ function VistaPlan() {
                 <ChevronRight className="text-slate-500 group-hover:text-amber-400" size={24} />
               </button>
 
-              {/* Opción 4: Detener Servicio  */}
+              {/* Opción 5: Detener Servicio  */}
               <button
                 onClick={() => setCurrentView('entrenador_cancelar')}
                 className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-center justify-between group transition-all duration-300 shadow-md hover:border-red-500/50"
@@ -126,6 +144,15 @@ function VistaPlan() {
       <div className="w-full animate-fade-in">
         {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
         <Rutina />
+      </div>
+    );
+  }
+
+  if (currentView === 'entrenador_clases') {
+    return (
+      <div className="w-full animate-fade-in">
+        {renderBackButton('entrenador_menu', 'Volver a Entrenamiento')}
+        <ClasesEntrenamiento />
       </div>
     );
   }

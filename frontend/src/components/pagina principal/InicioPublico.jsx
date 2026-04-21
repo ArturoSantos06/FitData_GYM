@@ -33,7 +33,7 @@ function UserSelectionModal({ onClose }) {
           </button>
 
           <button
-            onClick={() => navigate('/entrenador')}
+            onClick={() => navigate('/entrenador/login')}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-blue-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">
@@ -44,7 +44,7 @@ function UserSelectionModal({ onClose }) {
           </button>
 
           <button
-            onClick={() => navigate('/nutriologo')}
+            onClick={() => navigate('/nutriologo/login')}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-emerald-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">
@@ -55,7 +55,7 @@ function UserSelectionModal({ onClose }) {
           </button>
 
           <button 
-            onClick={() => navigate('/cliente')}
+            onClick={() => navigate('/cliente/login')}
             className="w-full group flex items-center justify-between p-5 bg-gray-800 border border-gray-600 rounded-xl hover:border-cyan-500 hover:bg-gray-700 transition-all duration-300"
           >
             <div className="text-left">

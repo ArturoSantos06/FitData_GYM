@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onAuthChanged } from '../../../firebase';
+import { logoutUser, onAuthChanged } from '../../../firebase';
 import Perfil from './Perfil';
 import Membresia from './Membresia';
 import Tienda from './Tienda';
@@ -14,7 +14,8 @@ function Portal() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [authReady, setAuthReady] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     localStorage.removeItem('firebaseUser');
     window.location.href = '/cliente/login';
   };

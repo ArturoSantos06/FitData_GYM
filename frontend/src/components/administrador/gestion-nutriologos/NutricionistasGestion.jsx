@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stethoscope } from 'lucide-react';
+import { Stethoscope, Unlink } from 'lucide-react';
 
 function NutricionistasGestion({
   nutriologos,
@@ -48,9 +48,10 @@ function NutricionistasGestion({
                       <button
                         onClick={() => onDesactivarNutriologodescrip(nutritionist)}
                         disabled={idNutriologoDesactivando === nutritionist.id}
-                        className="px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {idNutriologoDesactivando === nutritionist.id ? 'Descontratando...' : 'Descontratar'}
+                        <Unlink size={16} className="shrink-0" />
+                        <span>{idNutriologoDesactivando === nutritionist.id ? 'Desvinculando...' : 'Desvincular'}</span>
                       </button>
                     </td>
                   </tr>

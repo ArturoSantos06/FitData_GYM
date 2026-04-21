@@ -153,15 +153,20 @@ export const reactivateTrainerByAdmin = async (payload) => {
 
 export const ensureUserClaim = async () => {
   try {
-    const fn = httpsCallable(functions, 'ensureUserClaim');
-    await fn();
-    // Forzar refresh del token para que el nuevo claim entre en vigor
-    if (auth.currentUser) {
+    // Forzar refresh del token para que cualquier claim ya emitido entre en vigor.
+    if (auth.currentUser?.getIdToken) {
       await auth.currentUser.getIdToken(true);
     }
     return { success: true };
   } catch (error) {
     console.error('Error en ensureUserClaim:', error);
+    try {
+      if (auth.currentUser?.getIdToken) {
+        await auth.currentUser.getIdToken(true);
+      }
+    } catch (refreshError) {
+      console.warn('No se pudo refrescar el token tras fallar ensureUserClaim:', refreshError);
+    }
     return { success: false, error: error.message };
   }
 };
@@ -191,8 +196,20 @@ export const updateSelfProfile = async (payload) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
+    localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('token');
+    localStorage.removeItem('trainer_token');
+    localStorage.removeItem('trainer_username');
+    localStorage.removeItem('nutritionist_token');
+    localStorage.removeItem('nutritionist_username');
     return { success: true };
   } catch (error) {
+    localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('token');
+    localStorage.removeItem('trainer_token');
+    localStorage.removeItem('trainer_username');
+    localStorage.removeItem('nutritionist_token');
+    localStorage.removeItem('nutritionist_username');
     return { success: false, error: error.message };
   }
 };

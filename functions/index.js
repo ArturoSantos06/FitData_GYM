@@ -2425,6 +2425,93 @@ const buildUsernameFromEmail = (email = "") => {
     .slice(0, 40) || "usuario";
 };
 
+const normalizeClaimRole = (value = "") => String(value || "").trim().toLowerCase();
+
+const buildCustomClaimsFromUser = (userData = {}) => {
+  const role = normalizeClaimRole(
+    userData.role ||
+    userData.userType ||
+    userData.tipo ||
+    userData.accountType ||
+    ""
+  );
+
+  if (userData.admin === true || userData.isAdmin === true || role === "admin") {
+    return { admin: true, role: "ADMIN" };
+  }
+
+  if (
+    userData.isTrainer === true ||
+    userData.is_trainer === true ||
+    ["trainer", "entrenador", "coach"].includes(role)
+  ) {
+    return { trainer: true, role: "TRAINER" };
+  }
+
+  if (
+    userData.isNutritionist === true ||
+    userData.is_nutritionist === true ||
+    ["nutriologo", "nutritionist", "nutri"].includes(role)
+  ) {
+    return { nutriologo: true, role: "NUTRIOLOGO" };
+  }
+
+  if (role) {
+    return { role: role.toUpperCase() };
+  }
+
+  return {};
+};
+
+exports.ensureUserClaim = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "No autenticado");
+  }
+
+  const db = admin.firestore();
+  const authUid = String(request.auth.uid || "").trim();
+  const authEmail = String(request.auth.token?.email || "").trim().toLowerCase();
+
+  const userCandidates = [];
+  const seenIds = new Set();
+
+  const addCandidate = (docSnap) => {
+    if (!docSnap?.exists || seenIds.has(docSnap.id)) return;
+    seenIds.add(docSnap.id);
+    userCandidates.push({ id: docSnap.id, data: docSnap.data() || {} });
+  };
+
+  addCandidate(await db.collection("users").doc(authUid).get());
+
+  const byAuthUid = await db.collection("users").where("authUid", "==", authUid).limit(5).get();
+  byAuthUid.docs.forEach(addCandidate);
+
+  if (authEmail) {
+    const byEmail = await db.collection("users").where("email", "==", authEmail).limit(5).get();
+    byEmail.docs.forEach(addCandidate);
+  }
+
+  const matchedUser = userCandidates[0]?.data || null;
+  if (!matchedUser) {
+    return { success: true, synced: false, claims: request.auth.token || {} };
+  }
+
+  const desiredClaims = buildCustomClaimsFromUser(matchedUser);
+  const currentClaims = request.auth.token || {};
+  const claimsChanged = Object.keys(desiredClaims).some((key) => currentClaims[key] !== desiredClaims[key])
+    || Object.keys(currentClaims).some((key) => desiredClaims[key] !== currentClaims[key] && ["admin", "trainer", "nutriologo", "role"].includes(key));
+
+  if (claimsChanged && Object.keys(desiredClaims).length > 0) {
+    await admin.auth().setCustomUserClaims(authUid, desiredClaims);
+  }
+
+  return {
+    success: true,
+    synced: claimsChanged,
+    claims: desiredClaims,
+  };
+});
+
 exports.registerTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "public" }, async (request) => {
   const db = admin.firestore();
 

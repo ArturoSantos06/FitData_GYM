@@ -916,31 +916,31 @@ export function useGestionEntrenadores() {
           .filter(Boolean)
       : [];
 
-    return pagosEntrenadores
-      .filter((pago) => {
-        const fecha = new Date(aMs(pago.createdAt || pago.fecha));
+    return ventasServiciosEntrenador
+      .filter((venta) => {
+        const fecha = new Date(aMs(venta.createdAt || venta.fecha));
         if (fecha.getMonth() + 1 !== Number(mes) || fecha.getFullYear() !== Number(anio)) {
           return false;
         }
 
         if (!trainer) return true;
 
-        const clavesPago = [
-          pago.trainerId,
-          pago.trainer_id,
-          pago.trainerEmail,
-          pago.trainer_email,
-          pago.trainerName,
-          pago.trainer_name,
-          pago.trainer_nombre,
+        const clavesVenta = [
+          venta.trainerId,
+          venta.trainer_id,
+          venta.trainerEmail,
+          venta.trainer_email,
+          venta.trainerName,
+          venta.trainer_name,
+          venta.trainer_nombre,
         ]
           .map(normalizarClaveBusqueda)
           .filter(Boolean);
 
-        return clavesPago.some((clave) => clavesEntrenador.includes(clave));
+        return clavesVenta.some((clave) => clavesEntrenador.includes(clave));
       })
-      .reduce((sum, pago) => sum + (Number(pago.total || pago.amount || pago.monto || pago.monto_recibido || 0) || 0), 0);
-  }, [pagosEntrenadores, filtroMesPagos, filtroAnioPagos]);
+      .reduce((sum, venta) => sum + (Number(venta.total || venta.amount || venta.monto || venta.monto_recibido || 0) || 0), 0);
+  }, [ventasServiciosEntrenador, filtroMesPagos, filtroAnioPagos]);
 
   // Filtrar servicios según búsqueda y estado
   const serviciosFiltrados = serviciosEntrenamiento.filter((servicio) => {
@@ -967,6 +967,41 @@ export function useGestionEntrenadores() {
   }, [accionPendiente, ejecutarDesactivarEntrenador, ejecutarReactivarEntrenador]);
 
   const manejarPagoEntrenador = useCallback((entrenador) => {
+    const mesActual = new Date().getMonth() + 1;
+    const anioActual = new Date().getFullYear();
+    const clavesEntrenador = obtenerClavesEntrenador(entrenador);
+    const yaFuePagadoEsteMes = pagosEntrenadores.some((pago) => {
+      const fechaPago = new Date(aMs(pago.createdAt || pago.fecha));
+      if (fechaPago.getMonth() + 1 !== mesActual || fechaPago.getFullYear() !== anioActual) {
+        return false;
+      }
+
+      const clavesPago = [
+        pago.trainerId,
+        pago.trainer_id,
+        pago.trainerEmail,
+        pago.trainer_email,
+        pago.trainerName,
+        pago.trainer_name,
+        pago.trainer_nombre,
+      ]
+        .map(normalizarClaveBusqueda)
+        .filter(Boolean);
+
+      return clavesPago.some((clave) => clavesEntrenador.includes(clave));
+    });
+
+    if (yaFuePagadoEsteMes) {
+      setModalError({
+        isOpen: true,
+        title: 'Pago ya registrado',
+        message: 'Este entrenador ya fue pagado en este mes. No puedes volver a registrarlo.',
+      });
+      return;
+    }
+
+    const ingresoMensual = obtenerIngresoMensualFiltrado(entrenador, mesActual, anioActual);
+    
     setModalPago({
       isOpen: true,
       trainerId: entrenador.id,
@@ -974,11 +1009,93 @@ export function useGestionEntrenadores() {
       trainerEmail: entrenador.email || '',
       contractType: entrenador.contractType || '',
       paymentMethod: 'DEPOSITO A CUENTA',
-      amount: '',
-      mes: new Date().getMonth() + 1,
-      anio: new Date().getFullYear(),
+      amount: String(ingresoMensual),
+      mes: mesActual,
+      anio: anioActual,
     });
-  }, [obtenerNombreVisualizacion]);
+  }, [aMs, normalizarClaveBusqueda, obtenerClavesEntrenador, pagosEntrenadores, obtenerNombreVisualizacion, obtenerIngresoMensualFiltrado, setModalError]);
+
+  const manejarConfirmarPagoModal = useCallback(async () => {
+    if (!modalPago.trainerId || !modalPago.amount) {
+      setModalError({ isOpen: true, title: 'Error', message: 'Ingresa todos los datos requeridos' });
+      return;
+    }
+
+    try {
+      const monto = Number(modalPago.amount);
+      if (monto <= 0) {
+        setModalError({ isOpen: true, title: 'Error', message: 'El monto debe ser mayor a 0' });
+        return;
+      }
+
+      const resultadoPago = await createTrainerPayment({
+        trainerId: modalPago.trainerId,
+        trainerEmail: modalPago.trainerEmail,
+        trainerName: modalPago.trainerName,
+        contractType: modalPago.contractType || 'N/D',
+        paymentMethod: modalPago.paymentMethod,
+        amount: monto,
+      });
+
+      if (!resultadoPago?.success) {
+        setModalError({
+          isOpen: true,
+          title: 'Error al registrar pago',
+          message: resultadoPago?.error || 'No se pudo registrar el pago.',
+        });
+        return;
+      }
+
+      const fechaPago = new Date();
+      const folioPago = resultadoPago?.folio || `PT-${Date.now()}`;
+      const pagoRegistrado = {
+        id: folioPago,
+        folio: folioPago,
+        categoria: 'EGRESO',
+        trainer_id: modalPago.trainerId,
+        trainerId: modalPago.trainerId,
+        trainer_email: modalPago.trainerEmail,
+        trainerEmail: modalPago.trainerEmail,
+        trainer_nombre: modalPago.trainerName,
+        trainerName: modalPago.trainerName,
+        contract_type: modalPago.contractType || null,
+        contractType: modalPago.contractType || '',
+        metodo_pago: modalPago.paymentMethod,
+        paymentMethod: modalPago.paymentMethod,
+        total: monto,
+        amount: monto,
+        monto: monto,
+        monto_recibido: monto,
+        createdAt: fechaPago,
+        fecha: fechaPago.toISOString(),
+        status: 'completed',
+        paymentStatus: 'completed',
+        payment_status: 'completed',
+      };
+
+      setPagosEntrenadores((prev) => [pagoRegistrado, ...prev]);
+
+      setModalExito({
+        isOpen: true,
+        title: 'Pago registrado',
+        message: `Pago de $${monto.toLocaleString()} MXN registrado para ${modalPago.trainerName}`,
+      });
+
+      setModalPago({
+        isOpen: false,
+        trainerId: '',
+        trainerName: '',
+        trainerEmail: '',
+        contractType: '',
+        paymentMethod: 'DEPOSITO A CUENTA',
+        amount: '',
+        mes: 0,
+        anio: 0,
+      });
+    } catch (error) {
+      setModalError({ isOpen: true, title: 'Error', message: error.message || 'No se pudo registrar el pago' });
+    }
+  }, [modalPago, setModalError, setModalExito, setModalPago, setPagosEntrenadores, createTrainerPayment]);
 
   const estadisticas = {
     totalEntrenadores: entrenadores.length,
@@ -1070,5 +1187,6 @@ export function useGestionEntrenadores() {
     // Handlers adicionales
     manejarConfirmarAccionPendiente,
     manejarPagoEntrenador,
+    manejarConfirmarPagoModal,
   };
 }

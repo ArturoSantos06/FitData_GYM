@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Lock, User } from 'lucide-react';
+import { ChevronRight, DollarSign, Lock, User } from 'lucide-react';
 
 function MenuPerfilEntrenador({ usuario, onNavigate }) {
   const iniciales = `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim() || usuario.username || usuario.email || 'T';
@@ -26,6 +26,14 @@ function MenuPerfilEntrenador({ usuario, onNavigate }) {
               <span className="text-slate-200 font-medium group-hover:text-white">Editar datos personales</span>
             </div>
             <ChevronRight className="text-slate-500 group-hover:text-cyan-400 transition-transform group-hover:translate-x-1" size={20} />
+          </button>
+
+          <button type="button" onClick={() => onNavigate('edit-contrato')} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between group transition-all duration-200">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400 group-hover:text-amber-300"><DollarSign size={20} /></div>
+              <span className="text-slate-200 font-medium group-hover:text-white">Datos de contrato y facturación</span>
+            </div>
+            <ChevronRight className="text-slate-500 group-hover:text-amber-400 transition-transform group-hover:translate-x-1" size={20} />
           </button>
 
           <button type="button" onClick={() => onNavigate('change-password')} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between group transition-all duration-200">

@@ -2412,7 +2412,7 @@ export const getTrainerRoutineByMember = async (memberId) => {
     for (const candidateId of docCandidates) {
       try {
         const routineRef = doc(db, 'trainerRoutines', candidateId);
-        const routineSnap = await withAuthRetry(() => getDoc(routineRef));
+        const routineSnap = await withAuthRetry(() => getDoc(routineRef), 1);
         if (routineSnap.exists()) {
           return { success: true, data: { id: routineSnap.id, ...routineSnap.data() } };
         }
@@ -2423,7 +2423,7 @@ export const getTrainerRoutineByMember = async (memberId) => {
     }
 
     try {
-      const memberRoutineSnap = await withAuthRetry(() => getDoc(doc(db, 'memberRoutines', canonicalId)));
+      const memberRoutineSnap = await withAuthRetry(() => getDoc(doc(db, 'memberRoutines', canonicalId)), 1);
       if (memberRoutineSnap.exists()) {
         return { success: true, data: { id: memberRoutineSnap.id, ...memberRoutineSnap.data() } };
       }
@@ -2438,7 +2438,7 @@ export const getTrainerRoutineByMember = async (memberId) => {
 
     for (const q of queryCandidates) {
       try {
-        const querySnapshot = await withAuthRetry(() => getDocs(q));
+        const querySnapshot = await withAuthRetry(() => getDocs(q), 1);
         if (!querySnapshot.empty) {
           const routineDoc = querySnapshot.docs[0];
           return { success: true, data: { id: routineDoc.id, ...routineDoc.data() } };

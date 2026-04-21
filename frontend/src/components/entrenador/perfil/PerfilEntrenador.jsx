@@ -2,6 +2,7 @@
 import ModalExito from '../../modales/ModalExito';
 import FormularioCambioContrasenaEntrenador from './FormularioCambioContrasenaEntrenador';
 import FormularioDatosPerfilEntrenador from './FormularioDatosPerfilEntrenador';
+import FormularioContratoFiscalEntrenador from './FormularioContratoFiscalEntrenador';
 import MenuPerfilEntrenador from './MenuPerfilEntrenador';
 import { usePerfilEntrenador } from '../../../backend/usePerfilEntrenador';
 
@@ -57,6 +58,14 @@ export default function PerfilEntrenador() {
         <FormularioDatosPerfilEntrenador
           usuario={usuario}
           codigoEntrenador={codigoEntrenador}
+          onGuardar={guardar}
+          onVolver={() => setVistaActual('menu')}
+        />
+      )}
+
+      {vistaActual === 'edit-contrato' && (
+        <FormularioContratoFiscalEntrenador
+          usuario={usuario}
           onGuardar={guardar}
           onVolver={() => setVistaActual('menu')}
         />

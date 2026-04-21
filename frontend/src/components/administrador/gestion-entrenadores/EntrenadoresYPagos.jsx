@@ -122,7 +122,7 @@ function EntrenadoresYPagos({
                           disabled={idEntrenadorDesactivando === trainer.id}
                           className="px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {idEntrenadorDesactivando === trainer.id ? '⏳' : '⛔ Descontratar'}
+                          {idEntrenadorDesactivando === trainer.id ? '⏳' : '⛔ Desvincular'}
                         </button>
                       </div>
                     </td>

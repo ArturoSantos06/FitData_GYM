@@ -36,7 +36,6 @@ const esperarSesionEntrenador = (timeoutMs = 3500) =>
   });
 
 export async function cargarRutinaMiembro(memberId) {
-  await ensureUserClaim();
   return getTrainerRoutineByMember(String(memberId || ''));
 }
 

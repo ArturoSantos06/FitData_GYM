@@ -29,6 +29,7 @@ function GestionNutriologos() {
     manejarDesactivarNutriologodescrip,
     manejarReactivarNutriologodescrip,
     manejarConfirmarAccionPendiente,
+    setAccionPendiente,
     setDesvinculacionPendiente,
   } = useGestionNutriologos();
 
@@ -111,9 +112,7 @@ function GestionNutriologos() {
       <ModalConfirmacion
         isOpen={Boolean(accionPendiente)}
         onClose={() => {
-          if (!idNutriologoDesactivando && !idNutriologoReactivando) {
-            setAccionPendiente(null);
-          }
+          setAccionPendiente(null);
         }}
         onConfirm={manejarConfirmarAccionPendiente}
         title={accionPendiente?.type === 'deactivate' ? 'Confirmar descontratación' : 'Confirmar recontratación'}

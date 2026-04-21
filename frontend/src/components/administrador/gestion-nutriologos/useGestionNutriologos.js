@@ -33,20 +33,21 @@ export const useGestionNutriologos = () => {
 
   const isNutritionistUser = (user = {}) => {
     const role = String(user.role || user.user_type || '').toLowerCase();
+    const isAdminUser = ['admin', 'administrator', 'administrador'].includes(role) || user.isAdmin === true || user.admin === true;
     return Boolean(
       user.isActive !== false
       && user.nutritionistStatus !== 'inactive'
+      && !isAdminUser
       && ['nutritionist', 'nutriologo', 'nutriologa', 'nutriologo/a', 'nutricionista', 'nutri'].includes(role)
     );
   };
 
   const isInactiveNutritionistUser = (user = {}) => {
     const role = String(user.role || user.user_type || '').toLowerCase();
+    const isAdminUser = ['admin', 'administrator', 'administrador'].includes(role) || user.isAdmin === true || user.admin === true;
     const looksNutritionist =
       ['inactive_nutritionist', 'nutritionist', 'nutriologo', 'nutriologa', 'nutriologo/a', 'nutricionista', 'nutri'].includes(role)
-      || user.nutritionist === true
-      || user.especialidad
-      || user.specialty;
+      || user.nutritionist === true;
 
     const isInactive =
       user.isActive === false
@@ -55,7 +56,7 @@ export const useGestionNutriologos = () => {
       || String(user.contractStatus || '').toLowerCase() === 'inactive'
       || role === 'inactive_nutritionist';
 
-    return Boolean(looksNutritionist && isInactive);
+    return Boolean(looksNutritionist && isInactive && !isAdminUser);
   };
 
   const loadNutritionData = useCallback(async () => {
@@ -362,6 +363,7 @@ export const useGestionNutriologos = () => {
     manejarDesactivarNutriologodescrip: handleDeactivateNutritionist,
     manejarReactivarNutriologodescrip: handleReactivateNutritionist,
     manejarConfirmarAccionPendiente: handleConfirmPendingAction,
+    setAccionPendiente: setPendingAction,
     setDesvinculacionPendiente: setPendingUnlinkService,
   };
 };

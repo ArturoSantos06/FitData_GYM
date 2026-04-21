@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { dividirNombre, normalizarTipoContrato } from '../../../backend/perfilEntrenadorUtilidades';
-import SeccionDatosPersonalesPerfil from './SeccionDatosPersonalesPerfil';
+import SeccionContratoFiscalPerfil from './SeccionContratoFiscalPerfil';
 
-function FormularioDatosPerfilEntrenador({ usuario, codigoEntrenador, onGuardar, onVolver }) {
+function FormularioContratoFiscalEntrenador({ usuario, onGuardar, onVolver }) {
   const nombres = dividirNombre(usuario);
   const [form, setForm] = useState({
     ...usuario,
     firstName: usuario.firstName || nombres.firstName,
     lastName: usuario.lastName || nombres.lastName,
     telefono: usuario.telefono || usuario.phone || '',
+    email: usuario.email || '',
+    username: usuario.username || '',
     contractType: normalizarTipoContrato(usuario.contractType || usuario.tipoContrato || usuario.contract_type || usuario.tipo_contrato || ''),
     personalServicePrice: String(usuario.personalServicePrice ?? usuario.personal_service_price ?? usuario.trainerServicePrice ?? usuario.servicePrice ?? usuario.costoServicio ?? usuario.costo_servicio ?? ''),
     groupServicePrice: String(usuario.groupServicePrice ?? usuario.group_service_price ?? usuario.trainerServicePrice ?? usuario.servicePrice ?? usuario.costoServicio ?? usuario.costo_servicio ?? ''),
+    offersPersonalService: Boolean(usuario.offersPersonalService ?? usuario.personalServiceEnabled ?? true),
+    offersGroupService: Boolean(usuario.offersGroupService ?? usuario.groupServiceEnabled ?? true),
     rfc: usuario.rfc || usuario.RFC || '',
     clabe: usuario.clabe || usuario.CLABE || usuario.cuentaBancaria || usuario.numeroCuenta || usuario.accountNumber || '',
   });
@@ -66,11 +70,11 @@ function FormularioDatosPerfilEntrenador({ usuario, codigoEntrenador, onGuardar,
     <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-4">
         <button onClick={onVolver} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" type="button"><ArrowLeft size={24} /></button>
-        <div><h2 className="text-2xl font-bold text-white">Datos del Entrenador</h2><p className="text-slate-400 text-sm">Actualiza tu perfil y tu información de acceso</p></div>
+        <div><h2 className="text-2xl font-bold text-white">Contrato, servicios y datos fiscales</h2><p className="text-slate-400 text-sm">Actualiza tu contrato, tarifas, RFC y CLABE</p></div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <SeccionDatosPersonalesPerfil form={form} trainerCode={codigoEntrenador} inputClass={inputClass} labelClass={labelClass} onChange={onChange} />
+        <SeccionContratoFiscalPerfil form={form} inputClass={inputClass} labelClass={labelClass} onChange={onChange} />
 
         {errorMsg && <div className="text-sm text-red-400 bg-red-900/20 border border-red-700 rounded-lg p-3">{errorMsg}</div>}
         {successMsg && <div className="text-sm text-green-400 bg-green-900/20 border border-green-700 rounded-lg p-3">{successMsg}</div>}
@@ -84,4 +88,4 @@ function FormularioDatosPerfilEntrenador({ usuario, codigoEntrenador, onGuardar,
   );
 }
 
-export default FormularioDatosPerfilEntrenador;
+export default FormularioContratoFiscalEntrenador;

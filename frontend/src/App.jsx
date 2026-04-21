@@ -190,6 +190,40 @@ function RequireNutritionistAuth({ children }) {
   return children;
 }
 
+function RequireClientAuth({ children }) {
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasClientSession, setHasClientSession] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
+
+  useEffect(() => {
+    const unsubscribe = onAuthChanged((user) => {
+      const isClientLoggedIn = Boolean(user);
+      setHasClientSession(isClientLoggedIn);
+
+      if (!isClientLoggedIn) {
+        localStorage.removeItem('firebaseUser');
+      }
+
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+        Verificando sesión...
+      </div>
+    );
+  }
+
+  if (!hasClientSession) {
+    return <Navigate to="/cliente/login" replace />;
+  }
+
+  return children;
+}
+
 
 // --- 2. COMPONENTE DE ÁREA DE NUTRIÓLOGO (Privado) ---
 function NutriologoArea() {
@@ -438,7 +472,14 @@ function App() {
           <Route path="/equipo" element={<AboutTeam />} />
 
           <Route path="/cliente/login" element={<Sesion />} />
-          <Route path="/cliente" element={<Portal />} />
+          <Route
+            path="/cliente"
+            element={
+              <RequireClientAuth>
+                <Portal />
+              </RequireClientAuth>
+            }
+          />
           <Route path="/nutriologo/login" element={<IniciarSesionNutri />} />
 
           {/* Ruta protegida del Nutriólogo */}
