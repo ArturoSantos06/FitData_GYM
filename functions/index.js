@@ -3530,16 +3530,53 @@ exports.onMessageCreated = onDocumentCreated(
 
       if (!recipientId) return;
 
-      const [senderSnap, recipientSnap] = await Promise.all([
-        db.collection("users").doc(senderId).get(),
-        db.collection("users").doc(recipientId).get()
-      ]);
+      // Búsqueda cruzada — registramos la colección donde se encontró el remitente
+      let senderData = null, recipientData = null;
+      let senderCollection = 'users';
+      for (const coll of ['users', 'miembros', 'entrenadores', 'nutriologos']) {
+        if (!senderData) {
+          let docSnap = await db.collection(coll).doc(senderId).get();
+          if (docSnap.exists) { senderData = docSnap.data(); senderCollection = coll; }
+          else {
+            let qs = await db.collection(coll).where('authUid', '==', senderId).get();
+            if (!qs.empty) { senderData = qs.docs[0].data(); senderCollection = coll; }
+            else {
+              qs = await db.collection(coll).where('userId', '==', senderId).get();
+              if (!qs.empty) { senderData = qs.docs[0].data(); senderCollection = coll; }
+            }
+          }
+        }
+        if (!recipientData) {
+          let docSnap = await db.collection(coll).doc(recipientId).get();
+          if (docSnap.exists) recipientData = docSnap.data();
+          else {
+            let qs = await db.collection(coll).where('authUid', '==', recipientId).get();
+            if (!qs.empty) recipientData = qs.docs[0].data();
+            else {
+              qs = await db.collection(coll).where('userId', '==', recipientId).get();
+              if (!qs.empty) recipientData = qs.docs[0].data();
+            }
+          }
+        }
+      }
 
-      const senderName = senderSnap.data()?.username || senderSnap.data()?.clienteNombre || "Usuario";
-      const recipientEmail = recipientSnap.data()?.email;
+      const senderName = senderData?.displayName || senderData?.firstName || senderData?.name || senderData?.username || senderData?.clienteNombre || "Usuario";
+      const recipientEmail = recipientData?.email || recipientData?.userEmail;
+
+      // Determinar prefijo basándose en el campo 'role' o la colección
+      let rolePrefix = "de";
+      const role = (senderData?.role || "").toUpperCase().trim();
+      
+      logger.info(`DEBUG: Remitente hallado en [${senderCollection}] con rol [${role}]`, { senderId, role });
+
+      if (role === "ENTRENADOR" || role === "TRAINER" || senderCollection === "entrenadores") {
+        rolePrefix = "del Entrenador";
+      } else if (role === "NUTRIOLOGO" || role === "NUTRICIONISTA" || role === "NUTRITIONIST" || senderCollection === "nutriologos") {
+        rolePrefix = "del Nutriólogo";
+      }
 
       await db.collection(`users/${recipientId}/notifications`).add({
-        title: `Nuevo mensaje de ${senderName}`,
+        title: `Nuevo mensaje ${rolePrefix} ${senderName}`,
         body: messageData.text || "Archivo adjunto",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         read: false,

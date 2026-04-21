@@ -82,7 +82,13 @@ function SoporteWhatsAppPanel({
                                 <h2 className="text-base font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-300">Mensajes</h2>
                                 <p className="text-xs text-slate-400">Tus conversaciones</p>
                             </div>
-                            {currentUser && <CentroNotificaciones userId={currentUser.uid} />}
+                            {currentUser && <CentroNotificaciones userId={currentUser.uid} onNotificationClick={(n) => {
+                                if (n.senderId === trainerId) {
+                                    setActiveChat('entrenador');
+                                } else if (n.senderId === nutritionistId) {
+                                    setActiveChat('nutriologo');
+                                }
+                            }} />}
                         </div>
 
                         <div className="p-3 space-y-2 overflow-y-auto flex-1">

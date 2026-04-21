@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase
 import { Bell, CheckCheck } from 'lucide-react';
 import { db } from '../../firebase/config';
 
-function CentroNotificaciones({ userId }) {
+function CentroNotificaciones({ userId, onNotificationClick }) {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
@@ -37,16 +37,20 @@ function CentroNotificaciones({ userId }) {
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    const markAsRead = async (notifId) => {
-        const ref = doc(db, `users/${userId}/notifications`, notifId);
+    const markAsRead = async (n) => {
+        const ref = doc(db, `users/${userId}/notifications`, n.id);
         await updateDoc(ref, { read: true }).catch(console.error);
         setIsOpen(false);
+        if (onNotificationClick) {
+            onNotificationClick(n);
+        }
     };
 
     const markAllAsRead = async () => {
         const unreads = notifications.filter(n => !n.read);
         for (const n of unreads) {
-            markAsRead(n.id);
+            const ref = doc(db, `users/${userId}/notifications`, n.id);
+            await updateDoc(ref, { read: true }).catch(console.error);
         }
     };
 
@@ -66,7 +70,7 @@ function CentroNotificaciones({ userId }) {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-14 w-80 sm:w-96 bg-[#1f2c33]/95 backdrop-blur-xl border border-slate-700/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-fade-in origin-top-right z-50">
+                <div className="absolute left-0 top-14 w-80 sm:w-96 bg-[#1f2c33]/95 backdrop-blur-xl border border-slate-700/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-fade-in origin-top-left z-50">
                     <div className="p-3.5 border-b border-slate-700/60 bg-linear-to-r from-[#202c33] to-[#1f2c33] flex items-center justify-between">
                         <h3 className="font-semibold text-slate-100 text-sm flex items-center gap-2">
                             Notificaciones
@@ -92,7 +96,7 @@ function CentroNotificaciones({ userId }) {
                             notifications.map(n => (
                                 <div
                                     key={n.id}
-                                    onClick={() => markAsRead(n.id)}
+                                    onClick={() => markAsRead(n)}
                                     className={`p-3.5 border-b border-slate-700/30 cursor-pointer transition-all hover:bg-slate-800 flex items-start gap-4 ${n.read ? 'bg-transparent opacity-60' : 'bg-slate-800/40 relative'}`}
                                 >
                                     {!n.read && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-cyan-500 rounded-r-md"></div>}

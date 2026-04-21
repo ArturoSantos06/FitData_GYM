@@ -152,7 +152,14 @@ const MessagesBody = ({ role }) => {
                         <p className="text-xs text-slate-400">Selecciona para chatear</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {currentUser?.uid && <CentroNotificaciones userId={currentUser.uid} />}
+                        {currentUser?.uid && <CentroNotificaciones userId={currentUser.uid} onNotificationClick={(n) => {
+                            const foundClient = clients.find(c => c.clientId === n.senderId);
+                            if (foundClient) {
+                                handleSelectClient(foundClient);
+                            } else {
+                                handleSelectClient({ clientId: n.senderId, name: "Usuario" });
+                            }
+                        }} />}
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
                             <Users size={18} />
                         </div>
@@ -226,7 +233,7 @@ const MessagesBody = ({ role }) => {
                             FitData Messages
                         </h1>
                         <p className="mt-3 text-sm text-slate-400 max-w-[280px] leading-relaxed">
-                            Selecciona un cliente de la lista para comenzar a enviar planes, rutinas o platicar.
+                            Selecciona un cliente de la lista para comenzar a enviar planes, rutinas, dietas o resolver dudas.
                         </p>
                     </div>
                 </div>
@@ -241,7 +248,7 @@ const MessagesBody = ({ role }) => {
                             chatId={activeChatId}
                             currentUserId={currentUser?.uid}
                             title={selectedClient.name}
-                            subtitle="Modo en tiempo real cifrado"
+                            subtitle="Chat en tiempo real"
                             onBack={handleBack}
                         />
                     )}
