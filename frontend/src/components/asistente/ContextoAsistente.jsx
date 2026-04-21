@@ -103,7 +103,7 @@ export function AssistantProvider({ children }) {
     if (!next.question || !next.answer) return false;
     setKnowledgeBase((prev) => {
       const nextKnowledge = [next, ...prev];
-      persistKnowledgeToFirestore(nextKnowledge).catch(() => {});
+      persistKnowledgeToFirestore(nextKnowledge).catch((e) => { console.error("Error al guardar en Firebase:", e); });
       return nextKnowledge;
     });
     return true;
