@@ -1,9 +1,12 @@
 import React from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Coins } from 'lucide-react';
+import { calcularPrecioPuntos } from '../../../utils/pointsLogic';
 
-const TarjetaProducto = ({ title, price, stock, image }) => {
+const TarjetaProducto = ({ title, price, stock, image, userPoints = 0 }) => {
   const hasStock = (stock || 0) > 0;
   const displayPrice = typeof price === 'number' ? price.toFixed(2) : parseFloat(price || 0).toFixed(2);
+  const pointsPrice = calcularPrecioPuntos(parseFloat(price || 0));
+  const canAfford = userPoints >= pointsPrice;
 
   return (
     <div className="group relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden transition-all duration-300 hover:border-slate-600 hover:shadow-xl hover:shadow-cyan-500/10 hover:-translate-y-1">
@@ -40,9 +43,16 @@ const TarjetaProducto = ({ title, price, stock, image }) => {
       <div className="p-4">
         <h4 className="text-slate-200 font-bold text-sm mb-1 line-clamp-2 group-hover:text-cyan-400 transition-colors min-h-10">{title}</h4>
         <div className="flex items-center justify-between mt-3">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Precio</span>
-            <span className="text-lg font-black text-white">${displayPrice}</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Precio</span>
+              <span className="text-lg font-black text-white">${displayPrice}</span>
+            </div>
+            {/* Precio en puntos */}
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border w-fit ${canAfford ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+              <Coins size={11} />
+              <span className="text-[11px] font-bold">{pointsPrice} pts</span>
+            </div>
           </div>
           <button disabled={!hasStock} className={`md:hidden rounded-lg p-2 transition-colors ${hasStock ? 'bg-slate-800 text-cyan-400 hover:bg-cyan-500/10' : 'bg-slate-800/50 text-slate-600 cursor-not-allowed'}`}>
             <ShoppingBag size={16} />

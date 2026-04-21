@@ -16,20 +16,22 @@ export const CitasNutri = (clienteId) => {
             }
             
             try {
-                // Buscar el ID corto 
+                // Preparamos una lista de posibles IDs del cliente (Empezamos con el ID Largo)
+                let posiblesIds = [clienteId]; 
+
+                // Buscar si el cliente tiene un ID Corto en la colección miembros
                 const miembrosRef = collection(db, "miembros");
                 const qMiembro = query(miembrosRef, where("authUid", "==", clienteId));
                 const miembroSnapshot = await getDocs(qMiembro);
 
-                if (miembroSnapshot.empty) {
-                    setLoading(false);
-                    return; 
+                if (!miembroSnapshot.empty) {
+                    const idCorto = miembroSnapshot.docs[0].id;
+                    posiblesIds.push(idCorto); // Agregamos el ID Corto a la lista
                 }
 
-                const idCorto = miembroSnapshot.docs[0].id;
-
+                // Ahora buscamos en citas si el clienteId coincide con ALGUNO de los dos IDs
                 const citasRef = collection(db, "citas");
-                const qCitas = query(citasRef, where("clienteId", "==", idCorto));
+                const qCitas = query(citasRef, where("clienteId", "in", posiblesIds));
                 
                 desuscribirCitas = onSnapshot(qCitas, (snapshot) => {
                     const citasFirebase = snapshot.docs.map(doc => ({
