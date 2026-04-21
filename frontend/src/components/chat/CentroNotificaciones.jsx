@@ -101,8 +101,8 @@ function CentroNotificaciones({ userId }) {
                                         <Bell size={18} />
                                     </div>
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <p className={`text-[14px] ${n.read ? 'text-slate-400 font-medium' : 'text-slate-100 font-semibold'} truncate`}>{n.title}</p>
-                                        <p className={`text-xs ${n.read ? 'text-slate-500' : 'text-slate-300'} truncate mt-0.5`}>{n.body}</p>
+                                        <p className={`text-[14px] ${n.read ? 'text-slate-400 font-medium' : 'text-slate-100 font-semibold'} text-wrap break-words whitespace-normal mb-1`}>{n.title}</p>
+                                        <p className={`text-xs ${n.read ? 'text-slate-500' : 'text-slate-300'} text-wrap break-words whitespace-normal mb-1`}>{n.body}</p>
                                         <p className="text-[10px] text-slate-500 mt-1.5 font-medium tracking-wide">
                                             {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Justo ahora'}
                                         </p>

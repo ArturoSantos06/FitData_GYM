@@ -5,6 +5,7 @@ import { getCurrentUser } from '../../firebase';
 import { ChatProvider, useChatContext } from '../../context/ChatContext';
 import VentanaChat from './VentanaChat';
 import { Search, Users, ChevronLeft, Loader2, MessageCircle } from 'lucide-react';
+import CentroNotificaciones from './CentroNotificaciones';
 
 const MessagesBody = ({ role }) => {
     const { selectedClient, activeChatId, loading, selectClient } = useChatContext();
@@ -150,8 +151,11 @@ const MessagesBody = ({ role }) => {
                         </h2>
                         <p className="text-xs text-slate-400">Selecciona para chatear</p>
                     </div>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
-                        <Users size={18} />
+                    <div className="flex items-center gap-2">
+                        {currentUser?.uid && <CentroNotificaciones userId={currentUser.uid} />}
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                            <Users size={18} />
+                        </div>
                     </div>
                 </header>
 

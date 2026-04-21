@@ -1328,7 +1328,7 @@ exports.generateClientAiRoutine = onCall(
 );
 
 exports.generateClientAiRoutineHttp = onRequest(
-  { cors: true, invoker: "public", secrets: ["GEMINI_API_KEY"] },  
+  { cors: true, invoker: "public", secrets: ["GEMINI_API_KEY"] },
   async (req, res) => {
     applyRoutineCorsHeaders(req, res);
 
@@ -1804,12 +1804,12 @@ exports.actualizarVisibilidadCliente = onCall(async (request) => {
 // ----------------------------------------------------------------------
 // Se ejecutará automáticamente todos los días a las 8:00 AM (Hora Centro)
 exports.trabajadorNocturnoMarketing = onSchedule({
-  schedule: "0 8 * * *", 
+  schedule: "0 8 * * *",
   timeZone: "America/Mexico_City",
   secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL]
 }, async (event) => {
   const db = admin.firestore();
-  
+
   // 1. Calcular las fechas exactas en el formato de tu base de datos (YYYY-MM-DD)
   const hoy = new Date();
   const mexicoOffset = -6 * 60; // Ajuste CST
@@ -1818,7 +1818,7 @@ exports.trabajadorNocturnoMarketing = onSchedule({
   const formatoTexto = (fecha) => fecha.toISOString().split('T')[0];
 
   const hoyStr = formatoTexto(localHoy);
-  
+
   const fecha5Dias = new Date(localHoy);
   fecha5Dias.setDate(fecha5Dias.getDate() + 5);
   const str5Dias = formatoTexto(fecha5Dias);
@@ -1831,7 +1831,7 @@ exports.trabajadorNocturnoMarketing = onSchedule({
 
   // Función interna para armar y enviar el diseño HTML
   const enviarHTML = async (toEmail, userName, tipoCampaña, subjectText, mainMessage, subMessage, callToAction) => {
-      const htmlTemplate = `
+    const htmlTemplate = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #0f172a; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; text-align: center; border-bottom: 3px solid #2dd4bf;">
               <h1 style="color: #2dd4bf; margin: 0; font-size: 28px; letter-spacing: 2px;">FitData GYM</h1>
@@ -1849,18 +1849,18 @@ exports.trabajadorNocturnoMarketing = onSchedule({
       </div>
       `;
 
-      try {
-          await sendGmailSmtp({
-              toEmail,
-              subject: subjectText,
-              message: `${mainMessage} ${subMessage}`,
-              htmlTemplate,
-              defaultFrom: DEFAULT_FROM_EMAIL.value() || "FitData GYM <fitdatagym@gmail.com>"
-          });
-          logger.info(`Campaña [${tipoCampaña}] enviada a ${toEmail}`);
-      } catch (error) {
-          logger.error(`Error campaña [${tipoCampaña}] a ${toEmail}:`, error);
-      }
+    try {
+      await sendGmailSmtp({
+        toEmail,
+        subject: subjectText,
+        message: `${mainMessage} ${subMessage}`,
+        htmlTemplate,
+        defaultFrom: DEFAULT_FROM_EMAIL.value() || "FitData GYM <fitdatagym@gmail.com>"
+      });
+      logger.info(`Campaña [${tipoCampaña}] enviada a ${toEmail}`);
+    } catch (error) {
+      logger.error(`Error campaña [${tipoCampaña}] a ${toEmail}:`, error);
+    }
   };
 
   // ==========================================
@@ -1870,46 +1870,46 @@ exports.trabajadorNocturnoMarketing = onSchedule({
   // A) CAMPAÑA: VENCEN HOY
   const vencenHoySnap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", hoyStr).get();
   for (const doc of vencenHoySnap.docs) {
-      const data = doc.data();
-      if (data.userEmail) {
-          await enviarHTML(
-              data.userEmail, data.userName || "Cliente", 'VENCIMIENTO_HOY',
-              '🚨 Tu membresía en FitData GYM vence HOY',
-              `¡Hola, ${data.userName || "Cliente"}! Tu membresía llega hoy a su fin.`,
-              'No dejes que tu progreso se detenga. Pasa a recepción hoy mismo para no perder tu racha.',
-              'Renovar Ahora'
-          );
-      }
+    const data = doc.data();
+    if (data.userEmail) {
+      await enviarHTML(
+        data.userEmail, data.userName || "Cliente", 'VENCIMIENTO_HOY',
+        '🚨 Tu membresía en FitData GYM vence HOY',
+        `¡Hola, ${data.userName || "Cliente"}! Tu membresía llega hoy a su fin.`,
+        'No dejes que tu progreso se detenga. Pasa a recepción hoy mismo para no perder tu racha.',
+        'Renovar Ahora'
+      );
+    }
   }
 
   // B) CAMPAÑA: FALTAN 5 DÍAS
   const faltan5Snap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", str5Dias).get();
   for (const doc of faltan5Snap.docs) {
-      const data = doc.data();
-      if (data.userEmail) {
-          await enviarHTML(
-              data.userEmail, data.userName || "Cliente", 'RECORDATORIO_5_DIAS',
-              '⏰ Tu membresía está por vencer',
-              `¡Hola, ${data.userName || "Cliente"}! Te quedan 5 días de entrenamiento.`,
-              'Anticipa tu renovación para que no pierdas ni un solo día. ¡Te esperamos!',
-              'Ver Planes'
-          );
-      }
+    const data = doc.data();
+    if (data.userEmail) {
+      await enviarHTML(
+        data.userEmail, data.userName || "Cliente", 'RECORDATORIO_5_DIAS',
+        '⏰ Tu membresía está por vencer',
+        `¡Hola, ${data.userName || "Cliente"}! Te quedan 5 días de entrenamiento.`,
+        'Anticipa tu renovación para que no pierdas ni un solo día. ¡Te esperamos!',
+        'Ver Planes'
+      );
+    }
   }
 
   // C) CAMPAÑA: VIP RENEWAL (Solo anualidades que vencen en 30 días)
   const vipSnap = await db.collection("memberships").where("active", "==", true).where("endDate", "==", str30Dias).where("durationDays", "==", 365).get();
   for (const doc of vipSnap.docs) {
-      const data = doc.data();
-      if (data.userEmail) {
-          await enviarHTML(
-              data.userEmail, data.userName || "Cliente", 'VIP_RENEWAL',
-              '⭐ Eres Leyenda en FitData GYM',
-              `¡Gracias por tu lealtad, ${data.userName || "Cliente"}!`,
-              'Estás a 30 días de cumplir tu anualidad con nosotros. Renueva este mes y obtén un 20% de descuento directo.',
-              'Canjear Regalo'
-          );
-      }
+    const data = doc.data();
+    if (data.userEmail) {
+      await enviarHTML(
+        data.userEmail, data.userName || "Cliente", 'VIP_RENEWAL',
+        '⭐ Eres Leyenda en FitData GYM',
+        `¡Gracias por tu lealtad, ${data.userName || "Cliente"}!`,
+        'Estás a 30 días de cumplir tu anualidad con nosotros. Renueva este mes y obtén un 20% de descuento directo.',
+        'Canjear Regalo'
+      );
+    }
   }
 
   logger.info("Trabajador automático de Marketing terminó su ronda diaria.");
@@ -2044,7 +2044,7 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
     } else if (Array.isArray(venta.detalle_productos)) {
       productos = venta.detalle_productos;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const detalleProductos = productos
     .map((p) => `- ${p.nombre || p.name || "Producto"} x${p.cantidad || 1} = $${p.precio || p.price || 0}`)
@@ -2097,6 +2097,79 @@ exports.onSaleCreatedSendEmail = onDocumentCreated({
     logger.info("Comprobante de venta enviado exitosamente", { email: recipient });
   } catch (error) {
     logger.error("Error enviando comprobante de venta", { error: String(error.message || error) });
+  }
+});
+
+// ============================================================================
+// CORREO DE NOTIFICACIÓN DE NUEVO MENSAJE DE CHAT
+// ============================================================================
+exports.onChatMessageSendEmail = onDocumentCreated({
+  document: "chats/{chatId}/messages/{messageId}",
+  secrets: [GMAIL_USER, GMAIL_APP_PASSWORD, DEFAULT_FROM_EMAIL],
+}, async (event) => {
+  const messageData = event.data?.data();
+  if (!messageData) return;
+
+  const uids = event.params.chatId.split('_');
+  if (uids.length !== 2) return;
+
+  const senderId = messageData.senderId;
+  const receiverId = uids.find(id => id !== senderId);
+  if (!receiverId) return;
+
+  // Búsqueda cruzada de usuarios en colecciones relevantes
+  let senderData = null, receiverData = null;
+  for (const coll of ['users', 'miembros', 'entrenadores', 'nutriologos']) {
+    if (!senderData) {
+      let docSnap = await admin.firestore().collection(coll).doc(senderId).get();
+      if (docSnap.exists) senderData = docSnap.data();
+      else {
+        let qs = await admin.firestore().collection(coll).where('authUid', '==', senderId).get();
+        if (!qs.empty) senderData = qs.docs[0].data();
+        else {
+          qs = await admin.firestore().collection(coll).where('userId', '==', senderId).get();
+          if (!qs.empty) senderData = qs.docs[0].data();
+        }
+      }
+    }
+    if (!receiverData) {
+      let docSnap = await admin.firestore().collection(coll).doc(receiverId).get();
+      if (docSnap.exists) receiverData = docSnap.data();
+      else {
+        let qs = await admin.firestore().collection(coll).where('authUid', '==', receiverId).get();
+        if (!qs.empty) receiverData = qs.docs[0].data();
+        else {
+          qs = await admin.firestore().collection(coll).where('userId', '==', receiverId).get();
+          if (!qs.empty) receiverData = qs.docs[0].data();
+        }
+      }
+    }
+  }
+
+  if (!senderData || !receiverData) return;
+
+  const receiverEmail = receiverData.email || receiverData.userEmail;
+  if (!receiverEmail) return;
+
+  const senderName = senderData.displayName || senderData.firstName || senderData.name || senderData.username || "Usuario";
+  const receiverName = receiverData.displayName || receiverData.firstName || receiverData.name || receiverData.username || "Usuario";
+  const messageText = messageData.text || (messageData.fileUrl ? "Adjunto multimedia" : "Mensaje sin texto");
+  const timeStr = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleString("es-MX") : new Date().toLocaleString("es-MX");
+
+  try {
+    await sendGmailSmtp({
+      toEmail: receiverEmail,
+      subject: `Nuevo mensaje de ${senderName}`,
+      message: `Hola ${receiverName}, tienes un nuevo mensaje de ${senderName} en el chat de FitData GYM.\n\n========================================\nRemitente: ${senderName}\nFecha y Hora: ${timeStr}\n========================================\n\nMENSAJE:\n${messageText}\n\n========================================\nEntra a tu cuenta para responder.`,
+      defaultFrom: DEFAULT_FROM_EMAIL.value() || "FitData GYM <fitdatagym@gmail.com>",
+    });
+    
+    await event.data.ref.update({
+      emailNotificationSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      emailNotificationStatus: "sent"
+    });
+  } catch (error) {
+    logger.error("Error enviando notificación de chat", { error: String(error.message || error) });
   }
 });
 
@@ -3451,7 +3524,7 @@ exports.onMessageCreated = onDocumentCreated(
 
     try {
       const db = admin.firestore();
-      
+
       const ids = chatId.split("_");
       const recipientId = ids.find(id => id !== senderId);
 
@@ -3478,16 +3551,16 @@ exports.onMessageCreated = onDocumentCreated(
       if (recipientEmail) {
         let resendApiKey;
         try {
-           resendApiKey = RESEND_API_KEY.value();
-        } catch(e) {
-           resendApiKey = process.env.RESEND_API_KEY;
+          resendApiKey = RESEND_API_KEY.value();
+        } catch (e) {
+          resendApiKey = process.env.RESEND_API_KEY;
         }
-        
+
         if (resendApiKey) {
           const resend = new Resend(resendApiKey);
-          
+
           let htmlContent = `<h2>Tienes un nuevo mensaje de ${senderName}</h2><p>${messageData.text || "Te han enviado un archivo adjunto."}</p><br><small>FitData GYM</small>`;
-          
+
           if (renderEmail && Html) {
             try {
               const emailElement = React.createElement(Html, null,
@@ -3501,7 +3574,7 @@ exports.onMessageCreated = onDocumentCreated(
                 )
               );
               htmlContent = renderEmail(emailElement);
-            } catch(e) {
+            } catch (e) {
               logger.warn("Fallo el render de react-email, usando por defecto", e);
             }
           }
@@ -3513,7 +3586,7 @@ exports.onMessageCreated = onDocumentCreated(
             html: htmlContent
           });
         } else {
-             logger.warn("No se encontro API Key de Resend");
+          logger.warn("No se encontro API Key de Resend");
         }
       }
     } catch (error) {
@@ -3522,9 +3595,9 @@ exports.onMessageCreated = onDocumentCreated(
   }
 
 
-);exports.pruebaDisenoMarketing = onRequest({ secrets: ["GMAIL_USER", "GMAIL_APP_PASSWORD", "DEFAULT_FROM_EMAIL"] }, async (req, res) => {
+); exports.pruebaDisenoMarketing = onRequest({ secrets: ["GMAIL_USER", "GMAIL_APP_PASSWORD", "DEFAULT_FROM_EMAIL"] }, async (req, res) => {
   const loginUrl = 'https://fitdatagym-f347a.web.app/login';
-  
+
   const htmlTemplate = `
   <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #0f172a; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
       <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; text-align: center; border-bottom: 3px solid #2dd4bf;">
@@ -3544,15 +3617,15 @@ exports.onMessageCreated = onDocumentCreated(
   `;
 
   try {
-      await sendGmailSmtp({
-          toEmail: 'reyesjoely448@gmail.com', // Pon tu correo personal aquí
-          subject: '🚨 PRUEBA DE DISEÑO: Tu membresía vence HOY',
-          message: 'Texto de respaldo',
-          htmlTemplate: htmlTemplate,
-          defaultFrom: "FitData GYM <fitdatagym@gmail.com>"
-      });
-      res.send("<h1>¡Magia hecha! Revisa tu bandeja de entrada en tu celular o PC.</h1>");
+    await sendGmailSmtp({
+      toEmail: 'reyesjoely448@gmail.com', // Pon tu correo personal aquí
+      subject: '🚨 PRUEBA DE DISEÑO: Tu membresía vence HOY',
+      message: 'Texto de respaldo',
+      htmlTemplate: htmlTemplate,
+      defaultFrom: "FitData GYM <fitdatagym@gmail.com>"
+    });
+    res.send("<h1>¡Magia hecha! Revisa tu bandeja de entrada en tu celular o PC.</h1>");
   } catch (error) {
-      res.status(500).send("<h1>Error al enviar:</h1> <p>" + error.message + "</p>");
+    res.status(500).send("<h1>Error al enviar:</h1> <p>" + error.message + "</p>");
   }
 });
