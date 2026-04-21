@@ -37,12 +37,12 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
         setOk('');
 
         if (!String(nombreMaquina || '').trim()) {
-            setError('Escribe el nombre de la maquina.');
+            setError('Escribe el nombre de la máquina.');
             return;
         }
 
         if (!archivo) {
-            setError('Sube una foto para agregarla al catalogo.');
+            setError('Sube una foto para agregarla al catálogo.');
             return;
         }
 
@@ -50,7 +50,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
         try {
             const upload = await subirFotoMaquina(archivo);
             if (!upload.success) {
-                throw new Error(upload.error || 'No se pudo subir la foto de la maquina.');
+                throw new Error(upload.error || 'No se pudo subir la foto de la máquina.');
             }
 
             await crearMaquinaCatalogo({
@@ -60,9 +60,9 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
 
             setNombreMaquina('');
             setArchivo(null);
-            setOk('Maquina agregada al catalogo correctamente.');
+            setOk('Máquina agregada al catálogo correctamente.');
         } catch (saveError) {
-            setError(String(saveError?.message || 'No se pudo guardar la maquina.'));
+            setError(String(saveError?.message || 'No se pudo guardar la máquina.'));
         } finally {
             setGuardando(false);
         }
@@ -74,9 +74,9 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
         setSembrandoCatalogo(true);
         try {
             const result = await sembrarCatalogoBaseMaquinas();
-            setOk(`Catalogo base cargado. Agregadas: ${result.created}.`);
+            setOk(`Catálogo base cargado. Agregadas: ${result.created}.`);
         } catch (seedError) {
-            setError(String(seedError?.message || 'No se pudo cargar el catalogo base.'));
+            setError(String(seedError?.message || 'No se pudo cargar el catálogo base.'));
         } finally {
             setSembrandoCatalogo(false);
         }
@@ -109,9 +109,9 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
         setEliminandoId(maquinaId);
         try {
             await eliminarMaquinaCatalogo(maquinaId);
-            setOk('Maquina eliminada del catalogo correctamente.');
+            setOk('Máquina eliminada del catálogo correctamente.');
         } catch (deleteError) {
-            setError(String(deleteError?.message || 'No se pudo eliminar la maquina.'));
+            setError(String(deleteError?.message || 'No se pudo eliminar la máquina.'));
         } finally {
             setEliminandoId('');
         }
@@ -137,7 +137,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
 
         const nombreLimpio = String(nombreEdicion || '').trim();
         if (!nombreLimpio) {
-            setError('Escribe el nombre correcto de la maquina.');
+            setError('Escribe el nombre correcto de la máquina.');
             return;
         }
 
@@ -147,7 +147,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
             if (archivoEdicion) {
                 const upload = await subirFotoMaquina(archivoEdicion);
                 if (!upload.success) {
-                    throw new Error(upload.error || 'No se pudo subir la nueva foto de la maquina.');
+                    throw new Error(upload.error || 'No se pudo subir la nueva foto de la máquina.');
                 }
                 fotoUrl = upload.url;
             }
@@ -157,10 +157,10 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
                 fotoUrl,
             });
 
-            setOk('Maquina actualizada correctamente.');
+            setOk('Máquina actualizada correctamente.');
             cancelarEdicionMaquina();
         } catch (editError) {
-            setError(String(editError?.message || 'No se pudo actualizar la maquina.'));
+            setError(String(editError?.message || 'No se pudo actualizar la máquina.'));
         } finally {
             setGuardandoEdicionId('');
         }
@@ -183,7 +183,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
     return (
         <section className="space-y-6">
             <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/70 p-5 shadow-sm">
-                <h3 className="text-xl font-black text-slate-100">Alta de maquina</h3>
+                <h3 className="text-xl font-black text-slate-100">Alta de máquina</h3>
 
                 <form className="mt-4 grid gap-3 md:grid-cols-3" onSubmit={guardarMaquina}>
                     <input
@@ -205,7 +205,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
                         disabled={guardando}
                         className="rounded-xl bg-cyan-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {guardando ? 'Subiendo...' : 'Agregar maquina'}
+                        {guardando ? 'Subiendo...' : 'Agregar máquina'}
                     </button>
                 </form>
 
@@ -215,7 +215,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
 
             <div className="grid gap-6 xl:grid-cols-2">
                 <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/70 p-5 shadow-sm">
-                    <h3 className="text-xl font-black text-slate-100">Catalogo de maquinas</h3>
+                    <h3 className="text-xl font-black text-slate-100">Catálogo de máquinas</h3>
 
                     <div className="custom-scrollbar mt-4 space-y-3 xl:max-h-[68vh] xl:overflow-y-auto xl:pr-1">
                         {maquinas.map((maquina) => (
@@ -223,7 +223,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
                                 <div className="space-y-3 p-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-semibold text-slate-100">{maquina?.nombre || 'Maquina sin nombre'}</p>
+                                            <p className="truncate text-sm font-semibold text-slate-100">{maquina?.nombre || 'Máquina sin nombre'}</p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-2">
                                             <button
@@ -249,7 +249,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
                                         <div className="flex justify-center">
                                             <img
                                                 src={maquina.fotoUrl}
-                                                alt={maquina.nombre || 'Maquina'}
+                                                alt={maquina.nombre || 'Máquina'}
                                                 className="h-44 w-44 rounded-lg border border-slate-600 object-cover"
                                                 loading="lazy"
                                             />
@@ -312,7 +312,7 @@ function VistaAdminMantenimiento({ reportes = [], maquinas = [], catalogoCargand
                             </article>
                         ))}
                         {maquinas.length === 0 && (
-                            <p className="text-sm text-slate-400">No hay maquinas en el catalogo.</p>
+                            <p className="text-sm text-slate-400">No hay máquinas en el catálogo.</p>
                         )}
                     </div>
                 </div>

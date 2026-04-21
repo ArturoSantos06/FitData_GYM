@@ -31,19 +31,19 @@ function TarjetaReporteMantenimiento({
                         onClick={() => setImagenActiva(reporte.maquinaFotoUrl)}
                         className="h-full w-full cursor-zoom-in"
                     >
-                        <img src={reporte.maquinaFotoUrl} alt={reporte.maquinaNombre || 'Maquina'} className="h-full w-full object-cover" />
+                        <img src={reporte.maquinaFotoUrl} alt={reporte.maquinaNombre || 'Máquina'} className="h-full w-full object-cover" />
                     </button>
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center text-slate-300">Sin foto de maquina</div>
+                    <div className="flex h-full w-full items-center justify-center text-slate-300">Sin foto de máquina</div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 pb-3 pt-8 text-white">
-                    <h3 className="text-2xl font-bold leading-tight">{reporte?.maquinaNombre || 'Maquina'}</h3>
+                    <h3 className="text-2xl font-bold leading-tight">{reporte?.maquinaNombre || 'Máquina'}</h3>
                     <p className="text-sm text-slate-200">{formatearFecha(reporte?.creadoEn)}</p>
                 </div>
             </div>
 
             <div className="space-y-4 p-4">
-                <p className="text-base text-slate-100">{reporte?.descripcion || 'Sin descripcion'}</p>
+                <p className="text-base text-slate-100">{reporte?.descripcion || 'Sin descripción'}</p>
 
                 {reporte?.fotoUsuarioUrl && (
                     <div>

@@ -21,7 +21,7 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
                 setCatalogoCargando(false);
             },
             (error) => {
-                setErrorCatalogo(String(error?.message || 'No se pudo cargar el catalogo.'));
+                setErrorCatalogo(String(error?.message || 'No se pudo cargar el catálogo.'));
                 setCatalogoCargando(false);
             }
         );
@@ -63,7 +63,7 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
                                     className={`rounded-lg px-4 py-2 text-sm font-bold transition ${vista === 'usuario' ? 'bg-cyan-600 text-white' : 'text-slate-200'
                                         }`}
                                 >
-                                    Vista Usuario
+                                    Vista usuario
                                 </button>
                                 <button
                                     type="button"
@@ -71,7 +71,7 @@ function PortalMantenimiento({ vistaInicial = 'usuario', modoSoloAdmin = false }
                                     className={`rounded-lg px-4 py-2 text-sm font-bold transition ${vista === 'admin' ? 'bg-cyan-600 text-white' : 'text-slate-200'
                                         }`}
                                 >
-                                    Vista Admin
+                                    Vista admin
                                 </button>
                             </div>
                         )}

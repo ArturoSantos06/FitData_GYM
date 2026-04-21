@@ -33,16 +33,16 @@ const scoreEntry = (tokens, entry) => {
 export const getBestAssistantAnswer = (question, knowledgeBase = []) => {
   const normalized = normalizeText(question);
   if (!normalized) {
-    return 'Escribe tu duda y te ayudo con horarios, ubicacion o reglamento del gimnasio.';
+    return 'Escribe tu duda y te ayudo con horarios, ubicación o reglamento del gimnasio.';
   }
 
   if (/hola|buenas|hey/.test(normalized)) {
-    return 'Hola, soy el asistente de FitData GYM. Te puedo ayudar con horarios, ubicacion y reglamento.';
+    return 'Hola, soy el asistente de FitData GYM. Te puedo ayudar con horarios, ubicación y reglamento.';
   }
 
   const tokens = tokenize(question);
   if (!tokens.length) {
-    return 'No logre entender tu pregunta. Intenta con: horarios, ubicacion o reglamento.';
+    return 'No logré entender tu pregunta. Intenta con: horarios, ubicación o reglamento.';
   }
 
   let best = null;
@@ -60,5 +60,5 @@ export const getBestAssistantAnswer = (question, knowledgeBase = []) => {
     return best.answer;
   }
 
-  return 'Por ahora solo puedo responder dudas frecuentes de horarios, ubicacion y reglamento. Si quieres, intenta reformular tu pregunta.';
+  return 'Por ahora solo puedo responder dudas frecuentes de horarios, ubicación y reglamento. Si quieres, intenta reformular tu pregunta.';
 };

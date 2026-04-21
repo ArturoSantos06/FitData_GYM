@@ -36,9 +36,9 @@ export default function AssistantAdminConfig() {
   return (
     <div className="space-y-5 text-slate-100">
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
-        <h2 className="mb-3 text-xl font-black">Configuracion de Chatbot</h2>
+        <h2 className="mb-3 text-xl font-black">Configuración de Chatbot</h2>
         <p className="text-sm text-slate-400">
-          Administra la base de conocimiento usada por el asistente para FAQ de horarios, ubicacion y reglamento.
+          Administra la base de conocimiento usada por el asistente para FAQ de horarios, ubicación y reglamento.
         </p>
       </div>
 
@@ -73,7 +73,7 @@ export default function AssistantAdminConfig() {
       </form>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-300">Preguntas Actuales</h3>
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-300">Preguntas actuales</h3>
         <div className="space-y-3">
           {orderedKnowledge.map((item) => (
             <article key={item.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
@@ -114,7 +114,7 @@ export default function AssistantAdminConfig() {
                 disabled={item.active === false}
                 onClick={() => {
                   setEntryActive(item.id, false);
-                  setMessage('Pregunta inactivada. Ya no aparecera en el asistente.');
+                  setMessage('Pregunta inactivada. Ya no aparecerá en el asistente.');
                 }}
                 className="mr-2 inline-flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
               >

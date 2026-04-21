@@ -23,7 +23,7 @@ function VistaUsuarioMantenimiento({ maquinas = [] }) {
         setOk('');
 
         if (!maquinaSeleccionada) {
-            setError('Selecciona la maquina descompuesta.');
+            setError('Selecciona la máquina descompuesta.');
             return;
         }
 
@@ -65,19 +65,19 @@ function VistaUsuarioMantenimiento({ maquinas = [] }) {
     return (
         <section className="mx-auto w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl md:p-8">
             <header className="mb-6 rounded-2xl bg-blue-600 p-6 text-white">
-                <h2 className="text-3xl font-black">Reportar maquina</h2>
-                <p className="mt-1 text-blue-100">Ayudanos a mantener el gym al 100%</p>
+                <h2 className="text-3xl font-black">Reportar máquina</h2>
+                <p className="mt-1 text-blue-100">Ayúdanos a mantener el gym al 100%</p>
             </header>
 
             <form className="space-y-5" onSubmit={onSubmit}>
                 <label className="block space-y-2">
-                    <span className="text-sm font-semibold text-slate-700">Maquina descompuesta *</span>
+                    <span className="text-sm font-semibold text-slate-700">Máquina descompuesta *</span>
                     <select
                         value={maquinaId}
                         onChange={(event) => setMaquinaId(event.target.value)}
                         className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-800 outline-none focus:border-blue-500"
                     >
-                        <option value="">Selecciona una maquina del catalogo</option>
+                        <option value="">Selecciona una máquina del catálogo</option>
                         {maquinas.map((maquina) => (
                             <option key={maquina.id} value={maquina.id}>
                                 {maquina.nombre}
@@ -98,7 +98,7 @@ function VistaUsuarioMantenimiento({ maquinas = [] }) {
                         value={descripcion}
                         onChange={(event) => setDescripcion(event.target.value)}
                         className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-800 outline-none focus:border-blue-500"
-                        placeholder="Ej. Hace ruido, esta floja una pieza, no enciende..."
+                        placeholder="Ej. Hace ruido, está floja una pieza, no enciende..."
                     />
                 </label>
 
