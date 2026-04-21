@@ -10,7 +10,7 @@ export default function AssistantChatPanel({ title = 'Asistente FitData', embedd
     {
       id: 'welcome',
       role: 'assistant',
-      text: 'Hola. Puedo responder preguntas frecuentes sobre horarios, ubicacion y reglamento.'
+      text: 'Hola. Puedo responder preguntas frecuentes sobre horarios, ubicación y reglamento.'
     }
   ]);
   const listRef = useRef(null);

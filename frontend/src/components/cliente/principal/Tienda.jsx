@@ -141,19 +141,23 @@ function Tienda() {
             key={tab.id}
             type="button"
             onClick={() => setActiveSection(tab.id)}
-            className={`rounded-full text-sm font-semibold py-2 transition-colors ${activeSection === tab.id
+            className={`rounded-full text-sm font-semibold py-2 transition-colors ${
+              activeSection === tab.id
                 ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white'
-              }`}
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6">
+      {/* Aquí agregué la línea degradada y aseguré que nada se duplique */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/70 p-6 shadow-xl">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-cyan-400 to-blue-600"></div>
+
         {activeSection === 'productos' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
             {products.map((prod, idx) => (
               <TarjetaProducto key={idx} {...prod} userPoints={userPoints} />
             ))}
@@ -164,9 +168,9 @@ function Tienda() {
         )}
 
         {activeSection === 'historial' && (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-2">
             <div className="pb-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-emerald-400">Historial de Compras</h3>
+              <h2 className="text-2xl font-bold  text-cyan-400">Historial de Compras</h2>
               <span className="text-slate-500 text-sm">{sales.length} ventas</span>
             </div>
             <div className="max-h-[520px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 divide-y divide-slate-800">
@@ -204,7 +208,7 @@ function Tienda() {
                           {Math.round((it.cantidad || 1) * (it.precio || 0) * 2)} pts
                         </span>
                       ) : (
-                        <span className="text-emerald-400 font-semibold">
+                        <span className="text-cyan-400 font-semibold">
                           ${((it.cantidad || 1) * (it.precio || 0)).toFixed(2)}
                         </span>
                       )}
@@ -217,7 +221,9 @@ function Tienda() {
         )}
 
         {activeSection === 'facturacion' && (
-          <CentroFacturacion ventasIniciales={sales} />
+          <div className="mt-2">
+             <CentroFacturacion ventasIniciales={sales} />
+          </div>
         )}
       </div>
     </div>

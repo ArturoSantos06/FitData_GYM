@@ -28,7 +28,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
         setError('');
 
         if (!maquinaSeleccionada) {
-            setError('Selecciona una maquina del catalogo.');
+            setError('Selecciona una máquina del catálogo.');
             return;
         }
 
@@ -57,7 +57,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
             });
 
             onSuccess?.({
-                maquinaNombre: maquinaSeleccionada?.nombre || 'Sin maquina seleccionada',
+                maquinaNombre: maquinaSeleccionada?.nombre || 'Sin máquina seleccionada',
                 descripcion,
             });
 
@@ -73,7 +73,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
 
     return (
         <form onSubmit={handleSubmit} className="mb-2 space-y-2 rounded-xl border border-slate-600 bg-slate-900/70 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Reportar maquina descompuesta</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Reportar máquina descompuesta</p>
 
             <div className="relative">
                 <button
@@ -82,7 +82,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                     className="flex w-full items-center justify-between rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-left text-sm text-slate-100"
                 >
                     <span className="truncate">
-                        {maquinaSeleccionada ? maquinaSeleccionada.nombre : 'Selecciona una maquina'}
+                        {maquinaSeleccionada ? maquinaSeleccionada.nombre : 'Selecciona una máquina'}
                     </span>
                     <span className="ml-2 text-xs text-slate-400">▼</span>
                 </button>
@@ -90,7 +90,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 {mostrarOpcionesMaquina && (
                     <div className="absolute bottom-full z-20 mb-1 max-h-72 w-full overflow-y-auto overscroll-contain rounded-lg border border-slate-600 bg-slate-950 shadow-lg">
                         {maquinas.length === 0 ? (
-                            <p className="px-3 py-2 text-xs text-slate-400">No hay maquinas disponibles.</p>
+                            <p className="px-3 py-2 text-xs text-slate-400">No hay máquinas disponibles.</p>
                         ) : (
                             maquinas.map((maquina) => {
                                 const opcionActiva = maquina.id === maquinaId;
@@ -107,7 +107,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                                         {maquina?.fotoUrl ? (
                                             <img
                                                 src={maquina.fotoUrl}
-                                                alt={maquina.nombre || 'Maquina'}
+                                                alt={maquina.nombre || 'Máquina'}
                                                 className="h-10 w-10 rounded-md border border-slate-500 object-cover"
                                                 loading="lazy"
                                             />
@@ -129,7 +129,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 <div className="flex h-72 items-center justify-center overflow-hidden rounded-lg border border-slate-600 bg-slate-950 p-2">
                     <img
                         src={maquinaSeleccionada.fotoUrl}
-                        alt={maquinaSeleccionada.nombre || 'Maquina seleccionada'}
+                        alt={maquinaSeleccionada.nombre || 'Máquina seleccionada'}
                         className="max-h-full max-w-full object-contain"
                         loading="lazy"
                     />
