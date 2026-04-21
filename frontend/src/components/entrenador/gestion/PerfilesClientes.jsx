@@ -279,17 +279,17 @@ function HealthProfilesCoach({ refreshTrigger }) {
           });
 
           return (
-            <div key={p.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-blue-500/50 hover:bg-slate-800 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-white font-semibold">{p.memberName || 'Sin nombre'}</p>
+            <div key={p.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:border-blue-500/50 hover:bg-slate-800 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-white font-semibold truncate">{p.memberName || 'Sin nombre'}</p>
                   {p.userIdDisplay && (
-                    <span className="text-xs font-mono bg-slate-700 text-cyan-400 px-2 py-0.5 rounded border border-slate-600">
+                    <span className="inline-flex shrink-0 text-[11px] font-mono bg-slate-700 text-cyan-400 px-2 py-0.5 rounded border border-slate-600">
                       ID: {p.userIdDisplay}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="flex flex-wrap items-center gap-3 mt-1">
                   <p className="text-[11px] text-slate-400">Actualizado: {fechaStr}</p>
                   {(p.recent_injuries || p.heart_condition) && (
                     <span className="px-2 py-0.5 bg-red-900/50 text-red-300 text-[10px] rounded-full font-medium border border-red-800/50 uppercase">
@@ -300,7 +300,7 @@ function HealthProfilesCoach({ refreshTrigger }) {
               </div>
               <button
                 onClick={() => setSelected(p)}
-                className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/20"
+                className="w-full sm:w-auto px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/20"
               >
                 Ver Ficha
               </button>
