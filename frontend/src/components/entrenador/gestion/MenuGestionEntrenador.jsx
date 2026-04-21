@@ -59,8 +59,8 @@ function MenuGestionEntrenador({ onCambiarVista }) {
           <TarjetaAccion
             color={{ fondo: 'bg-red-500/10', texto: 'text-red-400 group-hover:text-red-300', titulo: 'text-red-300', flecha: 'group-hover:text-red-400' }}
             icono={UserMinus}
-            titulo="Desvinculación y Pagos"
-            descripcion="Semáforo de estado y gestión de cuentas"
+            titulo="Pagos"
+            descripcion="Semáforo de estado de pagos de clientes"
             onClick={() => onCambiarVista('desvinculacion')}
           />
         </div>

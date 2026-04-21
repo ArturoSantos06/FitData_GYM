@@ -55,12 +55,6 @@ function TablaDesvinculacionClientes({ clientes, cargando, onArchivar, onElimina
                   >
                     {cliente.archivado ? 'Desarchivar' : 'Archivar'}
                   </button>
-                  <button
-                    onClick={() => onEliminar(cliente.id)}
-                    className="bg-red-600 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/50 text-[10px] uppercase font-bold py-1.5 px-3 transition-all"
-                  >
-                    Eliminar
-                  </button>
                 </div>
               </td>
             </tr>

@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { ASSISTANT_STORAGE_KEY, DEFAULT_KNOWLEDGE_BASE, DEFAULT_QUICK_QUESTIONS } from './conocimientoAsistente';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { ASSISTANT_STORAGE_KEY, DEFAULT_KNOWLEDGE_BASE } from './conocimientoAsistente';
 import { getBestAssistantAnswer } from './nlpAsistente';
 
 const AssistantContext = createContext(null);
+const ASSISTANT_KB_DOC = doc(db, 'app_config', 'assistant_kb');
 
 const normalizeEntry = (entry = {}) => ({
   ...entry,
@@ -25,8 +28,64 @@ const readKnowledgeFromStorage = () => {
   }
 };
 
+const getKnowledgeFingerprint = (entries = []) =>
+  JSON.stringify(
+    entries.map((item) => ({
+      id: String(item.id || ''),
+      question: String(item.question || ''),
+      answer: String(item.answer || ''),
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      active: item.active !== false
+    }))
+  );
+
+const DEFAULT_KNOWLEDGE_FINGERPRINT = getKnowledgeFingerprint(DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry));
+
+const persistKnowledgeToFirestore = async (entries = []) => {
+  await setDoc(
+    ASSISTANT_KB_DOC,
+    {
+      entries: entries.map(normalizeEntry),
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+};
+
 export function AssistantProvider({ children }) {
   const [knowledgeBase, setKnowledgeBase] = useState(readKnowledgeFromStorage);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      ASSISTANT_KB_DOC,
+      async (snapshot) => {
+        const data = snapshot.data();
+        const remoteEntries = Array.isArray(data?.entries) ? data.entries.map(normalizeEntry) : null;
+
+        if (remoteEntries && remoteEntries.length) {
+          setKnowledgeBase(remoteEntries);
+          return;
+        }
+
+        const localEntries = readKnowledgeFromStorage();
+        setKnowledgeBase(localEntries);
+
+        const localFingerprint = getKnowledgeFingerprint(localEntries);
+        if (!snapshot.exists() && localFingerprint !== DEFAULT_KNOWLEDGE_FINGERPRINT) {
+          try {
+            await persistKnowledgeToFirestore(localEntries);
+          } catch {
+            // Si falla escritura remota, el modulo sigue operando con almacenamiento local.
+          }
+        }
+      },
+      () => {
+        setKnowledgeBase(readKnowledgeFromStorage());
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(ASSISTANT_STORAGE_KEY, JSON.stringify(knowledgeBase));
@@ -42,13 +101,17 @@ export function AssistantProvider({ children }) {
     };
 
     if (!next.question || !next.answer) return false;
-    setKnowledgeBase((prev) => [next, ...prev]);
+    setKnowledgeBase((prev) => {
+      const nextKnowledge = [next, ...prev];
+      persistKnowledgeToFirestore(nextKnowledge).catch(() => {});
+      return nextKnowledge;
+    });
     return true;
   };
 
   const updateEntry = (entryId, updates) => {
-    setKnowledgeBase((prev) =>
-      prev.map((item) => {
+    setKnowledgeBase((prev) => {
+      const nextKnowledge = prev.map((item) => {
         if (item.id !== entryId) return item;
         return {
           ...item,
@@ -57,25 +120,35 @@ export function AssistantProvider({ children }) {
           tags: Array.isArray(updates.tags) ? updates.tags : item.tags,
           active: typeof updates.active === 'boolean' ? updates.active : item.active !== false
         };
-      })
-    );
+      });
+      persistKnowledgeToFirestore(nextKnowledge).catch(() => {});
+      return nextKnowledge;
+    });
   };
 
   const setEntryActive = (entryId, active) => {
-    setKnowledgeBase((prev) =>
-      prev.map((item) => {
+    setKnowledgeBase((prev) => {
+      const nextKnowledge = prev.map((item) => {
         if (item.id !== entryId) return item;
         return { ...item, active: Boolean(active) };
-      })
-    );
+      });
+      persistKnowledgeToFirestore(nextKnowledge).catch(() => {});
+      return nextKnowledge;
+    });
   };
 
   const removeEntry = (entryId) => {
-    setKnowledgeBase((prev) => prev.filter((item) => item.id !== entryId));
+    setKnowledgeBase((prev) => {
+      const nextKnowledge = prev.filter((item) => item.id !== entryId);
+      persistKnowledgeToFirestore(nextKnowledge).catch(() => {});
+      return nextKnowledge;
+    });
   };
 
   const resetDefaultKnowledge = () => {
-    setKnowledgeBase(DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry));
+    const defaults = DEFAULT_KNOWLEDGE_BASE.map(normalizeEntry);
+    setKnowledgeBase(defaults);
+    persistKnowledgeToFirestore(defaults).catch(() => {});
   };
 
   const ask = (question) => {
@@ -83,10 +156,20 @@ export function AssistantProvider({ children }) {
     return getBestAssistantAnswer(question, activeKnowledge);
   };
 
+  const quickQuestions = useMemo(() => {
+    const fromKnowledge = knowledgeBase
+      .filter((item) => item.active !== false)
+      .map((item) => String(item.question || '').trim())
+      .filter(Boolean)
+      .slice(0, 4);
+
+    return fromKnowledge;
+  }, [knowledgeBase]);
+
   const value = useMemo(
     () => ({
       knowledgeBase,
-      quickQuestions: DEFAULT_QUICK_QUESTIONS,
+      quickQuestions,
       ask,
       addEntry,
       updateEntry,
@@ -94,7 +177,7 @@ export function AssistantProvider({ children }) {
       removeEntry,
       resetDefaultKnowledge
     }),
-    [knowledgeBase]
+    [knowledgeBase, quickQuestions]
   );
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
