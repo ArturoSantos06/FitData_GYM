@@ -31,6 +31,7 @@ function EntrenadorLogin() {
 
       let role = null;
       const byUid = await getUser(firebaseUser.uid);
+      let trainerRecord = byUid.success ? byUid.data : null;
       if (byUid.success) {
         role = String(byUid.data?.role || '').toLowerCase();
       }
@@ -39,14 +40,20 @@ function EntrenadorLogin() {
         const byEmail = await getUserByEmail(firebaseUser.email || '');
         if (byEmail.success) {
           role = String(byEmail.data?.role || '').toLowerCase();
+          if (!trainerRecord) {
+            trainerRecord = byEmail.data;
+          }
         }
       }
 
-      if (role !== 'trainer' && role !== 'entrenador') {
+      const trainerStatus = String(trainerRecord?.trainerStatus || trainerRecord?.contractStatus || '').toLowerCase();
+      const isTrainerActive = trainerRecord?.isActive !== false && trainerStatus !== 'inactive';
+
+      if ((role !== 'trainer' && role !== 'entrenador') || !isTrainerActive) {
         await logoutUser();
         localStorage.removeItem('trainer_token');
         localStorage.removeItem('trainer_username');
-        throw new Error('Tu cuenta no tiene permisos de entrenador');
+        throw new Error(!isTrainerActive ? 'Tu cuenta de entrenador está inactiva' : 'Tu cuenta no tiene permisos de entrenador');
       }
 
       const idToken = await firebaseUser.getIdToken();
@@ -55,7 +62,12 @@ function EntrenadorLogin() {
       navigate('/entrenador');
     } catch (err) {
       const msg = String(err?.message || '');
+      const code = String(err?.code || '').toLowerCase();
       const friendlyError =
+        code === 'auth/user-disabled' ||
+        msg.includes('auth/user-disabled')
+          ? 'Tu cuenta de entrenador está deshabilitada. Comunicate con admistración.'
+          :
         msg.includes('auth/invalid-credential') ||
         msg.includes('auth/invalid-login-credentials') ||
         msg.includes('auth/user-not-found') ||

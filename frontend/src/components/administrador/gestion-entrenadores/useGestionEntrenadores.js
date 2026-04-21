@@ -25,7 +25,6 @@ export function useGestionEntrenadores() {
   const [cargando, setCargando] = useState(true);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
-  const [ordenarPor, setOrdenarPor] = useState('diasRestantes');
   const [pestanaActiva, setPestanaActiva] = useState('clientes');
   
   // Estados de control y acción
@@ -774,7 +773,6 @@ export function useGestionEntrenadores() {
 
   // ================== HANDLERS DE ACCIONES ==================
   const manejarDesactivarEntrenador = useCallback((entrenador) => {
-    setIdEntrenadorDesactivando(entrenador.id);
     setAccionPendiente({ tipo: 'desactivar', entrenador });
   }, []);
 
@@ -784,15 +782,28 @@ export function useGestionEntrenadores() {
       return;
     }
 
+    setIdEntrenadorDesactivando(accionPendiente.entrenador.id);
+
     try {
-      await deactivateTrainerByAdmin(accionPendiente.entrenador.id);
+      const entrenador = accionPendiente.entrenador;
+      const response = await deactivateTrainerByAdmin({
+        trainerUid: entrenador.authUid || entrenador.id || entrenador.email || '',
+        trainerId: entrenador.id || '',
+        authUid: entrenador.authUid || '',
+        trainerEmail: entrenador.email || entrenador.trainerEmail || entrenador.trainer_email || '',
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'No se pudo desvincular al entrenador');
+      }
+
       setEntrenadores((prev) => prev.filter((e) => e.id !== accionPendiente.entrenador.id));
       setEntrenadoresInactivos((prev) => [...prev, accionPendiente.entrenador]);
       setModalExito({
         isOpen: true,
         title: 'Éxito',
-        message: 'Entrenador desactivado',
-        subMessage: `${obtenerNombreVisualizacion(accionPendiente.entrenador)} ha sido desactivado.`,
+        message: 'Entrenador desvinculado',
+        subMessage: `${obtenerNombreVisualizacion(accionPendiente.entrenador)} ha sido desvinculado.`,
       });
     } catch (error) {
       setModalError({ isOpen: true, title: 'Error', message: error.message || 'No se pudo desactivar' });
@@ -803,7 +814,6 @@ export function useGestionEntrenadores() {
   }, [accionPendiente]);
 
   const manejarReactivarEntrenador = useCallback((entrenador) => {
-    setIdEntrenadorReactivando(entrenador.id);
     setAccionPendiente({ tipo: 'reactivar', entrenador });
   }, []);
 
@@ -813,8 +823,21 @@ export function useGestionEntrenadores() {
       return;
     }
 
+    setIdEntrenadorReactivando(accionPendiente.entrenador.id);
+
     try {
-      await reactivateTrainerByAdmin(accionPendiente.entrenador.id);
+      const entrenador = accionPendiente.entrenador;
+      const response = await reactivateTrainerByAdmin({
+        trainerUid: entrenador.authUid || entrenador.id || entrenador.email || '',
+        trainerId: entrenador.id || '',
+        authUid: entrenador.authUid || '',
+        trainerEmail: entrenador.email || entrenador.trainerEmail || entrenador.trainer_email || '',
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'No se pudo reactivar al entrenador');
+      }
+
       setEntrenadoresInactivos((prev) => prev.filter((e) => e.id !== accionPendiente.entrenador.id));
       setEntrenadores((prev) => [...prev, accionPendiente.entrenador]);
       setModalExito({
@@ -832,7 +855,6 @@ export function useGestionEntrenadores() {
   }, [accionPendiente]);
 
   const manejarDesvincularCliente = useCallback((servicio) => {
-    setIdClienteDesvinculando(servicio.id);
     setServicioPendienteDesvincular(servicio);
   }, []);
 
@@ -841,6 +863,11 @@ export function useGestionEntrenadores() {
       setModalError({ isOpen: true, title: 'Error', message: 'No se especificó servicio' });
       return;
     }
+
+    setIdClienteDesvinculando(
+      servicioPendienteDesvincular.clientId ||
+      servicioPendienteDesvincular.id
+    );
 
     try {
       await removeTrainerFromClient(
@@ -865,7 +892,6 @@ export function useGestionEntrenadores() {
   }, [servicioPendienteDesvincular]);
 
   const manejarCompletarVentaServicio = useCallback((venta) => {
-    setIdVentaServicioCompletando(venta.id);
     setAccionPendiente({ tipo: 'completarVenta', venta });
   }, []);
 
@@ -875,18 +901,98 @@ export function useGestionEntrenadores() {
       return;
     }
 
+    setIdVentaServicioCompletando(accionPendiente.venta.id);
+
     try {
-      await completeTrainerServicePayment(accionPendiente.venta.id);
+      const resultado = await completeTrainerServicePayment(accionPendiente.venta.id);
+      if (!resultado?.success) {
+        throw new Error(resultado?.error || 'No se pudo completar el pago.');
+      }
+
       setVentasServiciosEntrenador((prev) =>
         prev.map((v) =>
-          v.id === accionPendiente.venta.id ? { ...v, status: 'completed' } : v
+          v.id === accionPendiente.venta.id
+            ? {
+                ...v,
+                status: 'completed',
+                estado: 'completado',
+                payment_status: 'completed',
+                paymentStatus: 'completed',
+                completedAt: new Date().toISOString(),
+              }
+            : v
         )
       );
+
+      setServiciosEntrenamiento((prev) =>
+        {
+          const venta = accionPendiente.venta || {};
+          const clientIdVenta = String(venta.clientId || venta.cliente_id || venta.cliente || venta.cliente_auth_uid || '').trim();
+          const clientEmailVenta = String(venta.clientEmail || venta.clienteEmail || venta.cliente_email || '').trim().toLowerCase();
+          const trainerIdVenta = String(venta.trainerId || venta.trainer_id || '').trim();
+          const trainerEmailVenta = String(venta.trainerEmail || venta.trainer_email || '').trim();
+          const trainerNameVenta = String(venta.trainerName || venta.trainer_name || 'Entrenador').trim();
+
+          const serviceTypeRaw = String(venta.serviceType || venta.service_type || 'PERSONAL').trim().toUpperCase();
+          const serviceType = serviceTypeRaw === 'GRUPAL' ? 'GRUPAL' : 'PERSONAL';
+          const serviceLabel = String(venta.serviceLabel || venta.service_label || (serviceType === 'GRUPAL' ? 'Grupal' : 'Personal')).trim();
+
+          const servicePrice = Number(
+            venta.total ||
+            venta.amount ||
+            venta.monto ||
+            venta.trainerServicePrice ||
+            venta.trainer_service_price ||
+            0
+          ) || 0;
+
+          const assignmentDate = venta.completedAt || venta.createdAt || venta.fecha || new Date().toISOString();
+
+          const indiceExistente = prev.findIndex((servicio) => {
+            const clientIdServicio = String(servicio.clientId || '').trim();
+            const clientEmailServicio = String(servicio.clientEmail || '').trim().toLowerCase();
+
+            if (clientIdVenta && clientIdServicio && clientIdVenta === clientIdServicio) return true;
+            if (clientEmailVenta && clientEmailServicio && clientEmailVenta === clientEmailServicio) return true;
+            return false;
+          });
+
+          const baseActualizada = {
+            id: venta.assignmentId || venta.saleId || venta.id || `${clientIdVenta || clientEmailVenta || Date.now()}`,
+            clientId: clientIdVenta,
+            clientEmail: clientEmailVenta,
+            clientName: venta.clientName || venta.clienteNombre || venta.cliente_username || 'Cliente',
+            trainerId: trainerIdVenta,
+            trainerName: trainerNameVenta,
+            trainerEmail: trainerEmailVenta,
+            serviceType,
+            serviceLabel,
+            price: servicePrice,
+            assignedAt: assignmentDate,
+            status: 'active',
+            estado: 'active',
+            saleId: venta.id || venta.saleId || null,
+          };
+
+          if (indiceExistente >= 0) {
+            const copia = [...prev];
+            copia[indiceExistente] = {
+              ...copia[indiceExistente],
+              ...baseActualizada,
+              id: copia[indiceExistente].id || baseActualizada.id,
+            };
+            return copia;
+          }
+
+          return [baseActualizada, ...prev];
+        }
+      );
+
       setModalExito({
         isOpen: true,
         title: 'Éxito',
-        message: 'Venta completada',
-        subMessage: 'El servicio ha sido marcado como completado.',
+        message: 'Pago en efectivo confirmado',
+        subMessage: 'El cliente ya puede ver a su entrenador asignado y el entrenador ya puede ver a su cliente.',
       });
     } catch (error) {
       setModalError({ isOpen: true, title: 'Error', message: error.message || 'No se pudo completar' });
@@ -944,10 +1050,30 @@ export function useGestionEntrenadores() {
 
   // Filtrar servicios según búsqueda y estado
   const serviciosFiltrados = serviciosEntrenamiento.filter((servicio) => {
-    const nombreCliente = String(servicio.clientName || servicio.clientEmail || '').toLowerCase();
     const busqueda = normalizarClaveBusqueda(terminoBusqueda);
-    
-    if (busqueda && !nombreCliente.includes(busqueda)) return false;
+
+    if (busqueda) {
+      const tipoRaw = String(servicio.serviceType || servicio.service_type || '').trim().toLowerCase();
+      const etiquetaRaw = String(servicio.serviceLabel || servicio.service_label || '').trim().toLowerCase();
+      const tipoNormalizado = tipoRaw.includes('grup') || etiquetaRaw.includes('grup') ? 'grupal' : 'personal';
+
+      const textoBusqueda = [
+        servicio.clientName,
+        servicio.clientEmail,
+        servicio.trainerName,
+        servicio.trainerEmail,
+        servicio.serviceType,
+        servicio.service_type,
+        servicio.serviceLabel,
+        servicio.service_label,
+        tipoNormalizado,
+      ]
+        .map(normalizarClaveBusqueda)
+        .filter(Boolean)
+        .join(' ');
+
+      if (!textoBusqueda.includes(busqueda)) return false;
+    }
     
     if (filtroEstado === 'activo' && servicio.status !== 'active') return false;
     if (filtroEstado === 'vencido' && servicio.status !== 'expired') return false;
@@ -963,8 +1089,10 @@ export function useGestionEntrenadores() {
       ejecutarDesactivarEntrenador();
     } else if (accionPendiente.tipo === 'reactivar') {
       ejecutarReactivarEntrenador();
+    } else if (accionPendiente.tipo === 'completarVenta') {
+      ejecutarCompletarVentaServicio();
     }
-  }, [accionPendiente, ejecutarDesactivarEntrenador, ejecutarReactivarEntrenador]);
+  }, [accionPendiente, ejecutarDesactivarEntrenador, ejecutarReactivarEntrenador, ejecutarCompletarVentaServicio]);
 
   const manejarPagoEntrenador = useCallback((entrenador) => {
     const mesActual = new Date().getMonth() + 1;
@@ -1118,7 +1246,6 @@ export function useGestionEntrenadores() {
     cargando,
     terminoBusqueda,
     filtroEstado,
-    ordenarPor,
     pestanaActiva,
     idEntrenadorDesactivando,
     idEntrenadorReactivando,
@@ -1143,7 +1270,6 @@ export function useGestionEntrenadores() {
     setCargando,
     setTerminoBusqueda,
     setFiltroEstado,
-    setOrdenarPor,
     setPestanaActiva,
     setIdEntrenadorDesactivando,
     setIdEntrenadorReactivando,

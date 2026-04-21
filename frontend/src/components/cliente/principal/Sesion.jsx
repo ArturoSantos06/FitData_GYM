@@ -1,7 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { loginUser } from '../../../firebase';
+import { loginUser, getUser, getUserByEmail, logoutUser } from '../../../firebase';
+
+const CLIENT_FORBIDDEN_ROLES = new Set([
+  'trainer',
+  'entrenador',
+  'coach',
+  'inactive_trainer',
+  'nutritionist',
+  'nutriologo',
+  'nutriologa',
+  'nutriologo/a',
+  'nutricionista',
+  'nutri',
+]);
 
 function Sesion() {
   const [email, setEmail] = useState('');
@@ -20,15 +33,41 @@ function Sesion() {
       const result = await loginUser(email, password);
       
       if (result.success) {
+        const user = result.user;
+
+        let role = '';
+        const byUid = await getUser(user.uid);
+        if (byUid.success) {
+          role = String(byUid.data?.role || byUid.data?.user_type || '').trim().toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || byEmail.data?.user_type || '').trim().toLowerCase();
+          }
+        }
+
+        if (CLIENT_FORBIDDEN_ROLES.has(role)) {
+          await logoutUser();
+          localStorage.removeItem('firebaseUser');
+          localStorage.removeItem('token');
+          localStorage.removeItem('trainer_token');
+          localStorage.removeItem('trainer_username');
+          localStorage.removeItem('nutritionist_token');
+          localStorage.removeItem('nutritionist_username');
+          throw new Error('Acceso denegado: esta cuenta no es de cliente');
+        }
+
         // Forzar refresh del token para asegurar que la sesión Firestore esté lista
         try {
-          await result.user.getIdToken(true);
+          await user.getIdToken(true);
         } catch (tokenError) {
           console.warn('No se pudo refrescar el token después del login:', tokenError);
         }
 
         // Guardar info del usuario en localStorage (compatible con el resto del código)
-        localStorage.setItem('firebaseUser', JSON.stringify(result.user));
+        localStorage.setItem('firebaseUser', JSON.stringify(user));
         
         // Redirigir al portal de cliente
         navigate('/cliente');
@@ -46,6 +85,8 @@ function Sesion() {
           ? 'Correo electrónico inválido'
           : msg.includes('auth/too-many-requests')
           ? 'Demasiados intentos fallidos. Intenta más tarde'
+        : msg.includes('Acceso denegado')
+          ? msg
           : 'Correo o contraseña incorrectos';
       setError(errorMessage);
       setIsLoading(false);

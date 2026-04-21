@@ -103,10 +103,26 @@ export const registerTrainerByAdmin = async (payload) => {
 
 export const deactivateTrainerByAdmin = async (payload) => {
   try {
+    const sourcePayload = (payload && typeof payload === 'object')
+      ? payload
+      : { trainerUid: payload };
     const normalizedPayload = {
-      ...payload,
-      trainerUid: String(payload?.trainerUid || payload?.trainerId || payload?.uid || payload?.authUid || payload?.trainerEmail || '').trim(),
+      ...sourcePayload,
+      trainerUid: String(
+        sourcePayload?.trainerUid ||
+        sourcePayload?.trainerId ||
+        sourcePayload?.uid ||
+        sourcePayload?.authUid ||
+        sourcePayload?.trainerEmail ||
+        sourcePayload?.id ||
+        ''
+      ).trim(),
     };
+
+    if (!normalizedPayload.trainerUid) {
+      return { success: false, error: 'Falta el identificador del entrenador' };
+    }
+
     const deactivateFn = httpsCallable(functions, 'deactivateTrainerByAdmin');
     const result = await deactivateFn(normalizedPayload);
     return { success: true, data: result.data };
@@ -128,10 +144,26 @@ export const deactivateTrainerByAdmin = async (payload) => {
 
 export const reactivateTrainerByAdmin = async (payload) => {
   try {
+    const sourcePayload = (payload && typeof payload === 'object')
+      ? payload
+      : { trainerUid: payload };
     const normalizedPayload = {
-      ...payload,
-      trainerUid: String(payload?.trainerUid || payload?.trainerId || payload?.uid || payload?.authUid || payload?.trainerEmail || '').trim(),
+      ...sourcePayload,
+      trainerUid: String(
+        sourcePayload?.trainerUid ||
+        sourcePayload?.trainerId ||
+        sourcePayload?.uid ||
+        sourcePayload?.authUid ||
+        sourcePayload?.trainerEmail ||
+        sourcePayload?.id ||
+        ''
+      ).trim(),
     };
+
+    if (!normalizedPayload.trainerUid) {
+      return { success: false, error: 'Falta el identificador del entrenador' };
+    }
+
     const reactivateFn = httpsCallable(functions, 'reactivateTrainerByAdmin');
     const result = await reactivateFn(normalizedPayload);
     return { success: true, data: result.data };

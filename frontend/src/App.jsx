@@ -40,12 +40,19 @@ function RequireTrainerAuth({ children }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasFirebaseSession, setHasFirebaseSession] = useState(() => Boolean(getCurrentUser()));
   const [hasTrainerRole, setHasTrainerRole] = useState(false);
+  const [isTrainerActive, setIsTrainerActive] = useState(false);
+
+  const clearTrainerSession = () => {
+    localStorage.removeItem('trainer_token');
+    localStorage.removeItem('trainer_username');
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (!user) {
         setHasFirebaseSession(false);
         setHasTrainerRole(false);
+        setIsTrainerActive(false);
         setIsAuthReady(true);
         return;
       }
@@ -55,6 +62,7 @@ function RequireTrainerAuth({ children }) {
       try {
         let role = '';
         const byAuthUid = await getUserByAuthUid(user.uid);
+        let trainerRecord = byAuthUid.success ? byAuthUid.data : null;
         if (byAuthUid.success) {
           role = String(byAuthUid.data?.role || '').toLowerCase();
         }
@@ -63,20 +71,25 @@ function RequireTrainerAuth({ children }) {
           const byEmail = await getUserByEmail(user.email || '');
           if (byEmail.success) {
             role = String(byEmail.data?.role || '').toLowerCase();
+            if (!trainerRecord) {
+              trainerRecord = byEmail.data;
+            }
           }
         }
 
-        const isTrainer = role === 'trainer' || role === 'entrenador';
+        const status = String(trainerRecord?.trainerStatus || trainerRecord?.contractStatus || '').toLowerCase();
+        const isActive = trainerRecord?.isActive !== false && status !== 'inactive';
+        const isTrainer = (role === 'trainer' || role === 'entrenador') && isActive;
         setHasTrainerRole(isTrainer);
+        setIsTrainerActive(isActive);
 
         if (!isTrainer) {
-          localStorage.removeItem('trainer_token');
-          localStorage.removeItem('trainer_username');
+          clearTrainerSession();
         }
       } catch {
         setHasTrainerRole(false);
-        localStorage.removeItem('trainer_token');
-        localStorage.removeItem('trainer_username');
+        setIsTrainerActive(false);
+        clearTrainerSession();
       } finally {
         setIsAuthReady(true);
       }
@@ -101,7 +114,7 @@ function RequireTrainerAuth({ children }) {
     return <Navigate to="/entrenador/login" replace />;
   }
 
-  if (!hasTrainerRole) {
+  if (!hasTrainerRole || !isTrainerActive) {
     return <Navigate to="/entrenador/login" replace />;
   }
 
@@ -193,17 +206,62 @@ function RequireNutritionistAuth({ children }) {
 function RequireClientAuth({ children }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasClientSession, setHasClientSession] = useState(() => Boolean(localStorage.getItem('firebaseUser')));
+  const [hasClientRole, setHasClientRole] = useState(false);
+
+  const forbiddenRoles = new Set([
+    'admin',
+    'trainer',
+    'entrenador',
+    'coach',
+    'inactive_trainer',
+    'nutritionist',
+    'nutriologo',
+    'nutriologa',
+    'nutriologo/a',
+    'nutricionista',
+    'nutri',
+  ]);
 
   useEffect(() => {
-    const unsubscribe = onAuthChanged((user) => {
-      const isClientLoggedIn = Boolean(user);
-      setHasClientSession(isClientLoggedIn);
+    const unsubscribe = onAuthChanged(async (user) => {
+      const isLoggedIn = Boolean(user);
+      setHasClientSession(isLoggedIn);
 
-      if (!isClientLoggedIn) {
+      if (!isLoggedIn) {
+        setHasClientRole(false);
         localStorage.removeItem('firebaseUser');
+        setIsAuthReady(true);
+        return;
       }
 
-      setIsAuthReady(true);
+      try {
+        let role = '';
+        const byAuthUid = await getUserByAuthUid(user.uid);
+        if (byAuthUid.success) {
+          role = String(byAuthUid.data?.role || byAuthUid.data?.user_type || '').trim().toLowerCase();
+        }
+
+        if (!role) {
+          const byEmail = await getUserByEmail(user.email || '');
+          if (byEmail.success) {
+            role = String(byEmail.data?.role || byEmail.data?.user_type || '').trim().toLowerCase();
+          }
+        }
+
+        const isAllowedClient = !forbiddenRoles.has(role);
+        setHasClientRole(isAllowedClient);
+
+        if (!isAllowedClient) {
+          localStorage.removeItem('firebaseUser');
+          localStorage.removeItem('token');
+        }
+      } catch {
+        setHasClientRole(false);
+        localStorage.removeItem('firebaseUser');
+        localStorage.removeItem('token');
+      } finally {
+        setIsAuthReady(true);
+      }
     });
 
     return () => unsubscribe();
@@ -218,6 +276,10 @@ function RequireClientAuth({ children }) {
   }
 
   if (!hasClientSession) {
+    return <Navigate to="/cliente/login" replace />;
+  }
+
+  if (!hasClientRole) {
     return <Navigate to="/cliente/login" replace />;
   }
 

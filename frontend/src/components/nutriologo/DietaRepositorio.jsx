@@ -556,7 +556,10 @@ function DietRepositoryAdmin() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto mt-4 max-w-7xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-teal-400 z-10" />
+
+      <div className="relative z-10 space-y-6 p-4 md:p-6">
       <section className="rounded-3xl border border-slate-700/70 bg-linear-to-br from-slate-900 via-slate-850 to-slate-900 p-6 shadow-2xl shadow-cyan-950/20">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -565,11 +568,11 @@ function DietRepositoryAdmin() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-cyan-200">Pacientes</p>
-              <p className="mt-1 text-2xl font-bold text-white">{members.length}</p>
+              <p className="mt-1 text-2xl font-bold text-white">{loading ? '...' : members.length}</p>
             </div>
             <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-emerald-200">Archivos</p>
-              <p className="mt-1 text-2xl font-bold text-white">{files.length}</p>
+              <p className="mt-1 text-2xl font-bold text-white">{loading ? '...' : files.length}</p>
             </div>
           </div>
         </div>
@@ -641,6 +644,7 @@ function DietRepositoryAdmin() {
           onConfirm={() => handleDelete(pendingDeleteFile)}
         />
       )}
+      </div>
     </div>
   );
 }

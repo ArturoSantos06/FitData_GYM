@@ -42,14 +42,14 @@ function GestionEntrenadores() {
 
   if (gestion.cargando) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-900 via-gray-900 to-slate-900 p-8 flex items-center justify-center">
+      <div className="min-h-[40vh] p-8 flex items-center justify-center">
         <div className="text-white text-xl">Cargando datos...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-gray-900 to-slate-900 p-4 md:p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -106,8 +106,6 @@ function GestionEntrenadores() {
             setTerminoBusqueda={gestion.setTerminoBusqueda}
             filtroEstado={gestion.filtroEstado}
             setFiltroEstado={gestion.setFiltroEstado}
-            ordenarPor={gestion.ordenarPor}
-            setOrdenarPor={gestion.setOrdenarPor}
             serviciosFiltrados={gestion.serviciosFiltrados}
             ventasServiciosEntrenador={gestion.ventasServiciosEntrenador}
             obtenerEtiquetaEstado={obtenerEtiquetaEstado}
@@ -146,16 +144,39 @@ function GestionEntrenadores() {
       <ModalConfirmacion
         isOpen={Boolean(gestion.accionPendiente)}
         onClose={() => {
-          if (!gestion.idEntrenadorDesactivando && !gestion.idEntrenadorReactivando) {
+          if (!gestion.idEntrenadorDesactivando && !gestion.idEntrenadorReactivando && !gestion.idVentaServicioCompletando) {
             gestion.setAccionPendiente(null);
           }
         }}
         onConfirm={gestion.manejarConfirmarAccionPendiente}
-        title={gestion.accionPendiente?.type === 'deactivate' ? 'Confirmar descontratación' : 'Confirmar recontratación'}
-        message={gestion.accionPendiente?.trainer
-          ? `${gestion.accionPendiente.type === 'deactivate' ? 'Se desactivará' : 'Se reactivará'} a ${gestion.accionPendiente.trainer.name}.`
-          : ''}
-        confirmLabel={gestion.accionPendiente?.type === 'deactivate' ? 'Sí, Descontratar' : 'Sí, Recontratar'}
+        title={
+          gestion.accionPendiente?.tipo === 'desactivar'
+            ? 'Confirmar desvinculación'
+            : gestion.accionPendiente?.tipo === 'reactivar'
+            ? 'Confirmar recontratación'
+            : gestion.accionPendiente?.tipo === 'completarVenta'
+            ? 'Confirmar pago en efectivo'
+            : 'Confirmar acción'
+        }
+        message={
+          gestion.accionPendiente?.tipo === 'desactivar' && gestion.accionPendiente?.entrenador
+            ? `Se desvinculará a ${gestion.accionPendiente.entrenador.name}.`
+            : gestion.accionPendiente?.tipo === 'reactivar' && gestion.accionPendiente?.entrenador
+            ? `Se reactivará a ${gestion.accionPendiente.entrenador.name}.`
+            : gestion.accionPendiente?.tipo === 'completarVenta' && gestion.accionPendiente?.venta
+            ? `Se confirmará el pago en efectivo de ${gestion.accionPendiente.venta.clientName || gestion.accionPendiente.venta.clienteNombre || 'este cliente'} con ${gestion.accionPendiente.venta.trainerName || gestion.accionPendiente.venta.trainer_name || 'su entrenador'}.`
+            : ''
+        }
+        confirmLabel={
+          gestion.accionPendiente?.tipo === 'desactivar'
+            ? 'Sí, Desvincular'
+            : gestion.accionPendiente?.tipo === 'reactivar'
+            ? 'Sí, Recontratar'
+            : gestion.accionPendiente?.tipo === 'completarVenta'
+            ? 'Sí, Confirmar pago'
+            : 'Confirmar'
+        }
+        variant={gestion.accionPendiente?.tipo === 'completarVenta' ? 'default' : 'danger'}
       />
 
       <ModalConfirmacion
@@ -171,6 +192,7 @@ function GestionEntrenadores() {
           ? `Se desvinculará a ${gestion.servicioPendienteDesvincular.clientName || 'este cliente'} de ${gestion.servicioPendienteDesvincular.trainerName || 'su entrenador'}.`
           : ''}
         confirmLabel={gestion.idClienteDesvinculando ? 'Desvinculando...' : 'Sí, Desvincular'}
+        variant="danger"
       />
 
       <ErrorModal

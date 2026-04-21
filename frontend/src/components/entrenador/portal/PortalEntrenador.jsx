@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../../firebase';
 import CitasEntrenador from '../gestion/CitasEntrenador';
@@ -8,12 +8,26 @@ import GestionEntrenador from '../gestion/GestionEntrenador';
 import BarraNavegacionEntrenador from './BarraNavegacionEntrenador';
 import InicioEntrenador from './InicioEntrenador';
 
+const TRAINER_PORTAL_TAB_KEY = 'trainer_portal_active_tab';
+const TRAINER_ALLOWED_TABS = new Set(['inicio', 'agenda', 'gestion', 'mensajes', 'perfil']);
+
 function PortalEntrenador() {
   const location = useLocation();
   const navigate = useNavigate();
   const [pestañaActiva, setPestañaActiva] = useState(() => {
-    return location.state?.initialTab || 'inicio';
+    const initialStateTab = String(location.state?.initialTab || '').trim().toLowerCase();
+    if (TRAINER_ALLOWED_TABS.has(initialStateTab)) {
+      return initialStateTab;
+    }
+
+    const savedTab = String(localStorage.getItem(TRAINER_PORTAL_TAB_KEY) || '').trim().toLowerCase();
+    return TRAINER_ALLOWED_TABS.has(savedTab) ? savedTab : 'inicio';
   });
+
+  useEffect(() => {
+    if (!TRAINER_ALLOWED_TABS.has(pestañaActiva)) return;
+    localStorage.setItem(TRAINER_PORTAL_TAB_KEY, pestañaActiva);
+  }, [pestañaActiva]);
 
   const cerrarSesion = async () => {
     try {

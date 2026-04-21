@@ -17,6 +17,17 @@ const normalizarLlaveEntrenador = (entrenador = {}) => {
   return authUid || email || nombre;
 };
 
+const esEntrenadorDisponible = (entrenador = {}) => {
+  const role = String(entrenador.role || entrenador.user_type || '').toLowerCase();
+  const status = String(entrenador.trainerStatus || entrenador.contractStatus || '').toLowerCase();
+
+  return Boolean(
+    entrenador.isActive !== false &&
+    status !== 'inactive' &&
+    (role === 'trainer' || role === 'entrenador')
+  );
+};
+
 export async function cargarEstadoServicioEntrenadores() {
   await waitForAuthReady();
   const currentUser = getCurrentUser();
@@ -32,7 +43,7 @@ export async function cargarEstadoServicioEntrenadores() {
   querySnapshot.docs.forEach((docSnap) => {
     const entrenador = { id: docSnap.id, ...docSnap.data() };
     const llave = normalizarLlaveEntrenador(entrenador);
-    if (llave && !llaves.has(llave)) {
+    if (llave && !llaves.has(llave) && esEntrenadorDisponible(entrenador)) {
       llaves.add(llave);
       entrenadores.push(entrenador);
     }

@@ -9,9 +9,15 @@ import VistaPlan from './VistaPlan';
 import SoporteWhatsApp from '../../chat/SoporteWhatsApp';
 import AssistantWidget from '../../asistente/WidgetAsistente';
 
+const CLIENT_PORTAL_TAB_KEY = 'client_portal_active_tab';
+const CLIENT_ALLOWED_TABS = new Set(['inicio', 'plan', 'tienda', 'mensajes', 'perfil']);
+
 function Portal() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('inicio');
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = String(localStorage.getItem(CLIENT_PORTAL_TAB_KEY) || '').trim().toLowerCase();
+    return CLIENT_ALLOWED_TABS.has(savedTab) ? savedTab : 'inicio';
+  });
   const [authReady, setAuthReady] = useState(false);
 
   const handleLogout = async () => {
@@ -31,6 +37,11 @@ function Portal() {
 
     return () => unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!CLIENT_ALLOWED_TABS.has(activeTab)) return;
+    localStorage.setItem(CLIENT_PORTAL_TAB_KEY, activeTab);
+  }, [activeTab]);
 
   if (!authReady) {
     return (

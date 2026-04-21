@@ -1894,25 +1894,36 @@ export const completeTrainerServicePayment = async (saleId) => {
 
     const assignmentRef = doc(db, 'client_trainer_assignments', clientId);
     const assignmentSnap = await withAuthRetry(() => getDoc(assignmentRef));
+
+    const assignmentPayload = {
+      clientId,
+      trainerId,
+      serviceType: saleServiceType || TRAINER_SERVICE_TYPE_PERSONAL,
+      serviceLabel: saleServiceLabel,
+      servicePrice: Number(saleData.total || saleData.trainerServicePrice || 0),
+      status: 'active',
+      updatedAt: serverTimestamp(),
+      saleId: safeSaleId,
+    };
+
     if (!assignmentSnap.exists()) {
       await withAuthRetry(() =>
         setDoc(assignmentRef, {
-          clientId,
-          trainerId,
-          serviceType: saleServiceType || TRAINER_SERVICE_TYPE_PERSONAL,
-          serviceLabel: saleServiceLabel,
-          servicePrice: Number(saleData.total || saleData.trainerServicePrice || 0),
+          ...assignmentPayload,
           assignedAt: serverTimestamp(),
-          status: 'active',
           createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          saleId: safeSaleId,
         })
       );
       return { success: true, assigned: true };
     }
 
-    return { success: true, assigned: false };
+    await withAuthRetry(() =>
+      updateDoc(assignmentRef, {
+        ...assignmentPayload,
+      })
+    );
+
+    return { success: true, assigned: true };
   } catch (error) {
     if (isPermissionDeniedError(error)) {
       return { success: false, error: 'No hay permisos para completar este pago.' };
@@ -2852,7 +2863,8 @@ export const assignTrainerToClient = async (clientId, trainerId, options = {}) =
 
     // Verificar si ya tiene asignado
     const existing = await getClientTrainerAssignment(clientId);
-    if (existing.success && existing.data) {
+    const existingStatus = String(existing.data?.status || existing.data?.trainerStatus || '').trim().toLowerCase();
+    if (existing.success && existing.data && existingStatus === 'active') {
       return { success: false, error: 'Ya tienes un entrenador asignado' };
     }
 
@@ -2881,7 +2893,13 @@ export const getClientTrainerAssignment = async (clientId) => {
     await waitForAuthReady();
     const docSnap = await withAuthRetry(() => getDoc(doc(db, 'client_trainer_assignments', clientId)));
     if (docSnap.exists()) {
-      return { success: true, data: docSnap.data() };
+      const data = docSnap.data() || {};
+      const status = String(data.status || data.trainerStatus || '').trim().toLowerCase();
+      if (!data.trainerId || status === 'cancelled' || status === 'cancelado' || status === 'inactive' || status === 'inactivo' || data.active === false) {
+        return { success: false, error: 'No encontrado' };
+      }
+
+      return { success: true, data };
     }
     return { success: false, error: 'No encontrado' };
   } catch (error) {
@@ -2896,7 +2914,17 @@ export const removeTrainerFromClient = async (clientId) => {
       return { success: false, error: 'clientId es requerido' };
     }
 
-    await withAuthRetry(() => deleteDoc(doc(db, 'client_trainer_assignments', safeClientId)));
+    await withAuthRetry(() => setDoc(doc(db, 'client_trainer_assignments', safeClientId), {
+      clientId: safeClientId,
+      trainerId: null,
+      trainerEmail: null,
+      trainer_email: null,
+      status: 'cancelled',
+      trainerStatus: 'inactive',
+      active: false,
+      cancelledAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true }));
     return { success: true };
   } catch (error) {
     return { success: false, error: normalizeFirestoreError(error) };

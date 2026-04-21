@@ -46,6 +46,7 @@ function SeccionDatosPersonalesPerfil({ form, trainerCode, inputClass, labelClas
           <input type="text" name="lastName" value={form.lastName || ''} onChange={onChange} className={inputClass} placeholder="Apellidos" />
         </div>
       </div>
+
     </div>
   );
 }

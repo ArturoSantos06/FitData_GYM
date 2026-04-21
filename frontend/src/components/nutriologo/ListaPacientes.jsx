@@ -16,7 +16,9 @@ export default function ListaPacientes({
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-white">Seleccionar Paciente</h2>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">{filteredMembers.length} resultados</span>
+          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+            {loading ? 'Cargando...' : `${filteredMembers.length} resultados`}
+          </span>
         </div>
       </div>
       <input
@@ -28,7 +30,10 @@ export default function ListaPacientes({
         className="mb-4 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
       />
 
-      <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+      <div
+        className="max-h-[420px] space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-900/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-slate-900 [&::-webkit-scrollbar-thumb]:hover:bg-slate-600"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 #0f172a' }}
+      >
         {loading && (
           <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-400">
             Cargando pacientes asignados...

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../firebase';
 import NutriNavbar from './NutriNavbar';
@@ -12,10 +12,20 @@ import AsistenteNutricional from './AsistenteNutricional';
 import BandejaProfesionales from '../chat/BandejaProfesionales';
 import PerfilNutriologo from './PerfilNutriologo';
 
+const NUTRI_PORTAL_TAB_KEY = 'nutri_portal_active_tab';
+const NUTRI_ALLOWED_TABS = new Set(['inicio', 'citas', 'calculadora', 'dietas', 'financiero', 'mensajes', 'perfil']);
 
 function NutriPortal() {
-const [activeTab, setActiveTab] = useState('inicio');
+const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = String(localStorage.getItem(NUTRI_PORTAL_TAB_KEY) || '').trim().toLowerCase();
+    return NUTRI_ALLOWED_TABS.has(savedTab) ? savedTab : 'inicio';
+});
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!NUTRI_ALLOWED_TABS.has(activeTab)) return;
+        localStorage.setItem(NUTRI_PORTAL_TAB_KEY, activeTab);
+    }, [activeTab]);
 
     const handleLogOut = async () => {
         try {

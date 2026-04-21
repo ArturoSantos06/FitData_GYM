@@ -18,6 +18,57 @@ import {
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
+const clampInt = (value, min, max) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    return Math.min(max, Math.max(min, Math.trunc(n)));
+};
+
+const parseBirthDateString = (value = '') => {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    return {
+        year: match[1],
+        month: match[2],
+        day: match[3],
+    };
+};
+
+const calculateAgeFromBirthDateParts = (day, month, year) => {
+    const d = clampInt(day, 1, 31);
+    const m = clampInt(month, 1, 12);
+    const y = clampInt(year, 1900, new Date().getFullYear());
+    if (!d || !m || !y) return null;
+
+    const birth = new Date(y, m - 1, d);
+    if (
+        birth.getFullYear() !== y ||
+        birth.getMonth() !== (m - 1) ||
+        birth.getDate() !== d
+    ) {
+        return null;
+    }
+
+    const now = new Date();
+    let age = now.getFullYear() - y;
+    const hasHadBirthdayThisYear =
+        now.getMonth() > (m - 1) ||
+        (now.getMonth() === (m - 1) && now.getDate() >= d);
+
+    if (!hasHadBirthdayThisYear) age -= 1;
+    if (age < 0 || age > 120) return null;
+    return age;
+};
+
+const formatBirthDateIso = (day, month, year) => {
+    const d = String(clampInt(day, 1, 31) || '').padStart(2, '0');
+    const m = String(clampInt(month, 1, 12) || '').padStart(2, '0');
+    const y = String(clampInt(year, 1900, new Date().getFullYear()) || '');
+    if (!d || !m || !y) return '';
+    return `${y}-${m}-${d}`;
+};
+
 const resolveUserFromAuth = async (firebaseUser) => {
     if (!firebaseUser) {
         return { success: false, error: 'No hay sesión activa' };
@@ -97,7 +148,7 @@ function HealthForm() {
     }, []);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        if (name === 'telefono') return; 
+        if (name === 'telefono' || name === 'edad') return;
         if (type === 'radio') {
             const boolVal = value === 'si';
             setFormData(prev => ({ ...prev, [name]: boolVal }));
@@ -278,8 +329,8 @@ function HealthForm() {
                         <input type="text" name="nombre" value={formData.nombre} disabled readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} placeholder="Nombre y Apellido" />
                     </div>
                     <div>
-                        <label className={labelClass}><Calendar size={16}/> Edad</label>
-                        <input type="number" name="edad" value={formData.edad} onChange={handleChange} className={inputClass} placeholder="25" />
+                        <label className={labelClass}><Calendar size={16}/> Edad (Automática)</label>
+                        <input type="number" name="edad" value={formData.edad} disabled readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} placeholder="Se calcula desde tu fecha de nacimiento" />
                     </div>
                     <div>
                         <label className={labelClass}><Phone size={16}/> Teléfono (Registrado)</label>
@@ -517,6 +568,15 @@ const PersonalData = ({ user, onSave, onBack }) => {
         if (name === 'telefono') {
             const numericValue = value.replace(/\D/g, '').slice(0, 10);
             setEditForm({ ...editForm, [name]: numericValue });
+        } else if (name === 'birthDay') {
+            const numericValue = value.replace(/\D/g, '').slice(0, 2);
+            setEditForm({ ...editForm, [name]: numericValue });
+        } else if (name === 'birthMonth') {
+            const numericValue = value.replace(/\D/g, '').slice(0, 2);
+            setEditForm({ ...editForm, [name]: numericValue });
+        } else if (name === 'birthYear') {
+            const numericValue = value.replace(/\D/g, '').slice(0, 4);
+            setEditForm({ ...editForm, [name]: numericValue });
         } else {
             setEditForm({ ...editForm, [name]: value });
         }
@@ -548,7 +608,7 @@ const PersonalData = ({ user, onSave, onBack }) => {
                 <h2 className="text-2xl font-bold text-white">Datos Personales</h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid md:grid-cols-2 gap-6">
                     <div>
                         <label className={labelClass}>ID de Usuario</label>
@@ -574,7 +634,7 @@ const PersonalData = ({ user, onSave, onBack }) => {
                         </div>
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
                         <label className={labelClass}>Nombre Completo (No editable)</label>
                         <div className="relative">
                             <User className="absolute left-3 top-3.5 text-slate-500" size={18} />
@@ -582,7 +642,40 @@ const PersonalData = ({ user, onSave, onBack }) => {
                         </div>
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
+                        <label className={`${labelClass} text-blue-400 font-semibold`}>Fecha de Nacimiento (Editable)</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <input
+                                type="text"
+                                name="birthDay"
+                                value={editForm.birthDay || ''}
+                                onChange={handleChange}
+                                className="w-full bg-slate-950 border border-blue-500/30 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Día"
+                                inputMode="numeric"
+                            />
+                            <input
+                                type="text"
+                                name="birthMonth"
+                                value={editForm.birthMonth || ''}
+                                onChange={handleChange}
+                                className="w-full bg-slate-950 border border-blue-500/30 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Mes"
+                                inputMode="numeric"
+                            />
+                            <input
+                                type="text"
+                                name="birthYear"
+                                value={editForm.birthYear || ''}
+                                onChange={handleChange}
+                                className="w-full bg-slate-950 border border-blue-500/30 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Año"
+                                inputMode="numeric"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
                         <label className={`${labelClass} text-blue-400 font-semibold`}>Teléfono (Editable)</label>
                         <div className="relative"><Phone className="absolute left-3 top-3.5 text-blue-400" size={18} />
                             <input 
@@ -658,6 +751,11 @@ function Perfil() {
                 }
 
                 const userData = userResult.data;
+                const parsedBirth = parseBirthDateString(userData.birthDate || userData.fechaNacimiento || '');
+                const birthDay = String(userData.birthDay || parsedBirth?.day || '');
+                const birthMonth = String(userData.birthMonth || parsedBirth?.month || '');
+                const birthYear = String(userData.birthYear || parsedBirth?.year || '');
+                const computedAgeFromBirth = calculateAgeFromBirthDateParts(birthDay, birthMonth, birthYear);
                 setUser({
                     id: userData.id || currentUser.uid,
                     nombre: userData.firstName && userData.lastName 
@@ -665,6 +763,10 @@ function Perfil() {
                         : userData.username || currentUser.displayName || currentUser.email,
                     email: userData.email || currentUser.email,
                     telefono: userData.phone || '',
+                    edad: computedAgeFromBirth ?? userData.age ?? userData.edad ?? '',
+                    birthDay,
+                    birthMonth,
+                    birthYear,
                     username: userData.username || currentUser.email.split('@')[0],
                     gymPoints: userData.gymPoints || 0 // --- CÓDIGO NUEVO GYM-POINTS ---
                 });
@@ -673,9 +775,11 @@ function Perfil() {
                     const memberResult = await resolveMemberByCandidates([currentUser.uid, userData.id]);
                     if (memberResult.success && memberResult.data) {
                         setMiembro(memberResult.data);
+                        const hpResult = await getHealthProfileByMemberId(memberResult.data.id);
                         setUser(prev => ({
                             ...prev,
-                            telefono: memberResult.data.telefono || prev.telefono
+                            telefono: memberResult.data.telefono || prev.telefono,
+                            edad: hpResult?.success ? (hpResult.data?.age ?? hpResult.data?.edad ?? prev.edad ?? '') : (prev.edad ?? '')
                         }));
                     }
                 } catch (err) {
@@ -704,6 +808,25 @@ function Perfil() {
             const normalizedPhone = String(updatedData.telefono || '').replace(/\D/g, '').slice(0, 10);
             const normalizedEmail = String(updatedData.email || '').trim().toLowerCase();
             const normalizedUsername = String(updatedData.username || '').trim();
+            const birthDay = String(updatedData.birthDay || '').replace(/\D/g, '').slice(0, 2);
+            const birthMonth = String(updatedData.birthMonth || '').replace(/\D/g, '').slice(0, 2);
+            const birthYear = String(updatedData.birthYear || '').replace(/\D/g, '').slice(0, 4);
+            const hasAnyBirthField = Boolean(birthDay || birthMonth || birthYear);
+            const hasFullBirthField = Boolean(birthDay && birthMonth && birthYear);
+
+            if (hasAnyBirthField && !hasFullBirthField) {
+                throw new Error('Completa día, mes y año de nacimiento');
+            }
+
+            const normalizedAge = hasFullBirthField
+                ? calculateAgeFromBirthDateParts(birthDay, birthMonth, birthYear)
+                : null;
+
+            if (hasFullBirthField && !normalizedAge) {
+                throw new Error('Fecha de nacimiento inválida');
+            }
+
+            const birthDateIso = hasFullBirthField ? formatBirthDateIso(birthDay, birthMonth, birthYear) : '';
 
             if (!normalizedUsername) {
                 throw new Error('El nombre de usuario no puede estar vacío');
@@ -714,6 +837,12 @@ function Perfil() {
                 username: normalizedUsername,
                 phone: normalizedPhone,
                 telefono: normalizedPhone,
+                age: normalizedAge,
+                edad: normalizedAge,
+                birthDay: hasFullBirthField ? birthDay : null,
+                birthMonth: hasFullBirthField ? birthMonth : null,
+                birthYear: hasFullBirthField ? birthYear : null,
+                birthDate: hasFullBirthField ? birthDateIso : null,
             });
             if (!result.success) {
                 const fallback = await updateSelfProfile({
@@ -721,6 +850,11 @@ function Perfil() {
                     email: normalizedEmail,
                     username: normalizedUsername,
                     telefono: normalizedPhone,
+                    edad: normalizedAge,
+                    birthDay: hasFullBirthField ? birthDay : null,
+                    birthMonth: hasFullBirthField ? birthMonth : null,
+                    birthYear: hasFullBirthField ? birthYear : null,
+                    birthDate: hasFullBirthField ? birthDateIso : null,
                 });
 
                 if (!fallback.success) {
@@ -731,6 +865,9 @@ function Perfil() {
             const memberPayload = {
                 email: normalizedEmail,
                 telefono: normalizedPhone,
+                age: normalizedAge,
+                edad: normalizedAge,
+                birthDate: hasFullBirthField ? birthDateIso : null,
             };
 
             const memberSyncTargets = Array.from(new Set([
@@ -750,12 +887,35 @@ function Perfil() {
                 console.warn('No se pudo sincronizar miembro desde perfil (permisos o ID no vinculado).');
             }
 
+            const memberResult = await resolveMemberByCandidates([
+                currentUser?.uid ? String(currentUser.uid).trim() : '',
+                userDocId,
+            ]);
+
+            const healthSyncPayload = {
+                userId: currentUser?.uid || userDocId,
+                memberId: memberResult?.success && memberResult?.data?.id ? memberResult.data.id : userDocId,
+                memberName: updatedData.nombre || user?.nombre || 'Cliente',
+                userIdDisplay: memberResult?.success && memberResult?.data?.id ? memberResult.data.id : userDocId,
+                age: normalizedAge,
+                edad: normalizedAge,
+            };
+
+            const healthSyncResult = await createHealthProfile(healthSyncPayload);
+            if (!healthSyncResult?.success) {
+                console.warn('No se pudo sincronizar edad en ficha médica:', healthSyncResult?.error || 'Error desconocido');
+            }
+
             setUser(prev => ({
                 ...prev,
                 ...updatedData,
                 email: normalizedEmail,
                 username: normalizedUsername,
                 telefono: normalizedPhone,
+                edad: normalizedAge ?? '',
+                birthDay: hasFullBirthField ? birthDay : '',
+                birthMonth: hasFullBirthField ? birthMonth : '',
+                birthYear: hasFullBirthField ? birthYear : '',
             }));
             setSuccessMessage('¡Datos actualizados correctamente!');
             setShowSuccessModal(true);

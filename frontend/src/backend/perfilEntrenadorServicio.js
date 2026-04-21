@@ -18,6 +18,18 @@ const construirPayloadPerfil = ({ actualizado }) => {
   const username = String(actualizado.username || '').trim();
   const firstName = String(actualizado.firstName || '').trim();
   const lastName = String(actualizado.lastName || '').trim();
+  const selectedSpecialty = String(
+    actualizado.trainer_specialty ||
+    actualizado.specialty ||
+    actualizado.especialidad ||
+    actualizado.especialidadPrincipal ||
+    actualizado.trainerSpecialty ||
+    ''
+  ).trim();
+  const specialtyOther = String(actualizado.trainer_specialty_other || '').trim();
+  const specialty = String(
+    selectedSpecialty === 'Otro' ? specialtyOther : selectedSpecialty
+  ).trim();
   const contractType = normalizarTipoContrato(actualizado.contractType || actualizado.tipoContrato || actualizado.contract_type || actualizado.tipo_contrato || '');
   const personal = Number(String(actualizado.personalServicePrice || actualizado.trainerServicePrice || '').replace(',', '.'));
   const grupal = Number(String(actualizado.groupServicePrice || actualizado.trainerServicePrice || '').replace(',', '.'));
@@ -28,6 +40,8 @@ const construirPayloadPerfil = ({ actualizado }) => {
   const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || username;
 
   if (!username) return { success: false, error: 'El nombre de usuario no puede estar vacío' };
+  if (!selectedSpecialty) return { success: false, error: 'Selecciona una especialidad del entrenador' };
+  if (selectedSpecialty === 'Otro' && !specialtyOther) return { success: false, error: 'Especifica la especialidad del entrenador' };
   if (!offersPersonal && !offersGroup) return { success: false, error: 'Debes habilitar al menos un tipo de servicio' };
   if (offersPersonal && (!Number.isFinite(personal) || personal <= 0)) return { success: false, error: 'Define un costo válido para el servicio personal' };
   if (offersGroup && (!Number.isFinite(grupal) || grupal <= 0)) return { success: false, error: 'Define un costo válido para el servicio grupal' };
@@ -36,6 +50,12 @@ const construirPayloadPerfil = ({ actualizado }) => {
     success: true,
     data: {
       email, username, displayName, firstName, lastName, phone: telefono, telefono,
+      specialty,
+      trainer_specialty: selectedSpecialty,
+      trainer_specialty_other: selectedSpecialty === 'Otro' ? specialtyOther : '',
+      trainerSpecialty: specialty,
+      especialidad: specialty,
+      especialidadPrincipal: specialty,
       contractType, tipoContrato: contractType, contract_type: contractType,
       offersPersonalService: offersPersonal, offersGroupService: offersGroup,
       serviceOptions: { personal: offersPersonal, group: offersGroup, PERSONAL: offersPersonal, GRUPAL: offersGroup },
@@ -91,6 +111,9 @@ export async function cargarPerfilEntrenador() {
       ...entrenador,
       firstName: entrenador.firstName || nombres.firstName,
       lastName: entrenador.lastName || nombres.lastName,
+      specialty: entrenador.specialty || entrenador.especialidad || entrenador.especialidadPrincipal || entrenador.trainerSpecialty || entrenador.trainer_specialty || '',
+      trainer_specialty: entrenador.trainer_specialty || entrenador.specialty || entrenador.especialidad || entrenador.especialidadPrincipal || entrenador.trainerSpecialty || '',
+      trainer_specialty_other: '',
       telefono: entrenador.telefono || entrenador.phone || '',
       contractType: tipoContrato,
       trainerServicePrice: Number.isFinite(precioServicio) && precioServicio > 0 ? precioServicio : 0,

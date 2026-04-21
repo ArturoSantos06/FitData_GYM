@@ -3,12 +3,36 @@ import { ArrowLeft } from 'lucide-react';
 import { dividirNombre, normalizarTipoContrato } from '../../../backend/perfilEntrenadorUtilidades';
 import SeccionContratoFiscalPerfil from './SeccionContratoFiscalPerfil';
 
+const trainerSpecialtyOptions = [
+  'Entrenamiento Funcional',
+  'Fuerza e Hipertrofia',
+  'Pérdida de Grasa',
+  'Rehabilitación y Movilidad',
+  'Alto Rendimiento',
+  'Preparación Física General',
+  'Otro',
+];
+
 function FormularioContratoFiscalEntrenador({ usuario, onGuardar, onVolver }) {
   const nombres = dividirNombre(usuario);
+  const specialtyActual = String(
+    usuario.specialty ||
+    usuario.trainer_specialty ||
+    usuario.especialidad ||
+    usuario.especialidadPrincipal ||
+    usuario.trainerSpecialty ||
+    ''
+  ).trim();
+  const specialtyEsCatalogo = trainerSpecialtyOptions.includes(specialtyActual) && specialtyActual !== 'Otro';
+
   const [form, setForm] = useState({
     ...usuario,
     firstName: usuario.firstName || nombres.firstName,
     lastName: usuario.lastName || nombres.lastName,
+    trainer_specialty: specialtyActual
+      ? (specialtyEsCatalogo ? specialtyActual : 'Otro')
+      : '',
+    trainer_specialty_other: specialtyActual && !specialtyEsCatalogo ? specialtyActual : '',
     telefono: usuario.telefono || usuario.phone || '',
     email: usuario.email || '',
     username: usuario.username || '',
@@ -27,6 +51,13 @@ function FormularioContratoFiscalEntrenador({ usuario, onGuardar, onVolver }) {
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (type === 'checkbox') return setForm((prev) => ({ ...prev, [name]: checked }));
+    if (name === 'trainer_specialty') {
+      return setForm((prev) => ({
+        ...prev,
+        trainer_specialty: value,
+        trainer_specialty_other: value === 'Otro' ? prev.trainer_specialty_other : '',
+      }));
+    }
     if (name === 'telefono') return setForm((prev) => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 10) }));
     if (name === 'clabe') return setForm((prev) => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 18) }));
     if (name === 'rfc') return setForm((prev) => ({ ...prev, [name]: value.toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '').slice(0, 13) }));
@@ -47,9 +78,13 @@ function FormularioContratoFiscalEntrenador({ usuario, onGuardar, onVolver }) {
       const clabe = String(form.clabe || '').replace(/\D/g, '').slice(0, 18);
       const personal = Number(String(form.personalServicePrice || '').replace(',', '.'));
       const grupal = Number(String(form.groupServicePrice || '').replace(',', '.'));
+      const specialty = String(form.trainer_specialty || '').trim();
+      const specialtyOther = String(form.trainer_specialty_other || '').trim();
 
       if (rfc && rfc.length !== 12 && rfc.length !== 13) throw new Error('El RFC debe tener 12 o 13 caracteres');
       if (clabe && clabe.length !== 18) throw new Error('La CLABE debe tener 18 dígitos');
+      if (!specialty) throw new Error('Selecciona una especialidad del entrenador');
+      if (specialty === 'Otro' && !specialtyOther) throw new Error('Especifica la especialidad del entrenador');
       if (!form.offersPersonalService && !form.offersGroupService) throw new Error('Debes habilitar al menos un tipo de servicio');
       if (form.offersPersonalService && (!Number.isFinite(personal) || personal <= 0)) throw new Error('Define un precio válido para el servicio personal');
       if (form.offersGroupService && (!Number.isFinite(grupal) || grupal <= 0)) throw new Error('Define un precio válido para el servicio grupal');

@@ -1,6 +1,16 @@
 import React from 'react';
-import { Building2, CreditCard, DollarSign, Hash } from 'lucide-react';
+import { Building2, CreditCard, DollarSign, Dumbbell, Hash } from 'lucide-react';
 import { OPCIONES_CONTRATO } from '../../../backend/perfilEntrenadorUtilidades';
+
+const trainerSpecialtyOptions = [
+  'Entrenamiento Funcional',
+  'Fuerza e Hipertrofia',
+  'Pérdida de Grasa',
+  'Rehabilitación y Movilidad',
+  'Alto Rendimiento',
+  'Preparación Física General',
+  'Otro',
+];
 
 function SeccionContratoFiscalPerfil({ form, inputClass, labelClass, onChange }) {
   return (
@@ -17,6 +27,41 @@ function SeccionContratoFiscalPerfil({ form, inputClass, labelClass, onChange })
               </select>
             </div>
           </div>
+
+          <div>
+            <label className={`${labelClass} text-purple-300 font-semibold`}>Especialidad</label>
+            <div className="relative">
+              <Dumbbell className="absolute left-3 top-3.5 text-purple-400" size={18} />
+              <select
+                name="trainer_specialty"
+                value={form.trainer_specialty || ''}
+                onChange={onChange}
+                className={`${inputClass} border-purple-500/30 focus:border-purple-500 text-white bg-purple-900/10`}
+              >
+                <option value="">-- Selecciona --</option>
+                {trainerSpecialtyOptions.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {form.trainer_specialty === 'Otro' && (
+            <div>
+              <label className={`${labelClass} text-purple-300 font-semibold`}>Especifica la Especialidad</label>
+              <div className="relative">
+                <Dumbbell className="absolute left-3 top-3.5 text-purple-400" size={18} />
+                <input
+                  type="text"
+                  name="trainer_specialty_other"
+                  value={form.trainer_specialty_other || ''}
+                  onChange={onChange}
+                  className={`${inputClass} border-purple-500/30 focus:border-purple-500 text-white bg-purple-900/10`}
+                  placeholder="Ej: Entrenamiento prenatal"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className={`${labelClass} text-cyan-300 font-semibold`}>Costo del Servicio Personal (MXN)</label>

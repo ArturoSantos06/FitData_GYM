@@ -6,8 +6,6 @@ function ClientesConServicioEntrenador({
   setTerminoBusqueda,
   filtroEstado,
   setFiltroEstado,
-  ordenarPor,
-  setOrdenarPor,
   serviciosFiltrados,
   ventasServiciosEntrenador,
   obtenerEtiquetaEstado,
@@ -16,6 +14,8 @@ function ClientesConServicioEntrenador({
   onCompletarVentaServicio,
   idVentaServicioCompletando,
 }) {
+  const [terminoBusquedaPagos, setTerminoBusquedaPagos] = React.useState('');
+
   const normalizarClaveBusqueda = (value) => String(value || '').trim().toLowerCase();
 
   const toJsDate = (value) => {
@@ -145,51 +145,66 @@ function ClientesConServicioEntrenador({
     };
   };
 
+  const ventasServiciosFiltradas = (ventasServiciosEntrenador || []).filter((sale) => {
+    const busqueda = normalizarClaveBusqueda(terminoBusquedaPagos);
+    if (!busqueda) return true;
+
+    const metodoPago = obtenerMetodoPagoVenta(sale);
+    const textoBusqueda = [
+      sale?.clientName,
+      sale?.clienteNombre,
+      sale?.cliente_username,
+      sale?.clientEmail,
+      sale?.clienteEmail,
+      sale?.cliente_email,
+      sale?.trainerName,
+      sale?.trainer_name,
+      sale?.trainer_nombre,
+      sale?.trainerEmail,
+      sale?.trainer_email,
+      metodoPago,
+    ]
+      .map(normalizarClaveBusqueda)
+      .filter(Boolean)
+      .join(' ');
+
+    return textoBusqueda.includes(busqueda);
+  });
+
   return (
     <>
-      <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700 shadow-xl">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Buscar por cliente, entrenador o tipo de servicio..."
-                value={terminoBusqueda}
-                onChange={(e) => setTerminoBusqueda(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="bg-gray-900 border border-gray-600 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="activo">✅ Activos</option>
-            <option value="vencido">❌ Vencidos</option>
-          </select>
-
-          <select
-            value={ordenarPor}
-            onChange={(e) => setOrdenarPor(e.target.value)}
-            className="bg-gray-900 border border-gray-600 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="diasRestantes">Días restantes</option>
-            <option value="nombreCliente">Nombre del cliente</option>
-            <option value="entrenador">Entrenador</option>
-          </select>
-        </div>
-      </div>
-
       <div className="bg-gray-800/50 rounded-xl border border-gray-700 shadow-xl overflow-hidden">
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Calendar size={24} className="text-blue-400" />
             Servicios de Entrenamiento Contratados ({serviciosFiltrados.length})
           </h2>
+
+          <div className="mt-4 flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Buscar por cliente, entrenador o tipo de servicio..."
+                  value={terminoBusqueda}
+                  onChange={(e) => setTerminoBusqueda(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="bg-gray-900 border border-gray-600 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="activo">✅ Activos</option>
+              <option value="vencido">❌ Vencidos</option>
+            </select>
+
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -260,8 +275,21 @@ function ClientesConServicioEntrenador({
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <ReceiptText size={22} className="text-cyan-300" />
-            Historial de Pagos de Clientes ({ventasServiciosEntrenador?.length || 0})
+            Historial de Pagos de Clientes ({ventasServiciosFiltradas.length})
           </h2>
+
+          <div className="mt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Buscar pago por cliente, entrenador o método..."
+                value={terminoBusquedaPagos}
+                onChange={(e) => setTerminoBusquedaPagos(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -278,12 +306,16 @@ function ClientesConServicioEntrenador({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {(ventasServiciosEntrenador || []).length === 0 ? (
+              {ventasServiciosFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-8 text-gray-400">No hay pagos de servicios de entrenamiento registrados.</td>
+                  <td colSpan="7" className="text-center py-8 text-gray-400">
+                    {terminoBusquedaPagos
+                      ? 'No se encontraron pagos con esos criterios.'
+                      : 'No hay pagos de servicios de entrenamiento registrados.'}
+                  </td>
                 </tr>
               ) : (
-                (ventasServiciosEntrenador || []).map((sale) => {
+                ventasServiciosFiltradas.map((sale) => {
                   const status = obtenerEstadoVenta(sale);
                   const saleDate = toJsDate(sale.createdAt || sale.fecha || sale.assignedAt);
                   const saleClientInfo = resolverInfoClienteVenta(sale);

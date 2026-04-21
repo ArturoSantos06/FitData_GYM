@@ -2615,42 +2615,41 @@ exports.deactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "pu
     await assertAdminRequest(request, db);
 
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
-    let userRef = db.collection("users").doc(normalizedTrainerUid);
-    let userSnap = await userRef.get();
+    const userRefsByPath = new Map();
 
-    if (!userSnap.exists) {
-      const byAuthUidSnap = await db.collection("users")
-        .where("authUid", "==", normalizedTrainerUid)
-        .limit(1)
-        .get();
-
-      if (!byAuthUidSnap.empty) {
-        userRef = byAuthUidSnap.docs[0].ref;
-        userSnap = byAuthUidSnap.docs[0];
+    const registerDocSnap = (docSnap) => {
+      if (docSnap?.exists) {
+        userRefsByPath.set(docSnap.ref.path, docSnap.ref);
       }
-    }
+    };
 
-    if (!userSnap.exists && normalizedTrainerUid.includes("@")) {
+    const directRef = db.collection("users").doc(normalizedTrainerUid);
+    registerDocSnap(await directRef.get());
+
+    const byAuthUidSnap = await db.collection("users")
+      .where("authUid", "==", normalizedTrainerUid)
+      .get();
+    byAuthUidSnap.docs.forEach(registerDocSnap);
+
+    if (normalizedTrainerUid.includes("@")) {
       const emailCandidate = normalizedTrainerUid.toLowerCase();
       const byEmailSnap = await db.collection("users")
         .where("email", "==", emailCandidate)
-        .limit(1)
         .get();
-
-      if (!byEmailSnap.empty) {
-        userRef = byEmailSnap.docs[0].ref;
-        userSnap = byEmailSnap.docs[0];
-      }
+      byEmailSnap.docs.forEach(registerDocSnap);
     }
 
-    if (!userSnap.exists) {
+    if (userRefsByPath.size === 0) {
       throw new HttpsError("not-found", "Entrenador no encontrado");
     }
 
-    const userData = userSnap.data() || {};
-    const authUid = String(userData.authUid || userRef.id || normalizedTrainerUid).trim();
+    const primarySnap = await directRef.get();
+    const authUid = String(
+      primarySnap.data()?.authUid ||
+      normalizedTrainerUid
+    ).trim();
 
-    await userRef.set({
+    await Promise.all(Array.from(userRefsByPath.values()).map((userRef) => userRef.set({
       role: "inactive_trainer",
       isTrainer: false,
       is_trainer: false,
@@ -2661,10 +2660,11 @@ exports.deactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "pu
       deactivatedAt: timestamp,
       deactivatedReason: reason || null,
       updatedAt: timestamp,
-    }, { merge: true });
+    }, { merge: true })));
 
     if (authUid) {
       await admin.auth().revokeRefreshTokens(authUid);
+      await admin.auth().updateUser(authUid, { disabled: true });
       await admin.auth().setCustomUserClaims(authUid, {
         role: "INACTIVE_TRAINER",
         trainer: false,
@@ -2711,42 +2711,41 @@ exports.reactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "pu
     await assertAdminRequest(request, db);
 
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
-    let userRef = db.collection("users").doc(normalizedTrainerUid);
-    let userSnap = await userRef.get();
+    const userRefsByPath = new Map();
 
-    if (!userSnap.exists) {
-      const byAuthUidSnap = await db.collection("users")
-        .where("authUid", "==", normalizedTrainerUid)
-        .limit(1)
-        .get();
-
-      if (!byAuthUidSnap.empty) {
-        userRef = byAuthUidSnap.docs[0].ref;
-        userSnap = byAuthUidSnap.docs[0];
+    const registerDocSnap = (docSnap) => {
+      if (docSnap?.exists) {
+        userRefsByPath.set(docSnap.ref.path, docSnap.ref);
       }
-    }
+    };
 
-    if (!userSnap.exists && normalizedTrainerUid.includes("@")) {
+    const directRef = db.collection("users").doc(normalizedTrainerUid);
+    registerDocSnap(await directRef.get());
+
+    const byAuthUidSnap = await db.collection("users")
+      .where("authUid", "==", normalizedTrainerUid)
+      .get();
+    byAuthUidSnap.docs.forEach(registerDocSnap);
+
+    if (normalizedTrainerUid.includes("@")) {
       const emailCandidate = normalizedTrainerUid.toLowerCase();
       const byEmailSnap = await db.collection("users")
         .where("email", "==", emailCandidate)
-        .limit(1)
         .get();
-
-      if (!byEmailSnap.empty) {
-        userRef = byEmailSnap.docs[0].ref;
-        userSnap = byEmailSnap.docs[0];
-      }
+      byEmailSnap.docs.forEach(registerDocSnap);
     }
 
-    if (!userSnap.exists) {
+    if (userRefsByPath.size === 0) {
       throw new HttpsError("not-found", "Entrenador no encontrado");
     }
 
-    const userData = userSnap.data() || {};
-    const authUid = String(userData.authUid || userRef.id || normalizedTrainerUid).trim();
+    const primarySnap = await directRef.get();
+    const authUid = String(
+      primarySnap.data()?.authUid ||
+      normalizedTrainerUid
+    ).trim();
 
-    await userRef.set({
+    await Promise.all(Array.from(userRefsByPath.values()).map((userRef) => userRef.set({
       role: "trainer",
       isTrainer: true,
       is_trainer: true,
@@ -2757,10 +2756,11 @@ exports.reactivateTrainerByAdmin = onCall({ cors: { origin: true }, invoker: "pu
       reactivatedAt: timestamp,
       reactivatedReason: reason || null,
       updatedAt: timestamp,
-    }, { merge: true });
+    }, { merge: true })));
 
     if (authUid) {
       await admin.auth().revokeRefreshTokens(authUid);
+      await admin.auth().updateUser(authUid, { disabled: false });
       await admin.auth().setCustomUserClaims(authUid, {
         role: "TRAINER",
         trainer: true,
@@ -3233,11 +3233,72 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
     email,
     username,
     telefono,
+    edad,
+    birthDay,
+    birthMonth,
+    birthYear,
+    birthDate,
   } = request.data || {};
 
   const normalizedUsername = String(username || "").trim();
   const normalizedEmail = String(email || tokenEmail || "").trim().toLowerCase();
   const normalizedPhone = String(telefono || "").replace(/\D/g, "").slice(0, 10);
+  const toInt = (value) => {
+    const parsed = Number(String(value ?? "").replace(/\D/g, ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const buildAgeFromBirth = (d, m, y) => {
+    if (!d || !m || !y) return null;
+    const birth = new Date(y, m - 1, d);
+    if (
+      birth.getFullYear() !== y ||
+      birth.getMonth() !== (m - 1) ||
+      birth.getDate() !== d
+    ) {
+      return null;
+    }
+
+    const now = new Date();
+    let age = now.getFullYear() - y;
+    const hadBirthday =
+      now.getMonth() > (m - 1) ||
+      (now.getMonth() === (m - 1) && now.getDate() >= d);
+    if (!hadBirthday) age -= 1;
+    if (age < 0 || age > 120) return null;
+    return age;
+  };
+
+  const birthDateMatch = String(birthDate || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const normalizedBirthDay = toInt(birthDay ?? (birthDateMatch ? birthDateMatch[3] : null));
+  const normalizedBirthMonth = toInt(birthMonth ?? (birthDateMatch ? birthDateMatch[2] : null));
+  const normalizedBirthYear = toInt(birthYear ?? (birthDateMatch ? birthDateMatch[1] : null));
+
+  const hasAnyBirthField = Boolean(normalizedBirthDay || normalizedBirthMonth || normalizedBirthYear);
+  const hasFullBirthField = Boolean(normalizedBirthDay && normalizedBirthMonth && normalizedBirthYear);
+
+  if (hasAnyBirthField && !hasFullBirthField) {
+    throw new HttpsError("invalid-argument", "Completa día, mes y año de nacimiento");
+  }
+
+  const ageFromBirth = hasFullBirthField
+    ? buildAgeFromBirth(normalizedBirthDay, normalizedBirthMonth, normalizedBirthYear)
+    : null;
+
+  if (hasFullBirthField && ageFromBirth === null) {
+    throw new HttpsError("invalid-argument", "Fecha de nacimiento inválida");
+  }
+
+  const parsedAge = Number(edad);
+  const normalizedAge = ageFromBirth !== null
+    ? ageFromBirth
+    : (Number.isFinite(parsedAge) && parsedAge > 0
+      ? Math.min(100, Math.max(10, Math.trunc(parsedAge)))
+      : null);
+
+  const normalizedBirthDate = hasFullBirthField
+    ? `${String(normalizedBirthYear).padStart(4, "0")}-${String(normalizedBirthMonth).padStart(2, "0")}-${String(normalizedBirthDay).padStart(2, "0")}`
+    : null;
 
   if (!normalizedUsername) {
     throw new HttpsError("invalid-argument", "El nombre de usuario es obligatorio");
@@ -3266,6 +3327,12 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
       email: normalizedEmail || null,
       phone: normalizedPhone,
       telefono: normalizedPhone,
+      age: normalizedAge,
+      edad: normalizedAge,
+      birthDay: hasFullBirthField ? String(normalizedBirthDay).padStart(2, "0") : null,
+      birthMonth: hasFullBirthField ? String(normalizedBirthMonth).padStart(2, "0") : null,
+      birthYear: hasFullBirthField ? String(normalizedBirthYear) : null,
+      birthDate: normalizedBirthDate,
       updatedAt: timestamp,
     };
 
@@ -3302,18 +3369,44 @@ exports.updateSelfProfile = onCall({ cors: { origin: true }, invoker: "public" }
       await ref.update({
         email: normalizedEmail || null,
         telefono: normalizedPhone,
+        age: normalizedAge,
+        edad: normalizedAge,
+        birthDate: normalizedBirthDate,
         updatedAt: timestamp,
       });
       membersUpdated += 1;
+    }
+
+    const healthProfileDocIds = new Set();
+    memberTargets.forEach((ref) => healthProfileDocIds.add(ref.id));
+    if (userId !== undefined && userId !== null && String(userId).trim()) {
+      healthProfileDocIds.add(String(userId).trim());
+    }
+    healthProfileDocIds.add(authUid);
+
+    let healthProfilesUpdated = 0;
+    for (const profileId of healthProfileDocIds) {
+      if (!profileId) continue;
+      await db.collection("healthProfiles").doc(profileId).set({
+        memberId: String(profileId),
+        userId: String(authUid),
+        userIdDisplay: String(profileId),
+        age: normalizedAge,
+        edad: normalizedAge,
+        birthDate: normalizedBirthDate,
+        updatedAt: timestamp,
+      }, { merge: true });
+      healthProfilesUpdated += 1;
     }
 
     logger.info("Perfil propio actualizado", {
       authUid,
       usersUpdated,
       membersUpdated,
+      healthProfilesUpdated,
     });
 
-    return { success: true, usersUpdated, membersUpdated };
+    return { success: true, usersUpdated, membersUpdated, healthProfilesUpdated };
   } catch (error) {
     logger.error("Error en updateSelfProfile", {
       authUid,
