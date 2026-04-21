@@ -112,7 +112,7 @@ function CentroFacturacion({ ventasIniciales = [] }) {
     <div className="w-full space-y-6">
       {/* Encabezado */}
       <div>
-        <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+        <h2 className="text-2xl font-bold  text-cyan-400 flex items-center gap-3">
           <FileText size={32} className="text-cyan-400" />
           Centro de Facturación
         </h2>
@@ -271,5 +271,4 @@ function CentroFacturacion({ ventasIniciales = [] }) {
     </div>
   );
 }
-
 export default CentroFacturacion;

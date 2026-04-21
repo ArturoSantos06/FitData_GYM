@@ -596,9 +596,11 @@ const formatRemaining = (diffMs) => {
           </div>
         </div>
       </div>
-
       {/* Sección de vigencia */}
-      <div className="w-full max-w-2xl bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg">
+      <div className="relative overflow-hidden w-full max-w-2xl bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg">
+        {/* Línea degradada superior */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-purple-500 to-blue-500"></div>
+
         <div className="flex items-center justify-between">
           <span className="text-slate-300 text-base font-semibold tracking-wide">Tu Vigencia</span>
           <div className="flex items-center gap-2">

@@ -70,6 +70,9 @@ function OcupacionGym() {
 
   return (
     <div className="w-full max-w-2xl bg-slate-900/70 border border-slate-800 rounded-2xl p-4 relative overflow-hidden">
+      {/* LÍNEA DEGRADADA SUPERIOR AGREGADA AQUÍ */}
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-cyan-400 to-blue-500"></div>
+
       <div className="absolute -top-10 -right-8 w-28 h-28 rounded-full bg-cyan-400/10 blur-2xl"></div>
       <div className="relative flex items-center justify-between gap-3">
         <span className="text-slate-300 text-sm font-semibold tracking-wide">Aforo en tiempo real</span>
