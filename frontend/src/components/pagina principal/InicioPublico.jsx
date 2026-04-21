@@ -476,12 +476,11 @@ function NewsSection() {
             <div className="bg-linear-to-b from-cyan-900/40 to-blue-900/20 border border-cyan-500/30 p-8 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.1)] h-full">
               <ul className="space-y-6">
                 {[
-                  "Sorteo navideño por gran apertura: 18 de Diciembre, 2025.",
-                  "Participa para ganar 3 membresías FitData Flex en nuestras redes.",
-                  "Próximamente: Entrenadores personales en Abril de 2026.",
                   "Nuevo descuento del 50% para estudiantes (FitData Study).",
-                  "Seguridad garantizada: Cámaras y guardia 24/7.",
-                  "Aviso de horario: Lunes a Sábado (Domingos cerrado).",
+                  "Agenda tus citas con entrenador y nutriologo desde tu portal.",
+                  "Panel de mensajes mejorado para una comunicacion mas rapida con tu coach.",
+                  "Seguimiento de progreso y notas tecnicas ya disponible en tu perfil.",
+                  "Recomendaciones de alimentacion personalizadas activas en el modulo de nutricion.",
                 ].map((item, index) => (
                   <li key={index} className="flex items-start group cursor-default">
                     <span className="mr-3 mt-1 text-cyan-400 group-hover:text-white transition-colors">
@@ -503,16 +502,20 @@ function NewsSection() {
               <div className="w-40 h-40 shrink-0 relative">
                 <div className="absolute inset-0 bg-cyan-500 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?q=80&w=1000" 
-                  alt="Inauguración" 
+                  src="/news-update-fitdata.png"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/update.png';
+                  }}
+                  alt="Explora la nueva actualizacion FitData"
                   className="w-full h-full object-cover rounded-full border-4 border-gray-800 group-hover:border-cyan-400 transition-all duration-500 relative z-10"
                 />
               </div>
               <div className="text-center md:text-left">
-                <h4 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">Gran Inauguración FitData</h4>
-                <p className="text-cyan-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">Jueves 4 de Diciembre, 2025</p>
+                <h4 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">Explora la nueva actualización FitData</h4>
+                <p className="text-cyan-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">Actualización vigente 2026</p>
                 <p className="text-gray-400 leading-relaxed text-sm">
-                  ¡El día ha llegado! Acompáñanos en el corte de listón oficial. Tendremos DJ en vivo, bocadillos saludables, retos flash con premios y acceso gratuito a todas las instalaciones durante el evento. ¡No faltes!
+                  Descubre una experiencia renovada con navegación más clara, mejor rendimiento y acceso rápido a módulos como perfil, mensajería, gestión y seguimiento de progreso.
                 </p>
               </div>
             </div>
@@ -522,16 +525,16 @@ function NewsSection() {
               <div className="w-40 h-40 shrink-0 relative">
                  <div className="absolute inset-0 bg-purple-400 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1512909006721-3d6018887383?q=80&w=1000" 
-                  alt="Sorteo Navideño" 
+                  src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=1000" 
+                  alt="Entrenador personal guiando una sesion" 
                   className="w-full h-full object-cover rounded-full border-4 border-gray-800 group-hover:border-purple-400 transition-all duration-500 relative z-10"
                 />
               </div>
               <div className="text-center md:text-right">
-                <h4 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Sorteo navideño por apertura</h4>
-                <p className="text-purple-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">Jueves 18 de diciembre, 2025</p>
+                <h4 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Ahora con entrenadores personales</h4>
+                <p className="text-purple-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">Disponible actualmente</p>
                 <p className="text-gray-400 leading-relaxed text-sm">
-                  Por gran apertura, FitData GYM sorteará 3 membresías FitData Flex, siguiéndonos en nuestras redes sociales y compartiendo la publicación de gran inauguración.
+                  Ya puedes entrenar con acompañamiento profesional: sesiones personalizadas, seguimiento por objetivos y soporte directo para mejorar tu técnica y resultados.
                 </p>
               </div>
             </div>
@@ -541,16 +544,16 @@ function NewsSection() {
               <div className="w-40 h-40 shrink-0 relative">
                 <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=1000" 
-                  alt="Entrenador Personal" 
+                  src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000" 
+                  alt="Alimentacion saludable para plan nutricional" 
                   className="w-full h-full object-cover rounded-full border-4 border-gray-800 group-hover:border-blue-400 transition-all duration-500 relative z-10"
                 />
               </div>
               <div className="text-center md:text-left">
-                <h4 className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">Próximamente entrenadores personales</h4>
-                <p className="text-blue-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">28 de Febrero, 2026</p>
+                <h4 className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">Nutriólogo y planes alimenticios personalizados</h4>
+                <p className="text-blue-400 font-bold text-sm mb-3 mt-1 uppercase tracking-wider">Servicio activo</p>
                 <p className="text-gray-400 leading-relaxed text-sm">
-                  En Abril del 2026 implementaremos entrenadores certificados para sesiones personalizadas o grupales. ¡Prepárate para llevar tu entrenamiento al siguiente nivel con la guía experta de nuestros profesionales!
+                  Consulta nutricional, recomendaciones por objetivo y ajuste de hábitos con apoyo profesional para complementar tu entrenamiento de forma integral.
                 </p>
               </div>
             </div>
@@ -792,10 +795,10 @@ function FooterSection() {
           <div>
             <h3 className="text-xl font-bold text-cyan-400 mb-6 tracking-wide uppercase">Navegación</h3>
             <ul className="space-y-3 text-sm">
-              {['Inicio', 'Nosotros', 'Servicios', 'Noticias', 'Clases', 'Contacto'].map((item, index) => (
+              {['Inicio', 'Nosotros', 'Servicios', 'Noticias', 'Contacto'].map((item, index) => (
                 <li key={index}>
                   <a 
-                    href={`#${item === 'Inicio' ? 'home' : item === 'Nosotros' ? 'about' : item === 'Servicios' ? 'services' : item === 'Noticias' ? 'news' : item === 'Clases' ? 'classes' : 'contact'}`} 
+                    href={`#${item === 'Inicio' ? 'home' : item === 'Nosotros' ? 'about' : item === 'Servicios' ? 'services' : item === 'Noticias' ? 'news' : 'contact'}`} 
                     className="text-gray-400 hover:text-white hover:pl-2 transition-all duration-300 flex items-center group"
                   >
                     <span className="text-cyan-500 mr-2 text-xs group-hover:mr-3 transition-all">❯</span> 

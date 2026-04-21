@@ -243,26 +243,30 @@ function HealthProfilesCoach({ refreshTrigger }) {
   });
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-blue-400 mb-4">
-        Fichas Médicas de Clientes
-      </h1>
+    <div className="w-full animate-fade-in">
+      <div className="bg-gray-800 p-6 rounded-xl shadow-xl border-t-4 border-blue-500 text-gray-100 font-sans max-w-[1400px] mx-auto">
+        <header className="mb-6 border-b border-gray-700 pb-5">
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-sky-300 to-blue-500">
+            Fichas Medicas de Clientes
+          </h1>
+          <p className="text-slate-400 font-medium mt-1.5">Consulta rapida del historial medico de tus clientes asignados</p>
+        </header>
 
-      <div className="flex gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Buscar cliente por nombre..."
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none w-full sm:w-auto"
-        />
-      </div>
+        <div className="flex gap-3 mb-4">
+          <input
+            type="text"
+            placeholder="Buscar cliente por nombre..."
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            className="w-full md:w-[320px] bg-slate-950 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 outline-none"
+          />
+        </div>
 
-      {loading && <p className="text-slate-400 italic">Consultando expedientes...</p>}
-      {error && <p className="text-red-400 mb-3 bg-red-900/20 p-3 rounded-lg border border-red-800">{error}</p>}
-      {!loading && filtered.length === 0 && <p className="text-slate-500">No se encontraron registros.</p>}
+        {loading && <p className="text-slate-400 italic">Consultando expedientes...</p>}
+        {error && <p className="text-red-400 mb-3 bg-red-900/20 p-3 rounded-lg border border-red-800">{error}</p>}
+        {!loading && filtered.length === 0 && <p className="text-slate-500">No se encontraron registros.</p>}
 
-      <div className="space-y-2">
+        <div className="space-y-2">
         {filtered.map(p => {
           // Lógica de fecha igual a la vista de Admin
           const fecha = p.updatedAt?.toDate?.() || p.createdAt?.toDate?.() || new Date();
@@ -275,7 +279,7 @@ function HealthProfilesCoach({ refreshTrigger }) {
           });
 
           return (
-            <div key={p.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-slate-800 transition-colors">
+            <div key={p.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-blue-500/50 hover:bg-slate-800 transition-colors">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-white font-semibold">{p.memberName || 'Sin nombre'}</p>
@@ -296,13 +300,14 @@ function HealthProfilesCoach({ refreshTrigger }) {
               </div>
               <button
                 onClick={() => setSelected(p)}
-                className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-purple-900/20"
+                className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/20"
               >
                 Ver Ficha
               </button>
             </div>
           );
         })}
+        </div>
       </div>
 
       {selected && (
@@ -353,7 +358,7 @@ function HealthProfilesCoach({ refreshTrigger }) {
 
               <div>
                 <p className="text-slate-400 text-xs mb-2">Notas del Cliente</p>
-                <div className="bg-purple-950/30 border border-purple-800/40 rounded-lg p-3 text-purple-100 whitespace-pre-wrap min-h-20">
+                <div className="bg-blue-950/30 border border-blue-800/40 rounded-lg p-3 text-blue-100 whitespace-pre-wrap min-h-20">
                   {selected.additional_info || 'Sin observaciones adicionales.'}
                 </div>
               </div>
