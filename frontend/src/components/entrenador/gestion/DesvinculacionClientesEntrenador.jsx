@@ -79,7 +79,7 @@ function DesvinculacionClientesEntrenador() {
 
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-xl mt-6 border-t-4 border-teal-500 text-gray-100 font-sans">
-      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-teal-400 to-green-400">Desvinculación y Pagos</h2>
+      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-linear-to-br from-teal-400 to-green-400">Pagos</h2>
 
       <FiltrosDesvinculacion
         terminoBusqueda={terminoBusqueda}
@@ -92,7 +92,6 @@ function DesvinculacionClientesEntrenador() {
         clientes={clientesFiltrados}
         cargando={cargando}
         onArchivar={alternarArchivado}
-        onEliminar={eliminarLogico}
       />
     </div>
   );

@@ -53,7 +53,6 @@ const CitasNutricion = () => {
         );
     }
 
-    // Filtro de citas para mostrar
     const citasProcesadas = appointments.map((cita) => {
         const ahora = new Date();
         const fechaCita = new Date(`${cita.fecha}T${cita.horaFin || '23:59'}:00`);
@@ -77,41 +76,46 @@ const CitasNutricion = () => {
     if (filtroActivo === 'canceladas') citasMostrar = citasCanceladas;
 
     return (
-        <div className="w-full max-w-3xl mx-auto animate-fade-in">
-            <div className="mb-6">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-400">
-                    Mis Citas de Nutrición
-                </h2>
-                <p className="text-slate-400 mt-2">
-                    Gestiona tus próximas valoraciones y revisa tu historial.
-                </p>
+        <div className="w-full max-w-3xl mx-auto animate-fade-in space-y-6">
+            
+  
+            <div className="relative bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden p-6 md:p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-400 via-green-400 to-lime-400"></div>
+                
+                <div className="mb-6">
+                    <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-400">
+                        Mis Citas de Nutrición
+                    </h2>
+                    <p className="text-slate-400 mt-2">
+                        Gestiona tus próximas valoraciones y revisa tu historial.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+                    <button 
+                        onClick={() => setFiltroActivo('activas')}
+                        className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'activas' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50 border border-transparent'}`}
+                    >
+                        Próximas ({citasActivas.length})
+                    </button>
+                    <button 
+                        onClick={() => setFiltroActivo('completadas')}
+                        className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'completadas' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50 border border-transparent'}`}
+                    >
+                        Historial ({citasCompletadas.length})
+                    </button>
+                    <button 
+                        onClick={() => setFiltroActivo('canceladas')}
+                        className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'canceladas' ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50 border border-transparent'}`}
+                    >
+                        Canceladas ({citasCanceladas.length})
+                    </button>
+                </div>
             </div>
 
-            {/* MENÚ DE PESTAÑAS */}
-            <div className="flex flex-wrap gap-2 mb-6 bg-slate-900 p-1.5 rounded-xl border border-slate-700">
-                <button 
-                    onClick={() => setFiltroActivo('activas')}
-                    className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'activas' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'}`}
-                >
-                    Próximas ({citasActivas.length})
-                </button>
-                <button 
-                    onClick={() => setFiltroActivo('completadas')}
-                    className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'completadas' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'}`}
-                >
-                    Historial ({citasCompletadas.length})
-                </button>
-                <button 
-                    onClick={() => setFiltroActivo('canceladas')}
-                    className={`flex-1 min-w-[100px] py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${filtroActivo === 'canceladas' ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'}`}
-                >
-                    Canceladas ({citasCanceladas.length})
-                </button>
-            </div>
-
-            {/* LISTA DE CITAS FILTRADAS */}
+            {/* LISTA DE CITAS  */}
             {citasMostrar.length === 0 ? (
-                <div className="bg-slate-800 rounded-xl p-10 text-center border border-slate-700 animate-fade-in">
+                <div className="bg-slate-800/80 rounded-2xl p-10 text-center border border-slate-700 animate-fade-in shadow-lg">
                     <ListFilter size={48} className="text-slate-500 mx-auto mb-4 opacity-50" />
                     <h3 className="text-xl text-white font-bold">
                         {filtroActivo === 'activas' && 'No tienes citas próximas'}
@@ -132,7 +136,7 @@ const CitasNutricion = () => {
                         if (estadoVisual === 'completada') borderClass = 'border-blue-500/20 opacity-75 bg-slate-800/40';
 
                         return (
-                            <div key={cita.id} className={`bg-slate-900 rounded-xl p-6 border transition-all animate-fade-in ${borderClass}`}>
+                            <div key={cita.id} className={`bg-slate-900 rounded-2xl p-6 border transition-all animate-fade-in shadow-md ${borderClass}`}>
                                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                                     <div className="space-y-3 flex-1">
                                         <div className="flex items-center justify-between md:justify-start gap-4">
@@ -174,10 +178,10 @@ const CitasNutricion = () => {
                                     
                                     {estadoVisual === 'activa' && (
                                         <div className="flex md:flex-col gap-2 md:min-w-[140px] pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-slate-700 md:pl-4 mt-2 md:mt-0">
-                                            <button onClick={() => handleReschedule(cita)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold text-sm transition-colors border border-slate-600">
+                                            <button onClick={() => handleReschedule(cita)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold text-sm transition-colors border border-slate-600 shadow-sm">
                                                 <RefreshCw size={16} />Cambiar
                                             </button>
-                                            <button onClick={() => setCancelModal({ isOpen: true, idToCancel: cita.id })} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-900/20 hover:bg-red-600 text-red-400 font-semibold text-sm transition-all border border-red-900/50">
+                                            <button onClick={() => setCancelModal({ isOpen: true, idToCancel: cita.id })} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-900/20 hover:bg-red-600 text-red-400 font-semibold text-sm transition-all border border-red-900/50 shadow-sm">
                                                 <XCircle size={16} />Cancelar
                                             </button>
                                         </div>
