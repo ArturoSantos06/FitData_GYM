@@ -84,11 +84,11 @@ const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntreno
   };
 
   return (
-    <div className="absolute inset-0 z-100 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+    <div className="absolute inset-0 z-100 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-3 md:p-4 animate-fade-in">
       {dialog && <DialogoSistemaNutri {...dialog} />}
       
-      <div className="bg-[#1e293b] border border-cyan-500/30 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md">
-        <h3 className="text-xl font-black italic mb-6 uppercase text-white tracking-tighter">Programar Entrenamiento</h3>
+      <div className="bg-[#1e293b] border border-cyan-500/30 p-5 md:p-8 rounded-4xl md:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto overflow-x-hidden">
+        <h3 className="text-lg md:text-xl font-black italic mb-6 uppercase text-white tracking-tighter">Programar Entrenamiento</h3>
         
         <div className="space-y-5">
             <div className="flex items-center gap-3 bg-[#0f172a] p-4 rounded-2xl border border-slate-800">
@@ -105,25 +105,25 @@ const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntreno
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden">
+              <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
                     <Clock size={14} className="absolute left-4 top-4 text-cyan-400" />
                     <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:border-cyan-500 focus:ring-cyan-500 transition-all" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:ring-cyan-500 transition-all [appearance:textfield]" />
                 </div>
-                <div className="relative">
+              <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
                     <Clock size={14} className="absolute left-4 top-4 text-blue-400" />
                     <input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500 transition-all" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:ring-blue-500 transition-all [appearance:textfield]" />
                 </div>
             </div>
         </div>
 
-        <div className="flex gap-3 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
           <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-transparent border border-slate-600 text-slate-400 font-black text-[10px] uppercase hover:bg-slate-800 hover:text-white transition-all">
             Cancelar
           </button>
-          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40 transition-all">
+          <button onClick={handleSave} className="py-4 rounded-2xl bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40 transition-all">
             Confirmar Plan
           </button>
         </div>

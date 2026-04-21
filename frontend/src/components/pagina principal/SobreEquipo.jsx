@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function AboutTeam() {
   const navigate = useNavigate();
+  const [stackVersion, setStackVersion] = useState('actual');
 
   const teamMembers = [
     { name: 'Arturo Santos', role: 'Full Stack Developer', avatar: 'AS', image: 'ArturoSantos.png' },
@@ -11,7 +12,7 @@ function AboutTeam() {
     { name: 'Agustín Hernández', role: 'Full Stack Developer', avatar: 'AH', image: 'Agustin1.jpeg' }
   ];
   
-  const technologies = {
+  const legacyTechnologies = {
     frontend: {
       title: 'Frontend',
       icon: '💻',
@@ -134,6 +135,115 @@ function AboutTeam() {
     }
   };
 
+  const currentTechnologies = {
+    frontend: {
+      title: 'Frontend',
+      icon: '💻',
+      items: [
+        { name: 'JavaScript', description: 'Lenguaje base para la capa de interfaz y lógica de cliente.' },
+        { name: 'React', description: 'Construcción de interfaces modulares para cliente, entrenador y nutriólogo.' },
+        { name: 'React Router', description: 'Navegación por rutas y control de vistas protegidas por rol.' },
+        { name: 'Vite', description: 'Entorno de desarrollo rápido y build optimizado para producción.' },
+        { name: 'Tailwind CSS', description: 'Sistema de estilos utilitario para interfaces responsivas.' }
+      ],
+      concepts: [
+        'Estado local y global por módulo',
+        'Componentes reutilizables por dominio (cliente, entrenador, nutriólogo)',
+        'Renderizado condicional por permisos',
+        'Persistencia de contexto con LocalStorage',
+        'Eventos y formularios controlados',
+        'Consumo asíncrono de servicios Firebase',
+        'UX responsive para escritorio y móvil'
+      ]
+    },
+    backend: {
+      title: 'Backend y Servicios',
+      icon: '🛠️',
+      items: [
+        { name: 'Firebase Authentication', description: 'Autenticación principal para usuarios con control por sesión.' },
+        { name: 'Cloud Firestore', description: 'Base de datos principal en tiempo real para perfiles, citas, notas y operaciones.' },
+        { name: 'Firebase Storage', description: 'Almacenamiento de archivos como imágenes de perfil y recursos multimedia.' },
+        { name: 'Firebase Cloud Functions (Node.js)', description: 'Lógica serverless para automatizaciones y procesos de backend.' }
+      ],
+      concepts: [
+        'Arquitectura híbrida (Firebase + legado)',
+        'Serverless para tareas desacopladas',
+        'Sincronización de datos por colecciones',
+        'Reglas de acceso por documento',
+        'Migración progresiva por módulos'
+      ]
+    },
+    database: {
+      title: 'Base de Datos',
+      icon: '💾',
+      local: [
+        { name: 'Firebase Emulator Suite', description: 'Pruebas locales de Auth, Firestore y Functions durante desarrollo.' }
+      ],
+      cloud: [
+        { name: 'Cloud Firestore', description: 'Base NoSQL administrada para datos operativos del sistema.' },
+        { name: 'Firebase Storage', description: 'Almacenamiento en la nube para assets y archivos de usuarios.' }
+      ],
+      concepts: [
+        'Colecciones y documentos',
+        'Consultas indexadas en Firestore',
+        'Estructura por dominios de negocio',
+        'Consistencia eventual y lectura en tiempo real',
+        'Reglas de seguridad por rol y recurso'
+      ]
+    },
+    libraries: {
+      title: 'Bibliotecas y Dependencias',
+      icon: '📦',
+      items: [
+        { name: 'Firebase SDK', description: 'Integración de Authentication, Firestore, Storage y utilidades en frontend.' },
+        { name: 'Lucide React', description: 'Iconografía consistente en paneles y navegación.' },
+        { name: 'ESLint', description: 'Validación de calidad y estandarización de código.' },
+        { name: 'FormSubmit', description: 'Procesamiento del formulario de contacto público.' },
+        { name: 'Node.js (Functions)', description: 'Runtime para funciones serverless en Firebase.' }
+      ]
+    },
+    apis: {
+      title: 'APIs y Servicios Externos',
+      icon: '🔌',
+      items: [
+        { name: 'Firebase Auth API', description: 'Registro, login y validación de identidad.' },
+        { name: 'Firestore API', description: 'Lectura y escritura de datos de la aplicación.' },
+        { name: 'Firebase Storage API', description: 'Gestión de archivos y recursos multimedia.' },
+        { name: 'Google Maps Embed', description: 'Ubicación pública del gimnasio en la landing page.' }
+      ]
+    },
+    security: {
+      title: 'Autenticación y Seguridad',
+      icon: '🔐',
+      items: [
+        { name: 'Firebase Auth Session Control', description: 'Control de sesión del usuario autenticado en cada portal.' },
+        { name: 'Firestore Security Rules', description: 'Restricciones de lectura y escritura por rol y propiedad de datos.' },
+        { name: 'Storage Security Rules', description: 'Protección de archivos según autenticación y permisos.' },
+        { name: 'Role-based UI Guard', description: 'Validación de vistas por perfil: admin, cliente, entrenador y nutriólogo.' },
+        { name: 'LocalStorage Sanitization', description: 'Limpieza de datos de sesión al cerrar sesión o expirar contexto.' }
+      ],
+      concepts: [
+        'Autenticación centralizada',
+        'Autorización declarativa en reglas',
+        'Control de acceso por rol',
+        'Rutas protegidas en frontend',
+        'Manejo seguro de sesiones'
+      ]
+    },
+    deployment: {
+      title: 'Despliegue y DevOps',
+      icon: '🚀',
+      items: [
+        { name: 'Firebase Hosting', description: 'Publicación de frontend y configuración de rutas.' },
+        { name: 'Firebase Functions Deploy', description: 'Despliegue de lógica serverless para procesos backend.' },
+        { name: 'Firebase Console (App)', description: 'Administración centralizada de la app, entornos y servicios en producción.' },
+        { name: 'Git & GitHub', description: 'Versionado, colaboración y trazabilidad de cambios.' }
+      ]
+    }
+  };
+
+  const technologies = stackVersion === 'actual' ? currentTechnologies : legacyTechnologies;
+
   return (
     <div className="min-h-screen bg-black text-white">
       
@@ -201,6 +311,31 @@ function AboutTeam() {
               Stack <span className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-600">Tecnológico</span>
             </h2>
             <div className="w-20 h-1 bg-cyan-500 mx-auto rounded-full shadow-[0_0_10px_#22d3ee]"></div>
+            <div className="mt-8 inline-flex items-center bg-gray-900 border border-gray-800 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => setStackVersion('actual')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  stackVersion === 'actual'
+                    ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.35)]'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                Stack Actual (Firebase)
+              </button>
+              <button
+                onClick={() => setStackVersion('anterior')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  stackVersion === 'anterior'
+                    ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                Stack Anterior
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mt-4 max-w-3xl mx-auto">
+              Consulta la arquitectura vigente basada en Firebase o revisa la versión histórica utilizada en etapas anteriores del proyecto.
+            </p>
           </div>
 
           {/* Frontend */}
@@ -249,7 +384,7 @@ function AboutTeam() {
             </div>
 
             <div className="bg-gray-900/50 border border-cyan-500/30 rounded-lg p-8">
-              <h4 className="text-xl font-bold text-cyan-400 mb-6">Conceptos de Django</h4>
+              <h4 className="text-xl font-bold text-cyan-400 mb-6">{stackVersion === 'actual' ? 'Conceptos de Arquitectura Actual' : 'Conceptos de Django'}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {technologies.backend.concepts.map((concept, index) => (
                   <div key={index} className="flex items-start gap-3">
@@ -392,7 +527,7 @@ function AboutTeam() {
             Proyecto desarrollado como parte del programa académico
           </p>
           <p className="text-cyan-400 font-bold text-lg">
-            FitData GYM © 2025
+            FitData GYM © 2026
           </p>
         </div>
 

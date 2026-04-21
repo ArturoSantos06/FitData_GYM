@@ -23,6 +23,7 @@
     }
   ],
   "hosting": {
+    "site": "fitdatagym-live",
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",

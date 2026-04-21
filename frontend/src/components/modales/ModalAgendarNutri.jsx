@@ -84,12 +84,12 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
   };
 
   return (
-    <div className="absolute inset-0 z-100 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-100 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-3 md:p-4">
       {/* El Dialogo vive aquí dentro para estar en el nivel más alto de este modal */}
       {dialog && <DialogoSistemaNutri {...dialog} />}
 
-      <div className="bg-[#1e293b] border border-cyan-500/30 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md">
-        <h3 className="text-xl font-black italic mb-6 uppercase text-white">Finalizar Registro</h3>
+      <div className="bg-[#1e293b] border border-cyan-500/30 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto overflow-x-hidden">
+        <h3 className="text-lg md:text-xl font-black italic mb-6 uppercase text-white">Finalizar Registro</h3>
 
         <div className="space-y-5">
           <div className="flex items-center gap-3 bg-[#0f172a] p-4 rounded-2xl border border-slate-800">
@@ -103,25 +103,25 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
             value={motivo} onChange={(e) => setMotivo(e.target.value)}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden">
+            <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
               <Clock size={14} className="absolute left-4 top-4 text-cyan-400" />
               <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)}
-                className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none [appearance:textfield]" />
             </div>
-            <div className="relative">
+            <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
               <Clock size={14} className="absolute left-4 top-4 text-purple-400" />
               <input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)}
-                className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white font-black outline-none" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none [appearance:textfield]" />
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
           <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-transparent border border-red-500/50 text-red-500 font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all">
             Cancelar
           </button>
-          <button onClick={handleSave} className="flex-[1.5] py-4 rounded-2xl bg-linear-to-r from-cyan-600 to-indigo-600 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40">
+          <button onClick={handleSave} className="py-4 rounded-2xl bg-linear-to-r from-cyan-600 to-indigo-600 text-white font-black text-[10px] uppercase shadow-lg shadow-cyan-900/40">
             Confirmar Cita
           </button>
         </div>

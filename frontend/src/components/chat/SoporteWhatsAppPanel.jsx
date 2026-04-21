@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench, User, Stethoscope, ChevronRight } from 'lucide-react';
+import { Bot, Dumbbell, Loader2, MessageCircle, Send, Sparkles, Wrench, User, Stethoscope, ChevronRight, ChevronLeft } from 'lucide-react';
 
 import VentanaChat from './VentanaChat';
 import CentroNotificaciones from './CentroNotificaciones';
@@ -68,24 +68,30 @@ function SoporteWhatsAppPanel({
 }) {
     return (
         <div className="w-full animate-fade-in">
-            <div className="mx-auto h-[calc(100vh-12rem)] min-h-[560px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
+            <div className="mx-auto h-[calc(100dvh-9rem)] md:h-[calc(100vh-12rem)] min-h-[520px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
 
                 {/* Barra de color superior al estilo VistaPlan */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-400 z-10" />
 
-                <div className="flex h-full flex-col md:flex-row pt-1.5">
+                <div className="flex h-full min-h-0 flex-col md:flex-row pt-1.5">
 
                     {/* Sidebar */}
-                    <aside className={`w-full border-b border-slate-700 bg-gray-800 md:w-[300px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
+                    <aside className={`w-full min-h-0 border-b border-slate-700 bg-gray-800 md:w-[300px] md:border-b-0 md:border-r flex-col ${showSidebarMobile ? 'flex' : 'hidden md:flex'}`}>
                         <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between bg-slate-900/40">
                             <div>
                                 <h2 className="text-base font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-300">Mensajes</h2>
                                 <p className="text-xs text-slate-400">Tus conversaciones</p>
                             </div>
-                            {currentUser && <CentroNotificaciones userId={currentUser.uid} />}
+                            {currentUser && <CentroNotificaciones userId={currentUser.uid} onNotificationClick={(n) => {
+                                if (n.senderId === trainerId) {
+                                    setActiveChat('entrenador');
+                                } else if (n.senderId === nutritionistId) {
+                                    setActiveChat('nutriologo');
+                                }
+                            }} />}
                         </div>
 
-                        <div className="p-3 space-y-2 overflow-y-auto flex-1">
+                        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-20 pt-3 md:pb-3">
                             {/* Botón Entrenador */}
                             {trainerId && (
                                 <button
@@ -135,7 +141,7 @@ function SoporteWhatsAppPanel({
                             {/* Botón IA */}
                             <button
                                 type="button"
-                                onClick={() => setActiveChat('ia')}
+                                onClick={() => { setActiveChat('ia'); setShowSidebarMobile(false); }}
                                 className={`w-full bg-slate-900 border rounded-xl p-4 flex items-center justify-between group transition-all duration-300 shadow-md text-left
                                     ${activeChat === 'ia'
                                         ? 'border-cyan-500/60 bg-cyan-500/5'
@@ -156,7 +162,7 @@ function SoporteWhatsAppPanel({
                             {/* Botón Soporte */}
                             <button
                                 type="button"
-                                onClick={() => setActiveChat('soporte')}
+                                onClick={() => { setActiveChat('soporte'); setShowSidebarMobile(false); }}
                                 className={`w-full bg-slate-900 border rounded-xl p-4 flex items-center justify-between group transition-all duration-300 shadow-md text-left
                                     ${activeChat === 'soporte'
                                         ? 'border-violet-500/60 bg-violet-500/5'
@@ -177,7 +183,7 @@ function SoporteWhatsAppPanel({
                             {/* Botón Mantenimiento */}
                             <button
                                 type="button"
-                                onClick={() => setActiveChat('mantenimiento')}
+                                onClick={() => { setActiveChat('mantenimiento'); setShowSidebarMobile(false); }}
                                 className={`w-full bg-slate-900 border rounded-xl p-4 flex items-center justify-between group transition-all duration-300 shadow-md text-left
                                     ${activeChat === 'mantenimiento'
                                         ? 'border-amber-500/60 bg-amber-500/5'
@@ -221,17 +227,28 @@ function SoporteWhatsAppPanel({
                     ) : (
                         <section className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
                             <header className="border-b border-slate-700 bg-slate-900/60 px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-xl ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-300' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-300' : 'bg-violet-500/20 text-violet-300'}`}>
-                                        {activeChat === 'ia' ? <Bot size={18} /> : activeChat === 'mantenimiento' ? <Wrench size={18} /> : <MessageCircle size={18} />}
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-bold ${activeChat === 'ia' ? 'text-cyan-300' : activeChat === 'mantenimiento' ? 'text-amber-300' : 'text-violet-300'}`}>
-                                            {activeChat === 'ia' ? 'Entrenador IA' : activeChat === 'mantenimiento' ? 'Reporte de Máquinas' : 'Ayuda y Soporte'}
-                                        </p>
-                                        <p className="text-xs text-slate-400">
-                                            {activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : activeChat === 'mantenimiento' ? 'Reporta maquinas dañadas con foto' : 'Preguntas frecuentes del gimnasio'}
-                                        </p>
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSidebarMobile(true)}
+                                        className="md:hidden p-2 -ml-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-full transition-colors shrink-0"
+                                        aria-label="Volver a conversaciones"
+                                    >
+                                        <ChevronLeft size={24} />
+                                    </button>
+
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`p-2 rounded-xl ${activeChat === 'ia' ? 'bg-cyan-500/20 text-cyan-300' : activeChat === 'mantenimiento' ? 'bg-amber-500/20 text-amber-300' : 'bg-violet-500/20 text-violet-300'}`}>
+                                            {activeChat === 'ia' ? <Bot size={18} /> : activeChat === 'mantenimiento' ? <Wrench size={18} /> : <MessageCircle size={18} />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={`text-sm font-bold truncate ${activeChat === 'ia' ? 'text-cyan-300' : activeChat === 'mantenimiento' ? 'text-amber-300' : 'text-violet-300'}`}>
+                                                {activeChat === 'ia' ? 'Entrenador IA' : activeChat === 'mantenimiento' ? 'Reporte de Máquinas' : 'Ayuda y Soporte'}
+                                            </p>
+                                            <p className="text-xs text-slate-400 truncate">
+                                                {activeChat === 'ia' ? 'Rutinas personalizadas en tiempo real' : activeChat === 'mantenimiento' ? 'Reporta maquinas dañadas con foto' : 'Preguntas frecuentes del gimnasio'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 

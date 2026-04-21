@@ -146,7 +146,7 @@ function Navbar({ onLogout }) {
             onClick={closeMenu}
             className={`block px-3 py-2 rounded-lg text-base font-semibold ${isActive('/admin/configuracion')}`}
           >
-            Configurar Tipos
+            Creación de Membresía
           </Link>
 
           {/* Dropdown Ventas Móvil */}

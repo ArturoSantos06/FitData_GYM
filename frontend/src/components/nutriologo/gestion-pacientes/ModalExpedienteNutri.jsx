@@ -31,21 +31,22 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1a2332] w-full max-w-5xl rounded-4xl border border-slate-700/80 flex flex-col md:flex-row h-[82vh] overflow-hidden shadow-2xl relative">
+    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-3 md:p-4">
+      <div className="bg-[#1a2332] w-full max-w-5xl h-[calc(100dvh-1.5rem)] md:h-[82vh] rounded-3xl md:rounded-4xl border border-slate-700/80 flex flex-col md:flex-row overflow-hidden shadow-2xl relative">
         
         {/* SIDEBAR */}
-        <div className="w-full md:w-72 p-6 bg-[#101827] border-r border-slate-800/50 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="font-black text-xl tracking-tight italic text-white uppercase">FIT<span className="text-cyan-400">DATA</span></h2>
-            <button onClick={onClose} className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+        <div className="w-full md:w-72 p-4 md:p-6 bg-[#101827] border-b md:border-b-0 md:border-r border-slate-800/50 flex flex-col max-h-[34vh] md:max-h-none overflow-y-auto">
+          <div className="flex justify-between items-start mb-4 md:mb-6 gap-3">
+            <h2 className="font-black text-lg md:text-xl tracking-tight italic text-white uppercase leading-none">FIT<span className="text-cyan-400">DATA</span></h2>
+            <button onClick={onClose} className="p-2.5 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors shrink-0"><X size={20} /></button>
           </div>
 
-          <div className="flex flex-col items-center text-center mb-6 p-5 bg-slate-900/50 rounded-3xl border border-slate-800 shadow-inner">
-             <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white mb-3 shadow-xl" style={{ backgroundColor: miembro.displayColor }}>
-               <User size={30}/>
+          <div className="flex flex-col items-center text-center mb-4 md:mb-6 p-4 md:p-5 bg-slate-900/50 rounded-3xl border border-slate-800 shadow-inner">
+             <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-white mb-3 shadow-xl" style={{ backgroundColor: miembro.displayColor }}>
+               <User size={24} className="md:hidden"/>
+               <User size={30} className="hidden md:block"/>
              </div>
-             <div className="text-base font-black text-white uppercase leading-tight">
+             <div className="text-sm md:text-base font-black text-white uppercase leading-tight">
                 {miembro.nombre} <br/>
                 <span className="text-cyan-400 text-xs font-bold opacity-80">{miembro.apellido}</span>
              </div>
@@ -54,7 +55,7 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
              </div>
           </div>
 
-          <div className="flex-1 flex flex-col space-y-3">
+           <div className="flex-1 flex flex-col space-y-3 min-h-[140px] md:min-h-[180px]">
              <label className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
                 <ClipboardEdit size={12} /> Notas de seguimiento
              </label>
@@ -62,12 +63,12 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
                 value={notaPrevia}
                 onChange={(e) => setNotaPrevia(e.target.value)}
                 placeholder="Escribe las notas antes de agendar..."
-                className="w-full flex-1 min-h-[220px] bg-[#0f172a] border border-slate-800 rounded-2xl p-4 text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-all resize-none shadow-inner font-medium"
+               className="w-full flex-1 min-h-[140px] md:min-h-[180px] bg-[#0f172a] border border-slate-800 rounded-2xl p-4 text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-all resize-none shadow-inner font-medium"
              />
           </div>
         </div>
 
-        <div className="flex-1 p-6 bg-[#0f172a] overflow-y-auto">
+        <div className="flex-1 p-4 md:p-6 bg-[#0f172a] overflow-y-auto min-h-0">
           <style>{`
             .fc {
               --fc-border-color: #1e293b;
@@ -148,6 +149,49 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
               font-weight: 900;
               font-size: 0.62rem;
               box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+
+            @media (max-width: 767px) {
+              .fc .fc-toolbar {
+                flex-direction: column;
+                gap: 0.6rem;
+                align-items: stretch;
+              }
+
+              .fc .fc-toolbar-chunk {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+              }
+
+              .fc .fc-toolbar-title {
+                font-size: 0.9rem !important;
+                text-align: center;
+              }
+
+              .fc .fc-button-primary {
+                padding: 0.42rem 0.68rem !important;
+                font-size: 0.53rem !important;
+              }
+
+              .fc-daygrid-day-frame {
+                min-height: 3.4rem;
+              }
+
+              .fc-daygrid-day-number {
+                padding: 0.45rem !important;
+                font-size: 0.72rem !important;
+              }
+
+              .fc-col-header-cell-cushion {
+                font-size: 0.48rem !important;
+                padding: 0.35rem 0 !important;
+              }
+
+              .fc-event {
+                padding: 2px 5px;
+                font-size: 0.56rem;
+              }
             }
           `}</style>
 
