@@ -56,7 +56,7 @@ function FormularioMacros() {
 
   return (
     <div className="mx-auto mt-4 max-w-7xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-teal-400 z-10" />
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-purple-300 via-purple-500 to-blue-600 z-10" />
 
       <div className="relative z-10 p-4 md:p-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -64,7 +64,7 @@ function FormularioMacros() {
             onSubmit={handleSubmit}
             className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl"
           >
-            <h2 className="text-xl font-bold text-white">Datos del paciente</h2>
+            <h2 className="text-xl font-bold text-purple-400">Datos del paciente</h2>
             <p className="mt-1 text-sm text-slate-400">{nutritionFormulaInfo.formula}</p>
 
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -168,7 +168,7 @@ function FormularioMacros() {
 
             <button
               type="submit"
-              className="mt-6 w-full rounded-xl bg-cyan-600 py-3 font-bold text-white transition-colors hover:bg-cyan-500"
+              className="mt-6 w-full rounded-xl bg-purple-500 py-3 font-bold text-white transition-colors hover:bg-blue-500"
             >
               Ejecutar algoritmo de macronutrientes
             </button>

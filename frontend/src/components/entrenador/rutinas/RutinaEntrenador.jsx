@@ -93,7 +93,7 @@ function RutinaEntrenador() {
             Volver
           </button>
           <div className="text-right">
-            <h1 className="text-2xl md:text-3xl font-bold">Rutina del Alumno</h1>
+            <h1 className="text-2xl text-emerald-400 font-bold">Rutina del Alumno</h1>
             <p className="text-slate-400 text-sm">{memberName}</p>
           </div>
         </div>

@@ -242,7 +242,7 @@ function BitacoraEntrenador({ embedded = false }) {
         
         <header className="mb-8 border-b border-gray-700 pb-5">
           <div>
-            <h1 className="text-3xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent pb-1.5 flex items-center gap-3">
+            <h1 className="text-2xl font-bold bg-linear-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent pb-1.5 flex items-center gap-3">
               📝 Bitácora de Notas
             </h1>
             <p className="text-slate-400 font-medium mt-1.5">Sistema de seguimiento técnico - Uso exclusivo de entrenadores</p>

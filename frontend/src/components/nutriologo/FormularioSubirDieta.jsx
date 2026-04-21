@@ -54,7 +54,7 @@ export default function FormularioSubirDieta({
       <button
         type="submit"
         disabled={saving || loading}
-        className="mt-5 w-full rounded-2xl bg-linear-to-r from-cyan-500 to-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-5 w-full rounded-2xl bg-linear-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-bold text-white transition hover:from-purple-600 hover:to-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? 'Guardando archivo...' : 'Guardar en expediente'}
       </button>

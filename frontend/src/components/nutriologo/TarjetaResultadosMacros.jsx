@@ -14,7 +14,7 @@ function TarjetaResultadosMacros({ result }) {
   if (!result) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6">
-        <h3 className="text-lg font-bold text-white">Resultados del paciente</h3>
+        <h3 className="text-lg font-bold text-purple-300">Resultados del paciente</h3>
         <p className="mt-2 text-sm text-slate-400">
           Completa los datos y ejecuta el calculo para obtener los requerimientos exactos de carbohidratos, proteina y grasas.
         </p>

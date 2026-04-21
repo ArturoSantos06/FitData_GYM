@@ -36,7 +36,7 @@ export default function NutriFinancialDashboard() {
 
   return (
     <div className="mx-auto mt-4 max-w-7xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-teal-400 z-10" />
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-600 z-10" />
 
       <div className="relative z-10 p-4 md:p-6 space-y-5">
         {error && (
