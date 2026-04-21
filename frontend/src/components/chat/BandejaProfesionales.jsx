@@ -137,23 +137,27 @@ const MessagesBody = ({ role }) => {
     };
 
     return (
-        <div className="flex h-[calc(100vh-80px)] w-full overflow-hidden bg-[#0b141a] text-slate-100 font-sans md:h-[calc(100vh-80px)] rounded-3xl border border-slate-700 shadow-2xl relative z-10 mx-auto mt-6" style={{ maxWidth: '1400px' }}>
+        <div className="flex w-full overflow-hidden text-slate-100 font-sans rounded-2xl border border-slate-700 shadow-2xl relative z-10 mx-auto mt-4 bg-gray-800" style={{ maxWidth: '1400px', height: 'calc(100vh - 120px)', minHeight: '500px' }}>
 
-            <aside className={`flex flex-col border-r border-slate-700 bg-[#111b21] md:w-[350px] lg:w-[400px] shrink-0 ${!showSidebarMobile ? 'hidden md:flex' : 'w-full'}`}>
-                <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-700 bg-[#202c33] px-4 shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-600 shadow-lg text-white">
-                            <Users size={20} />
-                        </div>
-                        <h2 className="font-bold text-slate-100 uppercase tracking-wider text-sm flex gap-2 items-center">
+            {/* Barra de color superior al estilo VistaPlan */}
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-teal-400 z-20" />
+
+            <aside className={`flex flex-col border-r border-slate-700 bg-gray-800 md:w-[320px] lg:w-[360px] shrink-0 mt-1.5 ${!showSidebarMobile ? 'hidden md:flex' : 'w-full'}`}>
+                <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900/40 px-4 shadow-sm">
+                    <div>
+                        <h2 className="font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-300 uppercase tracking-wider text-sm">
                             Mis Clientes
                         </h2>
+                        <p className="text-xs text-slate-400">Selecciona para chatear</p>
+                    </div>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                        <Users size={18} />
                     </div>
                 </header>
 
-                <div className="border-b border-slate-700 bg-[#111b21] p-3">
-                    <div className="relative flex items-center h-10 w-full overflow-hidden rounded-lg bg-[#202c33] px-3 focus-within:ring-1 focus-within:ring-cyan-500 transition-all border border-slate-600">
-                        <Search size={18} className="text-slate-400" />
+                <div className="border-b border-slate-700 bg-slate-900/20 p-3">
+                    <div className="relative flex items-center h-10 w-full overflow-hidden rounded-xl bg-slate-900 px-3 focus-within:ring-1 focus-within:ring-cyan-500 transition-all border border-slate-700">
+                        <Search size={16} className="text-slate-400" />
                         <input
                             type="text"
                             placeholder="Buscar cliente..."
@@ -164,7 +168,7 @@ const MessagesBody = ({ role }) => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide py-2">
+                <div className="flex-1 overflow-y-auto scrollbar-hide p-2 space-y-2">
                     {fetchingList ? (
                         <div className="mt-10 flex flex-col items-center justify-center gap-3 text-slate-400">
                             <Loader2 size={24} className="animate-spin text-cyan-500" />
@@ -183,24 +187,24 @@ const MessagesBody = ({ role }) => {
                                 <button
                                     key={client.clientId}
                                     onClick={() => handleSelectClient(client)}
-                                    className={`flex w-full items-center gap-4 px-4 py-3 transition-colors hover:bg-[#202c33] text-left border-b border-slate-800/50 ${isSelected ? 'bg-[#2a3942]' : ''}`}
+                                    className={`w-full bg-slate-900 border rounded-xl p-4 flex items-center justify-between group transition-all duration-300 shadow-md text-left
+                                        ${isSelected
+                                            ? 'border-cyan-500/60 bg-cyan-500/5'
+                                            : 'border-slate-700 hover:border-cyan-500/40 hover:bg-slate-800'}`}
                                 >
-                                    <div className="relative shrink-0">
+                                    <div className="flex items-center gap-4 min-w-0">
                                         <div
-                                            className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-lg shadow-sm"
+                                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white font-bold text-base shadow-sm"
                                             style={{ backgroundColor: client.color }}
                                         >
                                             {init}
                                         </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0 border-b-0">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-semibold text-slate-100 truncate pr-2 text-base">{client.name}</span>
-                                        </div>
-                                        <div className="mt-0.5 text-xs text-slate-400 truncate">
-                                            Toca para ver el chat
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-slate-100 truncate text-sm">{client.name}</p>
+                                            <p className="mt-0.5 text-xs text-slate-400">Toca para ver el chat</p>
                                         </div>
                                     </div>
+                                    <ChevronLeft size={18} className="text-slate-500 group-hover:text-cyan-400 transition-colors rotate-180 shrink-0 ml-2" />
                                 </button>
                             );
                         })
@@ -209,23 +213,23 @@ const MessagesBody = ({ role }) => {
             </aside>
 
             {!selectedClient ? (
-                <div className={`min-h-0 flex-1 flex-col items-center justify-center bg-[#222e35] ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="text-center align-middle justify-center flex flex-col items-center animate-fade-in">
-                        <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center shadow-inner mb-6">
-                            <MessageCircle size={40} className="text-slate-400" />
+                <div className={`min-h-0 flex-1 flex-col items-center justify-center bg-slate-900/30 mt-1.5 ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
+                    <div className="text-center flex flex-col items-center animate-fade-in">
+                        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center shadow-inner mb-6 border border-slate-700">
+                            <MessageCircle size={36} className="text-slate-400" />
                         </div>
-                        <h1 className="mt-2 text-2xl font-light text-slate-200 uppercase tracking-widest px-4">
+                        <h1 className="mt-2 text-xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-300 uppercase tracking-widest px-4">
                             FitData Messages
                         </h1>
-                        <p className="mt-4 text-sm text-slate-400 max-w-[300px] leading-relaxed">
-                            Selecciona un cliente temporal en tu lista vinculada de la izquierda para comenzar a enviar planes, rutinas o platicar.
+                        <p className="mt-3 text-sm text-slate-400 max-w-[280px] leading-relaxed">
+                            Selecciona un cliente de la lista para comenzar a enviar planes, rutinas o platicar.
                         </p>
                     </div>
                 </div>
             ) : (
                 <div className={`flex min-h-0 flex-1 flex-col ${showSidebarMobile ? 'hidden md:flex' : 'flex'}`}>
                     {loading ? (
-                        <div className="flex-1 flex items-center justify-center bg-[#0b141a]">
+                        <div className="flex-1 flex items-center justify-center bg-slate-900/30">
                             <Loader2 size={30} className="animate-spin text-cyan-500" />
                         </div>
                     ) : (

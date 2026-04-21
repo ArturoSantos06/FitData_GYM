@@ -9,6 +9,7 @@ import {
   getSales,
   getCurrentUser,
 } from '../../../firebase';
+import { calcularPrecioPuntos } from '../../../utils/pointsLogic';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -37,6 +38,7 @@ function Tienda() {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
   const [activeSection, setActiveSection] = useState('productos');
+  const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -51,10 +53,13 @@ function Tienda() {
           }));
           setProducts(mapped);
         }
-        
+
         const currentUser = getCurrentUser();
         if (currentUser) {
           const userData = await resolveUserFromAuth(currentUser);
+
+          const pointsSource = userData?.gymPoints ?? 0;
+          setUserPoints(Number(pointsSource));
 
           const idCandidates = Array.from(
             new Set([
@@ -114,7 +119,7 @@ function Tienda() {
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, []);
 
@@ -136,11 +141,10 @@ function Tienda() {
             key={tab.id}
             type="button"
             onClick={() => setActiveSection(tab.id)}
-            className={`rounded-full text-sm font-semibold py-2 transition-colors ${
-              activeSection === tab.id
+            className={`rounded-full text-sm font-semibold py-2 transition-colors ${activeSection === tab.id
                 ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -151,7 +155,7 @@ function Tienda() {
         {activeSection === 'productos' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {products.map((prod, idx) => (
-              <TarjetaProducto key={idx} {...prod} />
+              <TarjetaProducto key={idx} {...prod} userPoints={userPoints} />
             ))}
             {products.length === 0 && (
               <div className="col-span-full text-slate-400">No hay productos disponibles.</div>
@@ -178,18 +182,32 @@ function Tienda() {
                 const fechaObj = s.createdAt?.toDate?.() || new Date(s.createdAt || 0);
                 const fechaStr = fechaObj.toLocaleDateString('es-MX');
                 const horaStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const isPuntos = String(s.metodo_pago || '').toUpperCase() === 'PUNTOS';
                 return items.map((it, idx) => (
                   <div key={`${i}-${idx}`} className="py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-mono bg-slate-800 text-cyan-400 px-2 py-0.5 rounded border border-slate-700">{s.folio || 'FOLIO'}</span>
                         <span className="text-slate-200 font-medium">{it.nombre || 'Producto'}</span>
+                        {isPuntos && (
+                          <span className="inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            ⭐ GYM-Points
+                          </span>
+                        )}
                       </div>
                       <span className="text-slate-500 text-[11px]">{fechaStr} • {horaStr}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 justify-end">
                       <span className="text-xs bg-slate-700 text-white px-2 py-1 rounded">x{it.cantidad || 1}</span>
-                      <span className="text-emerald-400 font-semibold">${((it.cantidad || 1) * (it.precio || 0)).toFixed(2)}</span>
+                      {isPuntos ? (
+                        <span className="text-yellow-400 font-semibold">
+                          {Math.round((it.cantidad || 1) * (it.precio || 0) * 2)} pts
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 font-semibold">
+                          ${((it.cantidad || 1) * (it.precio || 0)).toFixed(2)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ));

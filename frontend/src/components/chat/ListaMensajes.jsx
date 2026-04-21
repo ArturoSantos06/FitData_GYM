@@ -72,12 +72,12 @@ function ListaMensajes({ messages, currentUserId }) {
         return (
           <div key={msg.id} className={`flex ${isSelf ? 'justify-end' : 'justify-start'} ${isSameSenderAsPrev ? '-mt-3' : ''}`}>
             <div className={`group relative max-w-[85%] md:max-w-[70%] px-3.5 py-2 z-10 transition-all ${isSelf
-              ? `bg-emerald-700/80 text-emerald-50 shadow-[0_2px_10px_-4px_rgba(16,185,129,0.3)] border border-emerald-600/40 ${isSameSenderAsPrev ? 'rounded-xl rounded-tr-sm' : 'rounded-2xl rounded-br-sm'}`
+              ? `bg-blue-700/80 text-blue-50 shadow-[0_2px_10px_-4px_rgba(59,130,246,0.3)] border border-blue-600/40 ${isSameSenderAsPrev ? 'rounded-xl rounded-tr-sm' : 'rounded-2xl rounded-br-sm'}`
               : `bg-[#1f2c33] text-slate-200 shadow-sm border border-slate-700/60 ${isSameSenderAsPrev ? 'rounded-xl rounded-tl-sm' : 'rounded-2xl rounded-bl-sm'}`
               }`}>
               {renderContent(msg)}
 
-              <div className={`mt-1.5 flex items-center justify-end gap-1.5 text-[10px] font-medium tracking-wide ${isSelf ? 'text-emerald-100/70' : 'text-slate-400/80'}`}>
+              <div className={`mt-1.5 flex items-center justify-end gap-1.5 text-[10px] font-medium tracking-wide ${isSelf ? 'text-blue-100/70' : 'text-slate-400/80'}`}>
                 <span>{formatTime(msg.timestamp)}</span>
                 {isSelf && (
                   msg.read
