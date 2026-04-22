@@ -226,9 +226,11 @@ const ListaEntrenadores = () => {
 
     setAssigning(true);
     try {
+      const trainerIdToUse = trainerToPay.authUid || trainerToPay.id;
+
       const paymentResult = await createTrainerServiceSale({
         clientId: currentClientId,
-        trainerId: trainerToPay.id,
+        trainerId: trainerIdToUse,
         trainerName: trainerToPay.displayName || `${trainerToPay.firstName || ''} ${trainerToPay.lastName || ''}`.trim() || trainerToPay.nombre || 'Entrenador',
         trainerEmail: trainerToPay.email,
         amount: amountValue,
@@ -250,7 +252,7 @@ const ListaEntrenadores = () => {
           message: 'Tu pago en efectivo fue registrado. Acude a recepción para validarlo y activar la asignación del entrenador.',
         });
       } else {
-        const assignmentResult = await assignTrainerToClient(currentClientId, trainerToPay.id, { serviceType: normalizedServiceType });
+        const assignmentResult = await assignTrainerToClient(currentClientId, trainerIdToUse, { serviceType: normalizedServiceType });
         if (!assignmentResult.success) {
           throw new Error(assignmentResult.error || 'No se pudo asignar el entrenador.');
         }
@@ -454,7 +456,7 @@ const ListaEntrenadores = () => {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {assignedTrainerId === e.id ? (
+                  {(assignedTrainerId === e.id || assignedTrainerId === e.authUid) ? (
                     // Estrellas interactivas para calificar
                     <div className="flex items-center">
                       {[1, 2, 3, 4, 5].map((star) => {
@@ -503,15 +505,15 @@ const ListaEntrenadores = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 text-slate-400 text-xs">
+                <div className="flex items-center gap-2 text-slate-400 text-xs mt-4">
                   <Award className="w-4 h-4" />
                   <span>Certificado</span>
                 </div>
 
                 <button
                   onClick={() => handleSelectEntrenador(e)}
-                  disabled={assigning || assignedTrainerId === e.id}
-                  className={`mt-auto w-full py-2 px-4 rounded-lg font-semibold transition-all ${assignedTrainerId === e.id
+                  disabled={assigning || assignedTrainerId === e.id || assignedTrainerId === e.authUid}
+                  className={`mt-auto w-full py-2 px-4 rounded-lg font-semibold transition-all ${(assignedTrainerId === e.id || assignedTrainerId === e.authUid)
                       ? 'bg-green-600 hover:bg-green-500 text-white cursor-not-allowed'
                       : selectedEntrenador?.id === e.id
                         ? 'bg-blue-600 hover:bg-blue-500 text-white'
@@ -523,7 +525,7 @@ const ListaEntrenadores = () => {
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
                       Asignando...
                     </>
-                  ) : assignedTrainerId === e.id ? (
+                  ) : (assignedTrainerId === e.id || assignedTrainerId === e.authUid) ? (
                     <>
                       <CheckCircle className="w-4 h-4 inline mr-2" />
                       Asignado

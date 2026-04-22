@@ -26,9 +26,15 @@ const MessagesBody = ({ role }) => {
 
         const fetchClients = async () => {
             try {
+                const userDocsSnap = await getDocs(query(collection(db, 'users'), where('authUid', '==', currentUser.uid)));
+                const validIds = [currentUser.uid];
+                userDocsSnap.forEach(d => {
+                   if (!validIds.includes(d.id)) validIds.push(d.id);
+                });
+
                 const q = query(
                     collection(db, collectionName),
-                    where(roleFieldId, "==", currentUser.uid)
+                    where(roleFieldId, "in", validIds.slice(0, 10))
                 );
 
                 const snap = await getDocs(q);
