@@ -6,6 +6,7 @@ import { Clock, Calendar as CalIcon, Activity } from 'lucide-react';
 
 const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntrenos, onClose, onSuccess }) => {
   const [enfoque, setEnfoque] = useState('');
+  const [nota, setNota] = useState(rutinaInicial || '');
   const [horaInicio, setHoraInicio] = useState('08:00');
   const [horaFin, setHoraFin] = useState('09:00');
   const [dialog, setDialog] = useState(null);
@@ -15,8 +16,12 @@ const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntreno
 
     const hIn = parseInt(horaInicio.split(':')[0]);
     const hOut = parseInt(horaFin.split(':')[0]);
-    if (hIn < 6 || hOut > 19 || hIn >= hOut) {
-        setDialog({ type: 'danger', title: 'Horario Inválido', message: 'El gimnasio opera de 06:00 a 19:00.', onConfirm: () => setDialog(null) });
+    if (hIn >= hOut) {
+        setDialog({ type: 'danger', title: 'Horario Inválido', message: 'La hora de inicio no puede ser igual o posterior a la hora de salida. Verifica que el inicio sea antes que el fin.', onConfirm: () => setDialog(null) });
+        return;
+    }
+    if (hIn < 6 || hOut > 19) {
+        setDialog({ type: 'danger', title: 'Horario Inválido', message: 'El gimnasio opera de 06:00 a 19:00. Ajusta el horario dentro de ese rango.', onConfirm: () => setDialog(null) });
         return;
     }
 
@@ -55,7 +60,7 @@ const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntreno
           fecha: fecha,
           horaInicio: horaInicio,
           horaFin: horaFin,
-          rutina: rutinaInicial || '',
+          rutina: nota,
           entrenadorId: currentUser?.uid || '',
           ownerUid: currentUser?.uid || '',
           entrenadorEmail: currentUser?.email || '',
@@ -105,17 +110,24 @@ const ModalAgendarEntrenador = ({ fecha, miembro, rutinaInicial, todosLosEntreno
                 />
             </div>
 
+            <textarea
+              placeholder="Notas de seguimiento (opcional)"
+              rows={3}
+              className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-white outline-none font-medium resize-none focus:ring-1 focus:ring-cyan-500 text-sm"
+              value={nota} onChange={(e) => setNota(e.target.value)}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden">
-              <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
-                    <Clock size={14} className="absolute left-4 top-4 text-cyan-400" />
+              <label className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden flex items-center cursor-pointer">
+                    <Clock size={14} className="absolute left-4 text-cyan-400 pointer-events-none" />
                     <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)}
-                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:ring-cyan-500 transition-all [appearance:textfield]" />
-                </div>
-              <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
-                    <Clock size={14} className="absolute left-4 top-4 text-blue-400" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none cursor-pointer" />
+                </label>
+              <label className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden flex items-center cursor-pointer">
+                    <Clock size={14} className="absolute left-4 text-blue-400 pointer-events-none" />
                     <input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)}
-                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none focus:ring-1 focus:ring-blue-500 transition-all [appearance:textfield]" />
-                </div>
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none cursor-pointer" />
+                </label>
             </div>
         </div>
 

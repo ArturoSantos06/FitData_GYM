@@ -7,6 +7,7 @@ import { Clock, Calendar as CalIcon, MessageSquare } from 'lucide-react';
 
 const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose, onSuccess }) => {
   const [motivo, setMotivo] = useState('');
+  const [nota, setNota] = useState(notaIncial || '');
   const [horaInicio, setHoraInicio] = useState('08:00');
   const [horaFin, setHoraFin] = useState('09:00');
   const [dialog, setDialog] = useState(null);
@@ -17,8 +18,12 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
     // 1. VALIDACIÓN DE HORARIO DEL GIMNASIO (06:00 a 19:00)
     const hIn = parseInt(horaInicio.split(':')[0]);
     const hOut = parseInt(horaFin.split(':')[0]);
-    if (hIn < 6 || hOut > 19 || hIn >= hOut) {
-      setDialog({ type: 'danger', title: 'Horario Inválido', message: 'El gimnasio opera de 06:00 a 19:00.', onConfirm: () => setDialog(null) });
+    if (hIn >= hOut) {
+      setDialog({ type: 'danger', title: 'Horario Inválido', message: 'La hora de inicio no puede ser igual o posterior a la hora de salida. Verifica que el inicio sea antes que el fin.', onConfirm: () => setDialog(null) });
+      return;
+    }
+    if (hIn < 6 || hOut > 19) {
+      setDialog({ type: 'danger', title: 'Horario Inválido', message: 'El gimnasio opera de 06:00 a 19:00. Ajusta el horario dentro de ese rango.', onConfirm: () => setDialog(null) });
       return;
     }
 
@@ -54,7 +59,7 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
         fecha: fecha,
         horaInicio: horaInicio,
         horaFin: horaFin,
-        nota: notaIncial,
+        nota: nota,
         nutriologoId: currentUser?.uid || '',
         nutriologoEmail: currentUser?.email || localStorage.getItem('nutritionist_username') || '',
         createdBy: currentUser?.uid || '',
@@ -103,17 +108,24 @@ const ModalAgendarNutri = ({ fecha, miembro, notaIncial, todasLasCitas, onClose,
             value={motivo} onChange={(e) => setMotivo(e.target.value)}
           />
 
+          <textarea
+            placeholder="Notas de seguimiento (opcional)"
+            rows={3}
+            className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-white outline-none font-medium resize-none focus:ring-1 focus:ring-cyan-500 text-sm"
+            value={nota} onChange={(e) => setNota(e.target.value)}
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden">
-            <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
-              <Clock size={14} className="absolute left-4 top-4 text-cyan-400" />
+            <label className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden flex items-center cursor-pointer">
+              <Clock size={14} className="absolute left-4 text-cyan-400 pointer-events-none" />
               <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)}
-                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none [appearance:textfield]" />
-            </div>
-            <div className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden">
-              <Clock size={14} className="absolute left-4 top-4 text-purple-400" />
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none cursor-pointer" />
+            </label>
+            <label className="relative min-w-0 rounded-2xl border border-slate-700 bg-[#0f172a] overflow-hidden flex items-center cursor-pointer">
+              <Clock size={14} className="absolute left-4 text-purple-400 pointer-events-none" />
               <input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)}
-                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none [appearance:textfield]" />
-            </div>
+                className="block w-full min-w-0 max-w-full bg-transparent border-0 rounded-none p-4 pl-10 text-white font-black outline-none cursor-pointer" />
+            </label>
           </div>
         </div>
 

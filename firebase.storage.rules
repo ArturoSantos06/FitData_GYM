@@ -145,7 +145,7 @@ service firebase.storage {
     
     // Archivos de chat (imágenes, documentos, etc.)
     match /chat_attachments/{chatId}/{fileName} {
-      allow read, write: if isAuthenticated() && (chatId.matches('.*' + request.auth.uid + '.*') || isPrivilegedStaff());
+      allow read, write: if isAuthenticated();
     }
 
     // Denegar todo lo demas por defecto

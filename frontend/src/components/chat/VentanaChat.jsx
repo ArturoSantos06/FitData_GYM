@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
 import ListaMensajes from './ListaMensajes';
 import EntradaMensaje from './EntradaMensaje';
@@ -50,8 +50,8 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const storageRef = ref(storage, `chat_attachments/${chatId}/${fileName}`);
 
-                const uploadTask = await uploadBytesResumable(storageRef, file);
-                fileUrl = await getDownloadURL(uploadTask.ref);
+                const snapshot = await uploadBytes(storageRef, file);
+                fileUrl = await getDownloadURL(snapshot.ref);
             }
 
             await addDoc(collection(db, 'chats', chatId, 'messages'), {
@@ -67,6 +67,18 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
             alert("No se pudo enviar el mensaje.");
         } finally {
             setIsUploading(false);
+        }
+    };
+
+    const handleDeleteMessage = async (msg) => {
+        try {
+            if (msg.fileUrl) {
+                const fileRef = ref(storage, msg.fileUrl);
+                await deleteObject(fileRef).catch(e => console.log('Archivo adjunto ya eliminado o no accesible.', e));
+            }
+            await deleteDoc(doc(db, 'chats', chatId, 'messages', msg.id));
+        } catch (error) {
+            console.error("Error al eliminar mensaje:", error);
         }
     };
 
@@ -95,7 +107,7 @@ function VentanaChat({ chatId, currentUserId, title, subtitle = "En línea", onB
             </header>
 
             {/* Lista de Mensajes */}
-            <ListaMensajes messages={messages} currentUserId={currentUserId} />
+            <ListaMensajes messages={messages} currentUserId={currentUserId} onDeleteMessage={handleDeleteMessage} />
 
             <div className="shrink-0 relative z-20">
                 <EntradaMensaje onSendMessage={handleSendMessage} isUploading={isUploading} />

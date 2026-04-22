@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { X, User, ClipboardEdit } from 'lucide-react';
+import { X, User } from 'lucide-react';
 import ModalAgendarNutri from '../../modales/ModalAgendarNutri';
 import ModalDetalleNutri from './ModalDetalleNutri';
 import DialogoSistemaNutri from '../DialogoSistemaNutri';
@@ -11,7 +11,6 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewingCita, setViewingCita] = useState(null);
   const [dialog, _setDialog] = useState(null);
-  const [notaPrevia, setNotaPrevia] = useState('');
   const [showPastDateModal, setShowPastDateModal] = useState(false);
 
   const handleDateClick = (arg) => {
@@ -33,12 +32,19 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
   return (
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-3 md:p-4">
       <div className="bg-[#1a2332] w-full max-w-5xl h-[calc(100dvh-1.5rem)] md:h-[82vh] rounded-3xl md:rounded-4xl border border-slate-700/80 flex flex-col md:flex-row overflow-hidden shadow-2xl relative">
-        
+
+        {/* Botón cerrar — esquina superior derecha */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+        >
+          <X size={20} />
+        </button>
+
         {/* SIDEBAR */}
-        <div className="w-full md:w-72 p-4 md:p-6 bg-[#101827] border-b md:border-b-0 md:border-r border-slate-800/50 flex flex-col max-h-[34vh] md:max-h-none overflow-y-auto">
-          <div className="flex justify-between items-start mb-4 md:mb-6 gap-3">
-            <h2 className="font-black text-lg md:text-xl tracking-tight italic text-white uppercase leading-none">FIT<span className="text-cyan-400">DATA</span></h2>
-            <button onClick={onClose} className="p-2.5 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors shrink-0"><X size={20} /></button>
+        <div className="w-full md:w-72 p-4 md:p-6 bg-[#101827] border-b md:border-b-0 md:border-r border-slate-800/50 flex flex-col max-h-[34vh] md:max-h-none overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="mb-4 md:mb-6">
+            <h2 className="font-black text-lg md:text-xl tracking-tight italic text-white uppercase leading-none">Agenda de <span className="text-cyan-400">Citas</span></h2>
           </div>
 
           <div className="flex flex-col items-center text-center mb-4 md:mb-6 p-4 md:p-5 bg-slate-900/50 rounded-3xl border border-slate-800 shadow-inner">
@@ -55,26 +61,19 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
              </div>
           </div>
 
-           <div className="flex-1 flex flex-col space-y-3 min-h-[140px] md:min-h-[180px]">
-             <label className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                <ClipboardEdit size={12} /> Notas de seguimiento
-             </label>
-             <textarea 
-                value={notaPrevia}
-                onChange={(e) => setNotaPrevia(e.target.value)}
-                placeholder="Escribe las notas antes de agendar..."
-               className="w-full flex-1 min-h-[140px] md:min-h-[180px] bg-[#0f172a] border border-slate-800 rounded-2xl p-4 text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-all resize-none shadow-inner font-medium"
-             />
-          </div>
+
         </div>
 
-        <div className="flex-1 p-4 md:p-6 bg-[#0f172a] overflow-y-auto min-h-0">
+        <div className="flex-1 p-4 md:p-6 bg-[#0f172a] overflow-y-auto overflow-x-hidden min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <style>{`
             .fc {
               --fc-border-color: #1e293b;
             }
             .fc td, .fc th, .fc .fc-scrollgrid {
               border-color: #1e293b !important;
+            }
+            .fc-scroller-harness, .fc-scroller {
+              overflow: hidden !important;
             }
             .fc .fc-toolbar {
               margin-bottom: 0.75rem !important;
@@ -208,7 +207,7 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             initialDate={new Date()}
-            headerToolbar={{ left: '', center: 'title', right: '' }}
+            headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
             showNonCurrentDates={false}
             fixedWeekCount={false}
             events={todasLasCitas.filter(c => c.clienteId === miembro.id).map(c => ({
@@ -225,10 +224,10 @@ const ModalExpedienteNutri = ({ miembro, todasLasCitas, onClose }) => {
           <ModalAgendarNutri 
             fecha={selectedDate} 
             miembro={miembro} 
-            notaIncial={notaPrevia}
+            notaIncial=''
             todasLasCitas={todasLasCitas}
             onClose={() => setSelectedDate(null)} 
-            onSuccess={() => { setSelectedDate(null); setNotaPrevia(''); }}
+            onSuccess={() => setSelectedDate(null)}
           />
         )}
         {viewingCita && <ModalDetalleNutri cita={viewingCita} onClose={() => setViewingCita(null)} />}
