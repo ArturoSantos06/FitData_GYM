@@ -2159,7 +2159,7 @@ export const getSales = async (filters = {}) => {
 
     let sales = [];
 
-    if (filters.userId || filters.userEmail || filters.username) {
+    if (filters.userId || filters.userEmail || filters.username || filters.staffId || filters.staffEmail) {
       const fieldQueries = [];
 
       if (filters.userId) {
@@ -2188,6 +2188,30 @@ export const getSales = async (filters = {}) => {
         fieldQueries.push(
           query(collection(db, "ventas"), where("cliente_username", "==", filters.username), limit(limitValue)),
           query(collection(db, "ventas"), where("cliente", "==", filters.username), limit(limitValue))
+        );
+      }
+
+      if (filters.staffId) {
+        const staffIdCandidates = [filters.staffId];
+        const numericStaffId = Number(filters.staffId);
+        if (!Number.isNaN(numericStaffId)) staffIdCandidates.push(numericStaffId);
+
+        staffIdCandidates.forEach((candidate) => {
+          fieldQueries.push(
+            query(collection(db, "ventas"), where("sellerId", "==", candidate), limit(limitValue)),
+            query(collection(db, "ventas"), where("vendedorId", "==", candidate), limit(limitValue)),
+            query(collection(db, "ventas"), where("staffId", "==", candidate), limit(limitValue)),
+            query(collection(db, "ventas"), where("createdBy", "==", candidate), limit(limitValue))
+          );
+        });
+      }
+
+      if (filters.staffEmail) {
+        fieldQueries.push(
+          query(collection(db, "ventas"), where("sellerEmail", "==", filters.staffEmail), limit(limitValue)),
+          query(collection(db, "ventas"), where("vendedorEmail", "==", filters.staffEmail), limit(limitValue)),
+          query(collection(db, "ventas"), where("staffEmail", "==", filters.staffEmail), limit(limitValue)),
+          query(collection(db, "ventas"), where("createdByEmail", "==", filters.staffEmail), limit(limitValue))
         );
       }
 
@@ -2644,7 +2668,7 @@ export const updateTrainerNote = async (noteId, noteData) => {
 
 export const deleteTrainerNote = async (noteId) => {
   try {
-    await deleteDoc(doc(db, "trainerNotes", noteId));
+    await withAuthRetry(() => deleteDoc(doc(db, "trainerNotes", noteId)));
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

@@ -233,7 +233,10 @@ export default function PanelCobros({ onChargeCreated }) {
     setSaving(false);
 
     if (typeof onChargeCreated === 'function') {
+      console.debug('[PanelCobros] Calling onChargeCreated callback');
       onChargeCreated();
+    } else {
+      console.warn('[PanelCobros] onChargeCreated is not a function');
     }
   };
 
