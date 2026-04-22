@@ -23,7 +23,7 @@ export default function TablaOperaciones({ appointments = [], planSales = [] }) 
   const saleRows = planSales.map((item) => ({
     id: `venta-${item.id}`,
     type: 'Cobro',
-    concept: item.tipo_venta || 'Plan nutricional',
+    concept: item.clienteNombre || item.cliente_username || item.cliente_email || item.clienteEmail || 'Cliente',
     amount: Number(item.total || 0),
     date: item.createdAt || item.fecha || item.fechaRegistro
   }));

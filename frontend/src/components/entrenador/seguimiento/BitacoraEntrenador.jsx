@@ -24,6 +24,8 @@ function BitacoraEntrenador({ embedded = false }) {
   const [editingNote, setEditingNote] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState(null);
+  const [notePendingDelete, setNotePendingDelete] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [currentTrainer, setCurrentTrainer] = useState(null);
   const [noteCounts, setNoteCounts] = useState({});
@@ -120,7 +122,8 @@ function BitacoraEntrenador({ embedded = false }) {
       return;
     }
 
-    const counts = result.data.reduce((accumulator, note) => {
+    const visibleNotes = result.data.filter((note) => note.isDeleted !== true);
+    const counts = visibleNotes.reduce((accumulator, note) => {
       const memberId = String(note.memberId || '').trim();
       if (!memberId) return accumulator;
       accumulator[memberId] = (accumulator[memberId] || 0) + 1;
@@ -142,7 +145,8 @@ function BitacoraEntrenador({ embedded = false }) {
     setLoading(true);
     const result = await getTrainerNotesByMember(memberId);
     if (result.success) {
-      setNotes(result.data);
+      const visibleNotes = result.data.filter((note) => note.isDeleted !== true);
+      setNotes(visibleNotes);
     } else {
       showMessage('error', 'Error al cargar notas');
     }
@@ -199,17 +203,41 @@ function BitacoraEntrenador({ embedded = false }) {
     setNoteText(note.note);
   };
 
-  const handleDeleteNote = async (noteId) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta nota?')) return;
+  const handleAskDeleteNote = (note) => {
+    setNotePendingDelete(note);
+  };
 
-    const result = await deleteTrainerNote(noteId);
+  const handleConfirmDeleteNote = async () => {
+    if (!notePendingDelete?.id || !selectedMember?.id) {
+      setNotePendingDelete(null);
+      return;
+    }
+
+    setDeletingNoteId(notePendingDelete.id);
+    const result = await deleteTrainerNote(notePendingDelete.id);
+    setDeletingNoteId(null);
+    setNotePendingDelete(null);
+
     if (result.success) {
       showMessage('success', '🗑️ Nota eliminada');
       loadNotes(selectedMember.id);
       loadNoteCounts();
-    } else {
-      showMessage('error', 'Error al eliminar la nota');
+      return;
     }
+
+    const softDeleteResult = await updateTrainerNote(notePendingDelete.id, {
+      isDeleted: true,
+      deletedAt: new Date().toISOString()
+    });
+
+    if (softDeleteResult.success) {
+      showMessage('success', '🗑️ Nota eliminada');
+      loadNotes(selectedMember.id);
+      loadNoteCounts();
+      return;
+    }
+
+    showMessage('error', result.error || softDeleteResult.error || 'Error al eliminar la nota');
   };
 
   const handleCancelEdit = () => {
@@ -408,8 +436,9 @@ function BitacoraEntrenador({ embedded = false }) {
                                 ✏️
                               </button>
                               <button
-                                onClick={() => handleDeleteNote(note.id)}
-                                className="text-slate-400 hover:text-pink-400 transition-colors"
+                                onClick={() => handleAskDeleteNote(note)}
+                                disabled={deletingNoteId === note.id}
+                                className="text-slate-400 hover:text-pink-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Eliminar nota"
                               >
                                 🗑️
@@ -441,6 +470,42 @@ function BitacoraEntrenador({ embedded = false }) {
           </div>
         </div>
       </div>
+
+      {notePendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Cerrar confirmación"
+            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            onClick={() => setNotePendingDelete(null)}
+          />
+
+          <div className="relative w-full max-w-md rounded-xl border border-slate-600 bg-slate-900 p-6 shadow-2xl">
+            <h4 className="text-xl font-bold text-white mb-2">Eliminar nota</h4>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              ¿Estás seguro de eliminar esta nota? Esta acción no se puede deshacer.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setNotePendingDelete(null)}
+                className="px-4 py-2 rounded-lg bg-slate-700 text-slate-100 font-semibold hover:bg-slate-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteNote}
+                disabled={Boolean(deletingNoteId)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {deletingNoteId ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

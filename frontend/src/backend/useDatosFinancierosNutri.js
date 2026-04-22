@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCurrentUser, getSales } from '../firebase';
 
 const ownerIdFields = [
@@ -93,8 +93,13 @@ const detectPlanSale = (sale) => {
 const matchesOwner = (record, user) => {
   if (!user?.uid && !user?.email) return true;
 
-  const recordIds = ownerIdFields.map((field) => String(record[field] || '').trim()).filter(Boolean);
-  const recordEmails = ownerEmailFields.map((field) => normalize(record[field])).filter(Boolean);
+  const recordIds = ownerIdFields
+    .map((field) => String(record[field] || '').trim())
+    .filter(Boolean);
+  
+  const recordEmails = ownerEmailFields
+    .map((field) => normalize(record[field]))
+    .filter(Boolean);
 
   const hasOwnerData = recordIds.length > 0 || recordEmails.length > 0;
   if (!hasOwnerData) return true;
@@ -102,10 +107,18 @@ const matchesOwner = (record, user) => {
   const userId = String(user.uid || '').trim();
   const userEmail = normalize(user.email);
 
-  const idMatch = userId ? recordIds.includes(userId) : false;
-  const emailMatch = userEmail ? recordEmails.includes(userEmail) : false;
+  // Try matching by ID
+  if (userId && recordIds.includes(userId)) {
+    return true;
+  }
 
-  return idMatch || emailMatch;
+  // Try matching by email  
+  if (userEmail && recordEmails.includes(userEmail)) {
+    return true;
+  }
+
+  // If owner data exists but no match, don't include
+  return false;
 };
 
 export function useDatosFinancierosNutri() {
@@ -113,53 +126,73 @@ export function useDatosFinancierosNutri() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accessLimited, setAccessLimited] = useState(false);
-  const [reloadTick, setReloadTick] = useState(0);
 
   const nutritionist = useMemo(() => {
     const currentUser = getCurrentUser();
-    return {
+    const user = {
       uid: currentUser?.uid || '',
       email: currentUser?.email || localStorage.getItem('nutritionist_username') || ''
     };
+    
+    return user;
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadSales = useCallback(async () => {
+    const salesResult = await getSales({
+      limit: 400,
+      staffId: nutritionist.uid || undefined,
+      staffEmail: nutritionist.email || undefined
+    });
 
-    const loadSales = async () => {
-      const salesResult = await getSales({ limit: 400 });
-      if (!mounted) return;
+    if (!salesResult.success) {
+      const salesError = salesResult.error || 'No se pudieron cargar las ventas.';
 
-      if (!salesResult.success) {
-        const salesError = salesResult.error || 'No se pudieron cargar las ventas.';
-
-        if (isPermissionDenied(salesError)) {
-          setAccessLimited(true);
-          setSales([]);
-          setLoading(false);
-          return;
-        }
-
-        setError(salesError);
+      if (isPermissionDenied(salesError)) {
+        setAccessLimited(true);
+        setSales([]);
         setLoading(false);
         return;
       }
 
-      setSales(salesResult.data || []);
+      setError(salesError);
       setLoading(false);
+      return;
+    }
+
+    setAccessLimited(false);
+    setSales(salesResult.data || []);
+    setError('');
+    setLoading(false);
+  }, [nutritionist.email, nutritionist.uid]);
+
+  // Initial load and auto-refresh
+  useEffect(() => {
+    let mounted = true;
+    let refreshInterval = null;
+
+    const executeLoad = async () => {
+      if (mounted) {
+        await loadSales();
+      }
     };
 
-    loadSales();
+    executeLoad();
+
+    // Auto-refresh every 30 seconds
+    refreshInterval = setInterval(() => {
+      if (mounted) {
+        loadSales();
+      }
+    }, 30000);
 
     return () => {
       mounted = false;
+      if (refreshInterval) clearInterval(refreshInterval);
     };
-  }, [reloadTick]);
+  }, [loadSales]);
 
   const computed = useMemo(() => {
-    const ownPlanSales = sales
-      .filter((sale) => matchesOwner(sale, nutritionist))
-      .filter((sale) => detectPlanSale(sale));
+    const ownPlanSales = sales.filter((sale) => detectPlanSale(sale));
 
     const plansTotal = ownPlanSales.reduce((acc, sale) => {
       const total = parseMoney(sale.total, NaN);
@@ -211,11 +244,16 @@ export function useDatosFinancierosNutri() {
     };
   }, [sales, nutritionist]);
 
+  const reloadData = useCallback(async () => {
+    console.debug('[useDatosFinancierosNutri] reloadData called');
+    await loadSales();
+  }, [loadSales]);
+
   return {
     ...computed,
     loading,
     error,
     accessLimited,
-    reloadData: () => setReloadTick((value) => value + 1)
+    reloadData
   };
 }

@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { crearReporteMantenimiento, subirFotoReporte } from '../../backend/mantenimiento';
 
 function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
+    const fileInputRef = useRef(null);
     const [maquinaId, setMaquinaId] = useState('');
     const [mostrarOpcionesMaquina, setMostrarOpcionesMaquina] = useState(false);
     const [descripcion, setDescripcion] = useState('');
@@ -72,14 +73,14 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="mb-2 space-y-2 rounded-xl border border-slate-600 bg-slate-900/70 p-3">
+        <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-600 bg-slate-900/70 p-3 md:p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Reportar máquina descompuesta</p>
 
             <div className="relative">
                 <button
                     type="button"
                     onClick={() => setMostrarOpcionesMaquina((prev) => !prev)}
-                    className="flex w-full items-center justify-between rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-left text-sm text-slate-100"
+                    className="flex min-h-11 w-full items-center justify-between rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-left text-sm text-slate-100"
                 >
                     <span className="truncate">
                         {maquinaSeleccionada ? maquinaSeleccionada.nombre : 'Selecciona una máquina'}
@@ -88,7 +89,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 </button>
 
                 {mostrarOpcionesMaquina && (
-                    <div className="absolute bottom-full z-20 mb-1 max-h-72 w-full overflow-y-auto overscroll-contain rounded-lg border border-slate-600 bg-slate-950 shadow-lg">
+                    <div className="z-20 mt-1 max-h-56 w-full overflow-y-auto overscroll-contain rounded-lg border border-slate-600 bg-slate-950 shadow-lg md:absolute md:bottom-full md:mb-1 md:mt-0 md:max-h-72">
                         {maquinas.length === 0 ? (
                             <p className="px-3 py-2 text-xs text-slate-400">No hay máquinas disponibles.</p>
                         ) : (
@@ -126,7 +127,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
             </div>
 
             {maquinaSeleccionada?.fotoUrl && (
-                <div className="flex h-72 items-center justify-center overflow-hidden rounded-lg border border-slate-600 bg-slate-950 p-2">
+                <div className="flex h-40 items-center justify-center overflow-hidden rounded-lg border border-slate-600 bg-slate-950 p-2 sm:h-52 md:h-72">
                     <img
                         src={maquinaSeleccionada.fotoUrl}
                         alt={maquinaSeleccionada.nombre || 'Máquina seleccionada'}
@@ -141,21 +142,30 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 onChange={(event) => setDescripcion(event.target.value)}
                 rows={3}
                 placeholder="Describe la falla..."
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-400"
+                className="min-h-24 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-400"
             />
 
             <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,image/webp"
                 onChange={(event) => {
                     const nextFile = event.target.files?.[0] || null;
                     setArchivo(nextFile);
                 }}
-                className="w-full rounded-lg border border-dashed border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-300"
+                className="hidden"
             />
 
+            <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex min-h-11 w-full items-center justify-center rounded-lg border border-dashed border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
+            >
+                {archivo ? 'Cambiar foto seleccionada' : 'Seleccionar foto (opcional)'}
+            </button>
+
             {archivo && (
-                <p className="text-xs text-slate-300">Foto seleccionada: {archivo.name}</p>
+                <p className="break-all text-xs text-slate-300">Foto seleccionada: {archivo.name}</p>
             )}
 
             {error && (
@@ -164,12 +174,12 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 </p>
             )}
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
                 {tieneSeleccion && (
                     <button
                         type="button"
                         onClick={limpiarSeleccion}
-                        className="rounded-lg border border-rose-400/50 px-3 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-500/10"
+                        className="rounded-lg border border-rose-400/50 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/10"
                     >
                         Eliminar
                     </button>
@@ -178,7 +188,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-semibold text-slate-200"
+                        className="rounded-lg border border-slate-500 px-3 py-2 text-xs font-semibold text-slate-200"
                     >
                         Cancelar
                     </button>
@@ -186,7 +196,7 @@ function FormularioReporteEnChat({ maquinas = [], onCancel, onSuccess }) {
                 <button
                     type="submit"
                     disabled={enviando}
-                    className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="min-h-11 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {enviando ? 'Enviando...' : 'Enviar reporte'}
                 </button>

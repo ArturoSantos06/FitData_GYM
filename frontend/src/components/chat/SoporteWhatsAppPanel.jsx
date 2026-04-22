@@ -66,9 +66,17 @@ function SoporteWhatsAppPanel({
     setEntradaMensaje,
     isGenerating,
 }) {
+    const [showMaintenanceFormMobile, setShowMaintenanceFormMobile] = React.useState(false);
+
+    React.useEffect(() => {
+        if (activeChat !== 'mantenimiento') {
+            setShowMaintenanceFormMobile(false);
+        }
+    }, [activeChat]);
+
     return (
         <div className="w-full animate-fade-in">
-            <div className="mx-auto h-[calc(100dvh-9rem)] md:h-[calc(100vh-12rem)] min-h-[520px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
+            <div className="mx-auto h-[calc(100dvh-11rem)] md:h-[calc(100vh-12rem)] min-h-[420px] md:min-h-[520px] max-h-[840px] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-700 bg-gray-800 shadow-2xl relative">
 
                 {/* Barra de color superior al estilo VistaPlan */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-blue-500 via-cyan-400 to-emerald-400 z-10" />
@@ -336,7 +344,7 @@ function SoporteWhatsAppPanel({
                                 ))}
                             </div>
 
-                            <footer className="border-t border-slate-700 bg-slate-900/60 px-3 py-3 md:px-4">
+                            <footer className={`border-t border-slate-700 bg-slate-900/60 px-3 py-3 md:px-4 ${activeChat === 'mantenimiento' ? 'pb-4' : ''}`}>
                                 {activeChat === 'soporte' && (
                                     <div className="mb-2 flex flex-wrap gap-2">
                                         {quickQuestions.slice(0, 4).map((question) => (
@@ -358,6 +366,16 @@ function SoporteWhatsAppPanel({
                                     </div>
                                 )}
 
+                                {activeChat === 'mantenimiento' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMaintenanceFormMobile((prev) => !prev)}
+                                        className="mb-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 md:hidden"
+                                    >
+                                        Abrir formulario de reporte
+                                    </button>
+                                )}
+
                                 {activeChat === 'mantenimiento' && catalogoError && (
                                     <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{catalogoError}</div>
                                 )}
@@ -373,7 +391,9 @@ function SoporteWhatsAppPanel({
                                 )}
 
                                 {activeChat === 'mantenimiento' ? (
-                                    <FormularioReporteEnChat maquinas={catalogoMaquinas} onSuccess={handleReportCreated} />
+                                    <div className="hidden md:block">
+                                        <FormularioReporteEnChat maquinas={catalogoMaquinas} onSuccess={handleReportCreated} />
+                                    </div>
                                 ) : (
                                     <form onSubmit={handleSend} className="flex items-center gap-2">
                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-slate-300">
@@ -397,6 +417,39 @@ function SoporteWhatsAppPanel({
                                     </form>
                                 )}
                             </footer>
+
+                            {activeChat === 'mantenimiento' && showMaintenanceFormMobile && (
+                                <div className="fixed inset-0 z-50 flex items-end bg-slate-950/70 backdrop-blur-[2px] md:hidden">
+                                    <button
+                                        type="button"
+                                        aria-label="Cerrar formulario"
+                                        className="absolute inset-0"
+                                        onClick={() => setShowMaintenanceFormMobile(false)}
+                                    />
+
+                                    <div className="relative z-10 max-h-[88dvh] w-full overflow-y-auto rounded-t-2xl border-t border-slate-600 bg-slate-900 p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <p className="text-sm font-bold text-cyan-200">Formulario de reporte</p>
+                                            <button
+                                                type="button"
+                                                className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-semibold text-slate-200"
+                                                onClick={() => setShowMaintenanceFormMobile(false)}
+                                            >
+                                                Cerrar
+                                            </button>
+                                        </div>
+
+                                        <FormularioReporteEnChat
+                                            maquinas={catalogoMaquinas}
+                                            onCancel={() => setShowMaintenanceFormMobile(false)}
+                                            onSuccess={(payload) => {
+                                                handleReportCreated(payload);
+                                                setShowMaintenanceFormMobile(false);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </section>
                     )}
                 </div>

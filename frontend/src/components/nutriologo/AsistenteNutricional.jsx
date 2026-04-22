@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChefHat, X, Loader2, ExternalLink, Save } from 'lucide-react';
 import { getAllMembers, getHealthProfileByMemberId, createHealthProfile } from '../../firebase';
 import { db } from '../../firebase/config';
@@ -90,6 +90,9 @@ const generarMenuLocal = (targetCalories) => {
 
 export default function AsistenteNutricional() {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isReady, setIsReady] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [targetCalories, setTargetCalories] = useState(2000);
   const [suggestedMeals, setSuggestedMeals] = useState([]);
   const [dailyNutrients, setDailyNutrients] = useState(null);
@@ -103,6 +106,32 @@ export default function AsistenteNutricional() {
   const [isLoadingPatients, setIsLoadingPatients] = useState(false);
   const [isSavingCalories, setIsSavingCalories] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  const dragRef = useRef({
+    dragging: false,
+    moved: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0
+  });
+
+  const BUTTON_SIZE = 56;
+  const EDGE_GAP = 12;
+  const PANEL_GAP = 12;
+  const PANEL_WIDTH_MAX = 384;
+  const storageKey = 'menu_assistant_widget_position';
+
+  const clampPosition = (x, y) => {
+    const maxX = Math.max(EDGE_GAP, window.innerWidth - BUTTON_SIZE - EDGE_GAP);
+    const maxY = Math.max(EDGE_GAP, window.innerHeight - BUTTON_SIZE - EDGE_GAP);
+
+    return {
+      x: Math.min(Math.max(x, EDGE_GAP), maxX),
+      y: Math.min(Math.max(y, EDGE_GAP), maxY)
+    };
+  };
 
   // Cargar pacientes al abrir el panel
   useEffect(() => {
@@ -215,11 +244,154 @@ export default function AsistenteNutricional() {
     }, 600);
   };
 
+  useEffect(() => {
+    const defaultPos = clampPosition(
+      window.innerWidth - BUTTON_SIZE - EDGE_GAP,
+      window.innerHeight - BUTTON_SIZE - EDGE_GAP
+    );
+
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+          setPosition(clampPosition(parsed.x, parsed.y));
+        } else {
+          setPosition(defaultPos);
+        }
+      } else {
+        setPosition(defaultPos);
+      }
+    } catch {
+      setPosition(defaultPos);
+    }
+
+    setIsReady(true);
+
+    const handleResize = () => {
+      setPosition((current) => clampPosition(current.x, current.y));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(position));
+    } catch {
+      // Ignora errores de almacenamiento para no afectar la UI.
+    }
+  }, [isReady, position]);
+
+  useEffect(() => {
+    const handleGlobalPointerMove = (event) => {
+      if (!dragRef.current.dragging) return;
+
+      const deltaX = event.clientX - dragRef.current.startX;
+      const deltaY = event.clientY - dragRef.current.startY;
+      if (!dragRef.current.moved && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+        dragRef.current.moved = true;
+      }
+
+      const next = clampPosition(
+        dragRef.current.originX + deltaX,
+        dragRef.current.originY + deltaY
+      );
+      setPosition(next);
+    };
+
+    const handleGlobalPointerEnd = () => {
+      if (!dragRef.current.dragging) return;
+
+      dragRef.current.dragging = false;
+      dragRef.current.pointerId = null;
+      dragRef.current.moved = false;
+      setIsDragging(false);
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove);
+    window.addEventListener('pointerup', handleGlobalPointerEnd);
+    window.addEventListener('pointercancel', handleGlobalPointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerEnd);
+      window.removeEventListener('pointercancel', handleGlobalPointerEnd);
+    };
+  }, []);
+
+  const handlePointerDown = (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    event.preventDefault();
+
+    dragRef.current.dragging = true;
+    dragRef.current.moved = false;
+    dragRef.current.pointerId = event.pointerId;
+    dragRef.current.startX = event.clientX;
+    dragRef.current.startY = event.clientY;
+    dragRef.current.originX = position.x;
+    dragRef.current.originY = position.y;
+
+    setIsDragging(true);
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    if (!dragRef.current.dragging) return;
+
+    if (typeof event.currentTarget.releasePointerCapture === 'function' && dragRef.current.pointerId !== null) {
+      event.currentTarget.releasePointerCapture(dragRef.current.pointerId);
+    }
+
+    const moved = dragRef.current.moved;
+    dragRef.current.dragging = false;
+    dragRef.current.moved = false;
+    dragRef.current.pointerId = null;
+    setIsDragging(false);
+
+    if (!moved) {
+      setOpen((value) => !value);
+    }
+  };
+
+  const getPanelStyle = () => {
+    if (typeof window === 'undefined') {
+      return { right: '1rem', bottom: '5rem' };
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const panelWidth = Math.min(PANEL_WIDTH_MAX, viewportWidth * 0.94);
+
+    const bubbleCenterX = position.x + BUTTON_SIZE / 2;
+    const preferRight = bubbleCenterX <= viewportWidth / 2;
+
+    const rawLeft = preferRight
+      ? position.x + BUTTON_SIZE + PANEL_GAP
+      : position.x - panelWidth - PANEL_GAP;
+
+    const maxLeft = Math.max(EDGE_GAP, viewportWidth - panelWidth - EDGE_GAP);
+    const left = Math.min(Math.max(rawLeft, EDGE_GAP), maxLeft);
+    const bottom = Math.max(EDGE_GAP, viewportHeight - (position.y + BUTTON_SIZE));
+
+    return {
+      left: `${left}px`,
+      bottom: `${bottom}px`
+    };
+  };
+
   return (
     <>
       {/* Panel Flotante */}
       {open && (
-        <div className="fixed bottom-20 right-4 z-50 w-80 sm:w-96 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col max-h-[85vh]">
+        <div
+          className="fixed z-50 flex max-h-[85vh] w-[94vw] max-w-96 flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+          style={getPanelStyle()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 p-4">
             <div className="flex items-center gap-2">
@@ -364,9 +536,19 @@ export default function AsistenteNutricional() {
       {/* Burbuja Flotante */}
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-cyan-600 text-white shadow-[0_10px_30px_rgba(6,182,212,0.4)] transition-transform hover:scale-105"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setOpen((value) => !value);
+          }
+        }}
+        className={`fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-cyan-600 text-white shadow-[0_10px_30px_rgba(6,182,212,0.4)] ${isDragging ? 'cursor-grabbing' : 'cursor-grab hover:scale-105'}`}
+        style={{ left: `${position.x}px`, top: `${position.y}px`, touchAction: 'none' }}
         aria-label="Abrir asistente de menú"
+        aria-grabbed={isDragging}
       >
         {open ? <X size={24} /> : <ChefHat size={24} />}
       </button>

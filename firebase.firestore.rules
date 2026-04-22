@@ -227,6 +227,14 @@ service cloud.firestore {
           isTrainer() &&
           (resource.data.tipo_venta == 'SERVICIO_ENTRENAMIENTO' || resource.data.tipoVenta == 'SERVICIO_ENTRENAMIENTO')
         ) ||
+        (
+          isNutritionist() &&
+          (resource.data.tipo_venta == 'PLAN_NUTRICIONAL' || resource.data.tipoVenta == 'PLAN_NUTRICIONAL' ||
+           resource.data.sellerId == request.auth.uid ||
+           resource.data.vendedorId == request.auth.uid ||
+           resource.data.sellerEmail == request.auth.token.email ||
+           resource.data.vendedorEmail == request.auth.token.email)
+        ) ||
         isAdmin()
       );
       allow create: if isAdmin() || isAuthenticated();
