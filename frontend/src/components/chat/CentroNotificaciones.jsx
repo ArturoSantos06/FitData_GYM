@@ -70,20 +70,20 @@ function CentroNotificaciones({ userId, onNotificationClick }) {
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 top-14 w-80 sm:w-96 bg-[#1f2c33]/95 backdrop-blur-xl border border-slate-700/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-fade-in origin-top-left z-50">
-                    <div className="p-3.5 border-b border-slate-700/60 bg-linear-to-r from-[#202c33] to-[#1f2c33] flex items-center justify-between">
+                <div className="fixed right-3 left-3 top-19 sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-96 bg-[#1f2c33]/95 backdrop-blur-xl border border-slate-700/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-fade-in origin-top-right z-60 max-h-[calc(100dvh-6rem)]">
+                    <div className="p-3.5 border-b border-slate-700/60 bg-linear-to-r from-[#202c33] to-[#1f2c33] flex items-center justify-between gap-3">
                         <h3 className="font-semibold text-slate-100 text-sm flex items-center gap-2">
                             Notificaciones
                             {unreadCount > 0 && <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full text-xs">{unreadCount} nuevas</span>}
                         </h3>
                         {unreadCount > 0 && (
-                            <button onClick={markAllAsRead} className="text-xs font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 rounded-lg">
+                            <button onClick={markAllAsRead} className="shrink-0 text-xs font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 rounded-lg">
                                 <CheckCheck size={14} /> Leer todas
                             </button>
                         )}
                     </div>
 
-                    <div className="max-h-[350px] overflow-y-auto scrollbar-hide py-1">
+                    <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto scrollbar-hide py-1">
                         {notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
                                 <div className="bg-slate-800/50 p-4 rounded-full mb-3 text-slate-500">
@@ -105,8 +105,8 @@ function CentroNotificaciones({ userId, onNotificationClick }) {
                                         <Bell size={18} />
                                     </div>
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <p className={`text-[14px] ${n.read ? 'text-slate-400 font-medium' : 'text-slate-100 font-semibold'} text-wrap break-words whitespace-normal mb-1`}>{n.title}</p>
-                                        <p className={`text-xs ${n.read ? 'text-slate-500' : 'text-slate-300'} text-wrap break-words whitespace-normal mb-1`}>{n.body}</p>
+                                        <p className={`text-[14px] ${n.read ? 'text-slate-400 font-medium' : 'text-slate-100 font-semibold'} text-wrap wrap-break-word whitespace-normal mb-1`}>{n.title}</p>
+                                        <p className={`text-xs ${n.read ? 'text-slate-500' : 'text-slate-300'} text-wrap wrap-break-word whitespace-normal mb-1`}>{n.body}</p>
                                         <p className="text-[10px] text-slate-500 mt-1.5 font-medium tracking-wide">
                                             {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Justo ahora'}
                                         </p>

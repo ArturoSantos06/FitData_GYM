@@ -25,6 +25,7 @@ const ListaNutriologos = () => {
     message: '',
     subMessage: '',
   });
+  const [assignmentWarningModal, setAssignmentWarningModal] = useState(false);
   const [showRateModal, setShowRateModal] = useState(false);
   const [pendingRating, setPendingRating] = useState(null);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
@@ -158,7 +159,7 @@ const ListaNutriologos = () => {
     }
     
     if (assignedNutritionistId) {
-      alert('Ya tienes un nutriólogo asignado. Si deseas cambiar, contacta a recepción.');
+      setAssignmentWarningModal(true);
       return;
     }
     setPendingNutri(nutri);
@@ -228,6 +229,27 @@ const ListaNutriologos = () => {
         subMessage={successModal.subMessage}
         overlayClassName="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
       />
+
+      {assignmentWarningModal && (
+        <div className="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-4xl shadow-2xl w-full max-w-sm text-center p-8">
+            <div className="mx-auto w-16 h-16 rounded-full bg-blue-500/15 flex items-center justify-center mb-6 text-blue-400">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="text-xl font-black uppercase italic mb-2 text-white tracking-tighter">Nutriólogo ya asignado</h3>
+            <p className="text-slate-400 text-sm mb-8 font-medium leading-relaxed">
+              Ya tienes un nutriólogo asignado. Si deseas cambiar, contacta a recepción.
+            </p>
+            <button
+              onClick={() => setAssignmentWarningModal(false)}
+              className="w-full py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg bg-blue-600 hover:bg-blue-500"
+              type="button"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       <ModalConfirmacion
         isOpen={showSelectModal}
@@ -371,7 +393,7 @@ const ListaNutriologos = () => {
                   ) : assignedNutritionistId === n.id ? (
                     <>
                       <CheckCircle className="w-4 h-4 inline mr-2" />
-                 AsListignado
+                      Asignado
                     </>
                   ) : (
                     'Seleccionar'

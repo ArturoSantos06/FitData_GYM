@@ -76,6 +76,16 @@ service cloud.firestore {
              );
     }
 
+    function nutritionistMatchesAssignment(clientId) {
+      return isNutritionist() &&
+             clientId != null &&
+             exists(/databases/$(database)/documents/client_nutritionist_assignments/$(clientId)) &&
+             (
+               get(/databases/$(database)/documents/client_nutritionist_assignments/$(clientId)).data.nutritionistId == request.auth.uid ||
+               get(/databases/$(database)/documents/client_nutritionist_assignments/$(clientId)).data.nutritionistEmail == request.auth.token.email
+             );
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -361,12 +371,14 @@ service cloud.firestore {
         (isAdmin() ||
           (isSignedIn() &&
             (("ownerUid" in resource.data && resource.data.ownerUid == request.auth.uid) ||
-             !("ownerUid" in resource.data)))) &&
+             !("ownerUid" in resource.data) ||
+             nutritionistMatchesAssignment(resource.data.memberId)))) &&
         isValidDietFilePayload(request.resource.data);
       allow delete: if isAdmin() ||
         (isSignedIn() &&
           (("ownerUid" in resource.data && resource.data.ownerUid == request.auth.uid) ||
-           !("ownerUid" in resource.data)));
+           !("ownerUid" in resource.data) ||
+           nutritionistMatchesAssignment(resource.data.memberId)));
     }
 
     // Asignaciones de nutriólogos a clientes

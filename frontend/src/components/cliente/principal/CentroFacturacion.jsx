@@ -4,23 +4,102 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { getSales, getCurrentUser } from '../../../firebase';
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
 function CentroFacturacion({ ventasIniciales = [] }) {
   const [ventas, setVentas] = useState(ventasIniciales);
   const [loading, setLoading] = useState(!ventasIniciales?.length);
   const [generating, setGenerating] = useState({});
+  const [pendingFacturas, setPendingFacturas] = useState([]);
   const [error, setError] = useState('');
   const [filterMes, setFilterMes] = useState('all');
   const [filterAnio, setFilterAnio] = useState('all');
 
   const currentUser = getCurrentUser();
 
-  const refreshVentas = async () => {
-    const result = await getSales();
-    if (result.success) {
-      setVentas(result.data || []);
-      return result.data || [];
+  const fetchCurrentUserSales = async () => {
+    if (!currentUser?.uid && !currentUser?.email) {
+      return [];
     }
-    return [];
+
+    const requests = [];
+    if (currentUser?.uid) {
+      requests.push(getSales({ userId: currentUser.uid }));
+    }
+
+    const rawEmail = String(currentUser?.email || '').trim();
+    const lowerEmail = normalizeEmail(rawEmail);
+    if (rawEmail) {
+      requests.push(getSales({ userEmail: rawEmail }));
+    }
+    if (lowerEmail && lowerEmail !== rawEmail) {
+      requests.push(getSales({ userEmail: lowerEmail }));
+    }
+
+    const results = await Promise.allSettled(requests);
+    const mergedById = new Map();
+
+    results.forEach((result) => {
+      if (result.status !== 'fulfilled') return;
+      if (!result.value?.success || !Array.isArray(result.value.data)) return;
+      result.value.data.forEach((sale) => {
+        if (!sale?.id) return;
+        mergedById.set(String(sale.id), sale);
+      });
+    });
+
+    return Array.from(mergedById.values()).sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || a.fecha || 0);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || b.fecha || 0);
+      return dateB - dateA;
+    });
+  };
+
+  const refreshVentas = async () => {
+    const userSales = await fetchCurrentUserSales();
+    setVentas(userSales);
+    return userSales;
+  };
+
+  const isFacturaGenerada = (sale) => {
+    return String(sale?.factura_estado || '').toLowerCase() === 'generada' && Boolean(sale?.factura_url);
+  };
+
+  const getVentaCandidates = (ventaLike) => {
+    if (!ventaLike) return [];
+
+    if (typeof ventaLike === 'string' || typeof ventaLike === 'number') {
+      return [String(ventaLike).trim()].filter(Boolean);
+    }
+
+    return [
+      ventaLike.id,
+      ventaLike.ventaId,
+      ventaLike.legacyId,
+      ventaLike.folio,
+    ]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+  };
+
+  const matchesVenta = (sale, candidates) => {
+    const saleCandidates = getVentaCandidates(sale);
+    return candidates.some((candidate) => saleCandidates.includes(candidate));
+  };
+
+  const waitForFacturaGenerada = async (ventaCandidates, maxAttempts = 8, delayMs = 1500) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      // eslint-disable-next-line no-await-in-loop
+      const updatedSales = await refreshVentas();
+      const target = updatedSales.find((sale) => matchesVenta(sale, ventaCandidates));
+      if (isFacturaGenerada(target)) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   useEffect(() => {
@@ -33,10 +112,8 @@ function CentroFacturacion({ ventasIniciales = [] }) {
     const loadVentas = async () => {
       setLoading(true);
       try {
-        const result = await getSales();
-        if (result.success) {
-          setVentas(result.data);
-        }
+        const userSales = await fetchCurrentUserSales();
+        setVentas(userSales);
       } catch (err) {
         setError('Error cargando historial de compras');
         console.error(err);
@@ -50,7 +127,33 @@ function CentroFacturacion({ ventasIniciales = [] }) {
     }
   }, [currentUser, ventasIniciales]);
 
-  const handleGenerarFactura = async (ventaId) => {
+  useEffect(() => {
+    if (pendingFacturas.length === 0) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(async () => {
+      const updatedSales = await refreshVentas();
+      setPendingFacturas((currentItems) =>
+        currentItems.filter((item) => {
+          const target = updatedSales.find((sale) => matchesVenta(sale, item.candidates));
+          return !isFacturaGenerada(target);
+        })
+      );
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [pendingFacturas]);
+
+  const handleGenerarFactura = async (venta) => {
+    const ventaId = String(venta?.id || '').trim();
+    if (!ventaId) {
+      setError('No se pudo identificar la venta para generar la factura.');
+      return;
+    }
+
+    const ventaCandidates = getVentaCandidates(venta);
+
     setGenerating(prev => ({ ...prev, [ventaId]: true }));
     setError('');
 
@@ -60,7 +163,7 @@ function CentroFacturacion({ ventasIniciales = [] }) {
       }
 
       await addDoc(collection(db, 'facturaRequests'), {
-        ventaId: String(ventaId),
+        ventaId,
         requesterUid: String(currentUser.uid),
         requesterEmail: String(currentUser.email || '').toLowerCase(),
         status: 'pending',
@@ -68,18 +171,16 @@ function CentroFacturacion({ ventasIniciales = [] }) {
         requestedFrom: 'client-store'
       });
 
-      let generated = false;
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        // Espera breve mientras la Cloud Function procesa la solicitud
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => setTimeout(resolve, 1800));
-        // eslint-disable-next-line no-await-in-loop
-        const updatedSales = await refreshVentas();
-        const target = updatedSales.find((sale) => String(sale.id) === String(ventaId));
-        if (target?.factura_estado === 'generada' && target?.factura_url) {
-          generated = true;
-          break;
-        }
+      setPendingFacturas((prev) => {
+        const exists = prev.some((item) => item.candidates.some((candidate) => ventaCandidates.includes(candidate)));
+        if (exists) return prev;
+        return [...prev, { key: ventaId, candidates: ventaCandidates }];
+      });
+
+      const generated = await waitForFacturaGenerada(ventaCandidates);
+
+      if (generated) {
+        setPendingFacturas((prev) => prev.filter((item) => !item.candidates.some((candidate) => ventaCandidates.includes(candidate))));
       }
 
       if (!generated) {
@@ -244,9 +345,17 @@ function CentroFacturacion({ ventasIniciales = [] }) {
                     <Download size={16} />
                     Descargar
                   </button>
+                ) : pendingFacturas.some((item) => matchesVenta(venta, item.candidates)) ? (
+                  <button
+                    disabled
+                    className="flex items-center gap-2 bg-blue-600/70 text-white px-4 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-not-allowed"
+                  >
+                    <Loader className="animate-spin" size={16} />
+                    Procesando...
+                  </button>
                 ) : (
                   <button
-                    onClick={() => handleGenerarFactura(venta.id)}
+                    onClick={() => handleGenerarFactura(venta)}
                     disabled={generating[venta.id]}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-semibold transition-all whitespace-nowrap"
                   >
